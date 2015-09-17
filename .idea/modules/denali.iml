@@ -27,5 +27,6 @@
     <orderEntry type="library" name="SBT: org.scala-lang.modules:scala-xml_2.11:1.0.1:jar" level="project" />
     <orderEntry type="library" name="SBT: org.scalatest:scalatest_2.11:2.1.6:jar" level="project" />
     <orderEntry type="library" name="SBT: pl.project13.scala:rainbow_2.11:0.2:jar" level="project" />
+    <orderEntry type="library" name="SBT: commons-io:commons-io:2.3:jar" level="project" />
   </component>
 </module>

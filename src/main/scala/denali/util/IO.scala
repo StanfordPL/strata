@@ -49,7 +49,9 @@ object IO {
   /** Run a subcommand, show it's output and abort if it fails. */
   def subcommand(cmd: String): Unit = {
     val (out, status) = run(cmd)
-    println(out.gray)
+    if (out.length != 0) {
+      println(out.gray)
+    }
     if (status != 0) {
       error(s"Command failed: $cmd")
     }
