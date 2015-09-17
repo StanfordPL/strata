@@ -1,9 +1,8 @@
 package denali.util
 
 import java.io.File
-import java.nio.file.Path
-
 import scala.sys.process._
+import ColoredOutput._
 
 /**
  * A utility to run commands and capture their output.
@@ -17,10 +16,13 @@ object IO {
   def run(cmd: String): (String, Int) = {
     var res = ""
     val logger = ProcessLogger(
-      line => res += line,
-      line => res += line
+      line => res += line + "\n",
+      line => res += line + "\n"
     )
     val status = Process(cmd, getProjectBase) ! logger
+    if (res.endsWith("\n")) {
+      res = res.substring(0, res.length - 1)
+    }
     (res, status)
   }
 
@@ -35,7 +37,21 @@ object IO {
 
   /** Output an error message and exit. */
   def error(msg: String): Nothing = {
-    println(s"ERROR: $msg")
+    println(s"ERROR: $msg".red)
     sys.exit(1)
+  }
+
+  /** Output an informational message. */
+  def info(msg: String): Unit = {
+    println(s"[  ] $msg")
+  }
+
+  /** Run a subcommand, show it's output and abort if it fails. */
+  def subcommand(cmd: String): Unit = {
+    val (out, status) = run(cmd)
+    println(out.gray)
+    if (status != 0) {
+      error(s"Command failed: $cmd")
+    }
   }
 }
