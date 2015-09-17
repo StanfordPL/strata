@@ -7,9 +7,11 @@ import scala.io.Source
  */
 class Config(cmdOptions: CmdOptions) {
   def getGoal: Seq[Instruction] = {
-    val res = for (goal <- Source.fromFile(s"${cmdOptions.workdir}/config/goal.txt").getLines()) yield {
+    val file = Source.fromFile(s"${cmdOptions.workdir}/config/goal.txt")
+    val res = for (goal <- file.getLines()) yield {
       new Instruction(goal.stripLineEnd, cmdOptions)
     }
+    file.close()
     res.toSeq
   }
 }
