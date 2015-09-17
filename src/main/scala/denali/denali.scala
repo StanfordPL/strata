@@ -1,4 +1,6 @@
+package denali
 
+import java.io.File
 
 /**
  * Main entry point.
@@ -10,7 +12,10 @@ object Denali {
       help("help") text "Usage information"
       version("version") text "Version"
 
-      note("")
+      opt[File]('w', "workdir") valueName("<dir>") action {
+        (x, c) => c.copy(workdir = x)
+      } text(s"The directory where outputs and intermediate progress are stored. Default: ${Config().workdir}")
+
       cmd("init") action {
         (_, c) => c.copy(cmd = "init")
       }
@@ -18,15 +23,15 @@ object Denali {
         (_, c) => c.copy(cmd = "step")
       }
       checkConfig {
-        case Config("") => failure("Command required.")
+        case c: Config if c.cmd == "" => failure("Command required.")
         case _ => success
       }
     }
 
     // parser.parse returns Option[C]
     parser.parse(args, Config()) match {
-      case Some(c@Config("init")) =>
-        Initialize.run()
+      case Some(c) if c.cmd == "init" =>
+        Initialize.run(c)
       case Some(_) =>
         println("ERROR: unexpected command")
         sys.exit(1)
@@ -41,4 +46,4 @@ object Denali {
  *
  * @param cmd The command to run
  */
-case class Config(cmd: String = "")
+case class Config(cmd: String = "", workdir: File = new File(s"${System.getProperty("user.home")}/dev/denali-output"))
