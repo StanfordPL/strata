@@ -2,7 +2,7 @@ package denali
 
 import java.io.File
 
-import denali.data.Instruction
+import denali.data.{Config, Instruction}
 import denali.util.IO
 
 import scala.io.Source
@@ -15,20 +15,40 @@ object Denali {
 
     val shortDescription = "Automatic inference of a formal specification of the x86_64 instruction set"
 
+    def addGlobalOptions[T](parser: scopt.OptionParser[T], command: String, updateGlobal: (File, T) => T): Unit = {
+      parser.help("help") text s"Usage information for the $command command"
+      parser.opt[File]('w', "workdir") valueName ("<dir>") action {
+        (x, c) => updateGlobal(x, c)
+      } text (s"The directory where outputs and intermediate progress are stored. Default: ${GlobalOptions().workdir}")
+    }
+
     val commands: List[(String, String, (Array[String], String) => Unit)] = List(
-      ("init", "Initialize the configuration for denali", (args: Array[String], helpStr: String) => {
+      ("init", "Initialize the configuration for denali", (localArgs: Array[String], helpStr: String) => {
         val parser = new scopt.OptionParser[InitOptions]("denali") {
           head(shortDescription)
-          help("help") text "Usage information for the init command"
-
           note(helpStr)
-          opt[File]('w', "workdir") valueName ("<dir>") action {
-            (x, c) => c.copy(globalOptions = c.globalOptions.copy(workdir = x))
-          } text (s"The directory where outputs and intermediate progress are stored. Default: ${GlobalOptions().workdir}")
+
+          addGlobalOptions(this, "init", (x, c: InitOptions) => c.copy(globalOptions = c.globalOptions.copy(workdir = x)))
         }
-        parser.parse(args.slice(1, args.length), InitOptions(GlobalOptions())) match {
+        parser.parse(localArgs, InitOptions(GlobalOptions())) match {
           case Some(c) =>
-            Initialize.run(c)
+            Initialize.run(args, c)
+          case None =>
+          // arguments are bad, error message will have been displayed
+        }
+      }),
+
+      ("step", "Take one more step towards finding the right specification", (localArgs: Array[String], helpStr: String) => {
+        val parser = new scopt.OptionParser[InitialSearchOptions]("denali") {
+          head(shortDescription)
+          note(helpStr)
+
+          addGlobalOptions(this, "step", (x, c: InitialSearchOptions) => c.copy(globalOptions = c.globalOptions.copy(workdir = x)))
+        }
+        parser.parse(localArgs, InitialSearchOptions(GlobalOptions(), null, 0)) match {
+          case Some(c) =>
+            Config(c.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
+            InitialSearch.run(c)
           case None =>
           // arguments are bad, error message will have been displayed
         }
@@ -91,3 +111,7 @@ case class GlobalOptions(workdir: File = new File(s"${System.getProperty("user.h
 }
 
 case class InitOptions(globalOptions: GlobalOptions)
+
+case class InitialSearchOptions(globalOptions: GlobalOptions,
+                                instruction: Instruction,
+                                budget: Int)

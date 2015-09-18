@@ -1,6 +1,7 @@
 package denali.util
 
 import java.io.File
+import java.lang.management.ManagementFactory
 import scala.sys.process._
 import ColoredOutput._
 
@@ -55,5 +56,13 @@ object IO {
     if (status != 0) {
       error(s"Command failed: $cmd")
     }
+  }
+
+  /** Returns an ID for the current execution context (host, process and thread). */
+  def getExecContextId: String = {
+    val host = "hostname".!!.stripLineEnd
+    val pid: Int = ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt
+    val tid = Thread.currentThread().getId
+    f"$host / $pid%06d-$tid%06d"
   }
 }

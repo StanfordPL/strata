@@ -10,7 +10,7 @@ import org.apache.commons.io.FileUtils
  * Initializing the configuration of a denali run.
  */
 object Initialize {
-  def run(options: InitOptions, skipIfExists: Boolean = false): Unit = {
+  def run(args: Array[String], options: InitOptions, skipIfExists: Boolean = false): Unit = {
 
     val workdir = options.globalOptions.workdir
 
@@ -27,6 +27,9 @@ object Initialize {
     if (!workdir.exists()) {
       workdir.mkdirs()
     }
+
+    new File(s"$workdir/config").mkdirs()
+    Config(options.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
 
     IO.info("producing pseudo functions ...")
     val functionTemplates = s"${IO.getProjectBase}/resources/function-templates"
