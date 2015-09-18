@@ -2,6 +2,7 @@ package denali
 
 import java.io.File
 
+import denali.data.Config
 import denali.util.IO
 import org.apache.commons.io.FileUtils
 
@@ -9,34 +10,36 @@ import org.apache.commons.io.FileUtils
  * Initializing the configuration of a denali run.
  */
 object Initialize {
-  def run(cmdOptions: CmdOptions, skipIfExists: Boolean = false): Unit = {
+  def run(options: InitOptions, skipIfExists: Boolean = false): Unit = {
+
+    val workdir = options.globalOptions.workdir
 
     // TODO: remove this debug code:
-    if (cmdOptions.workdir.exists()) {
-      FileUtils.deleteDirectory(cmdOptions.workdir)
+    if (workdir.exists()) {
+      FileUtils.deleteDirectory(workdir)
     }
 
     IO.info("starting initialization ...")
-    if (cmdOptions.workdir.exists()) {
+    if (workdir.exists()) {
       if (skipIfExists) return
       IO.error("Working directory already exists, cannot initialize again.")
     }
-    if (!cmdOptions.workdir.exists()) {
-      cmdOptions.workdir.mkdirs()
+    if (!workdir.exists()) {
+      workdir.mkdirs()
     }
 
     IO.info("producing pseudo functions ...")
     val functionTemplates = s"${IO.getProjectBase}/resources/function-templates"
-    val functionOutput = s"${cmdOptions.workdir}/functions"
+    val functionOutput = s"$workdir/functions"
     IO.subcommand(s"scripts/python/create_functions.py $functionTemplates $functionOutput")
 
     IO.info("initialize configuration using specgen init ...")
-    IO.subcommand(s"stoke/bin/specgen init --workdir ${cmdOptions.workdir}")
+    IO.subcommand(s"stoke/bin/specgen init --workdir $workdir")
 
     IO.info("collecting basic information for all instructions ...")
-    val config = Config(cmdOptions)
+    val config = Config(options.globalOptions)
     config.getGoal.par foreach { goal =>
-      IO.subcommand(s"stoke/bin/specgen setup --workdir ${cmdOptions.workdir} --opc $goal")
+      IO.subcommand(s"stoke/bin/specgen setup --workdir $workdir --opc $goal")
     }
 
     IO.info("initialization complete")

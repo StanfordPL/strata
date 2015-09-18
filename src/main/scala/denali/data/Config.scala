@@ -1,11 +1,13 @@
-package denali
+package denali.data
+
+import denali.GlobalOptions
 
 import scala.io.Source
 
 /**
  * Code to interact with the configuration of a denali run.
  */
-class Config(cmdOptions: CmdOptions) {
+class Config(cmdOptions: GlobalOptions) {
   def getGoal: Seq[Instruction] = {
     val file = Source.fromFile(s"${cmdOptions.workdir}/config/goal.txt")
     val res = for (goal <- file.getLines()) yield {
@@ -17,5 +19,5 @@ class Config(cmdOptions: CmdOptions) {
 }
 
 object Config {
-  def apply(cmdOptions: CmdOptions) = new Config(cmdOptions)
+  def apply(cmdOptions: GlobalOptions) = new Config(cmdOptions)
 }

@@ -2,6 +2,7 @@
   <dictionary name="stefan">
     <words>
       <w>opcode</w>
+      <w>workdir</w>
     </words>
   </dictionary>
 </component>
