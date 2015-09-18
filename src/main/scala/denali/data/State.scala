@@ -7,9 +7,9 @@ import scala.io.Source
 import denali.util.{IO, Locking}
 
 /**
- * Code to interact with the configuration of a denali run.
+ * Code to interact with the state of a denali run (stored on disk).
  */
-class Config(cmdOptions: GlobalOptions) {
+class State(cmdOptions: GlobalOptions) {
 
   /** Get all the goal instructions. */
   def getGoal: Seq[Instruction] = {
@@ -41,6 +41,6 @@ class Config(cmdOptions: GlobalOptions) {
   }
 }
 
-object Config {
-  def apply(cmdOptions: GlobalOptions) = new Config(cmdOptions)
+object State {
+  def apply(cmdOptions: GlobalOptions) = new State(cmdOptions)
 }

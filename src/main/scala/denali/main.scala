@@ -2,7 +2,7 @@ package denali
 
 import java.io.File
 
-import denali.data.{Config, Instruction}
+import denali.data.{State$, Instruction}
 import denali.util.IO
 
 import scala.io.Source
@@ -47,7 +47,7 @@ object Denali {
         }
         parser.parse(localArgs, InitialSearchOptions(GlobalOptions(), null, 0)) match {
           case Some(c) =>
-            Config(c.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
+            State(c.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
             InitialSearch.run(c)
           case None =>
           // arguments are bad, error message will have been displayed

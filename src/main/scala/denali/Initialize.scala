@@ -2,7 +2,7 @@ package denali
 
 import java.io.File
 
-import denali.data.Config
+import denali.data.State$
 import denali.util.IO
 import org.apache.commons.io.FileUtils
 
@@ -29,7 +29,7 @@ object Initialize {
     }
 
     new File(s"$workdir/config").mkdirs()
-    Config(options.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
+    State(options.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
 
     IO.info("producing pseudo functions ...")
     val functionTemplates = s"${IO.getProjectBase}/resources/function-templates"
@@ -40,7 +40,7 @@ object Initialize {
     IO.subcommand(s"stoke/bin/specgen init --workdir $workdir")
 
     IO.info("collecting basic information for all instructions ...")
-    val config = Config(options.globalOptions)
+    val config = State(options.globalOptions)
     config.getGoal.par foreach { goal =>
       IO.subcommand(s"stoke/bin/specgen setup --workdir $workdir --opc $goal")
     }
