@@ -2,7 +2,7 @@ package denali
 
 import java.io.File
 
-import denali.data.State$
+import denali.data.State
 import denali.util.IO
 import org.apache.commons.io.FileUtils
 
@@ -28,7 +28,8 @@ object Initialize {
       workdir.mkdirs()
     }
 
-    new File(s"$workdir/config").mkdirs()
+    val state = State(options.globalOptions)
+    state.getStateDir.mkdirs()
     State(options.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
 
     IO.info("producing pseudo functions ...")

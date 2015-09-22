@@ -2,7 +2,7 @@ package denali
 
 import java.io.File
 
-import denali.data.{State$, Instruction}
+import denali.data.{State, State$, Instruction}
 import denali.util.IO
 
 import scala.io.Source
@@ -63,6 +63,7 @@ object Denali {
     for (c <- commands) {
       if (args(0) == c._1) {
         c._3(args.slice(1, args.length), c._2)
+        return
       }
     }
 
@@ -93,19 +94,14 @@ object Denali {
 /**
  * Command line argument class.
  */
-case class GlobalOptions(workdir: File = new File(s"${System.getProperty("user.home")}/dev/denali-output"),
+case class GlobalOptions(workdir: File = new File(s"${System.getProperty("user.home")}/dev/output-denali"),
                          showStokeOutput: Boolean = false) {
 
   /** Create an instruction and check that it actually exists. */
   def mkInstruction(opcode: String): Instruction = {
-    val file = Source.fromFile(s"$workdir/config/all.txt")
-    try {
-      for (o <- file.getLines()) {
-        if (o == opcode) return new Instruction(opcode, this)
-      }
-      IO.error(s"Could not find the opcode '$opcode'.")
-    } finally {
-      file.close()
+    State(this).mkInstruction(opcode) match {
+      case Some(i) => i
+      case None => IO.error(s"Could not find the opcode '$opcode'.")
     }
   }
 }
