@@ -79,7 +79,12 @@ class State(cmdOptions: GlobalOptions) {
 
   /** Get the number of pseudo instructions. */
   def getNumPseudoInstr: Int = {
-    
+    new File(s"${cmdOptions.workdir}/${State.PATH_FUNCTIONS}").list().length
+  }
+
+  /** The path to the testcases file. */
+  def getTestcasePath: File = {
+    new File(s"${cmdOptions.workdir}/${State.PATH_TESTCASES}")
   }
 }
 
@@ -90,4 +95,6 @@ object State {
   private val PATH_GOAL = s"$PATH_STATE/goal.txt"
   private val PATH_ALL = s"$PATH_STATE/all.txt"
   private val PATH_LOG = s"$PATH_STATE/log.txt"
+  private val PATH_FUNCTIONS = "functions"
+  private val PATH_TESTCASES = "testcases.tc"
 }
