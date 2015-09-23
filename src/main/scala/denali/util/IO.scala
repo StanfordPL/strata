@@ -20,7 +20,11 @@ object IO {
       line => res += line + "\n",
       line => res += line + "\n"
     )
-    val status = Process(cmd, getProjectBase) ! logger
+    val process = Process(cmd, getProjectBase).run(logger)
+    sys.addShutdownHook {
+      process.destroy()
+    }
+    val status = process.exitValue()
     if (res.endsWith("\n")) {
       res = res.substring(0, res.length - 1)
     }
@@ -64,5 +68,11 @@ object IO {
     val pid: Int = ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt
     val tid = Thread.currentThread().getId
     f"$host / $pid%06d-$tid%06d"
+  }
+
+  /** Read a file and return it's entire contents. */
+  def readFile(file: File): String = {
+    val source = scala.io.Source.fromFile(file)
+    try source.getLines mkString "\n" finally source.close()
   }
 }

@@ -10,4 +10,6 @@ libraryDependencies += "pl.project13.scala" %% "rainbow" % "0.2"
 
 libraryDependencies += "commons-io" % "commons-io" % "2.3"
 
+libraryDependencies += "org.json4s" %% "json4s-native" % "3.3.0.RC6"
+
 resolvers += Resolver.sonatypeRepo("public")

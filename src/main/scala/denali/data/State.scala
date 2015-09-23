@@ -6,6 +6,8 @@ import denali.GlobalOptions
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import denali.util.{IO, Locking}
+import org.json4s._
+import org.json4s.native.JsonMethods._
 
 /**
  * Code to interact with the state of a denali run (stored on disk).
@@ -31,6 +33,8 @@ class State(cmdOptions: GlobalOptions) {
 
   /** Add an entry to the global log file. */
   def appendLog(msg: String): Unit = {
+    if (!exists) IO.error("state has not been initialized yet")
+
     val file = new File(s"${cmdOptions.workdir}/${State.PATH_LOG}")
     Locking.lockFile(file)
     if (!file.exists()) {
@@ -56,8 +60,26 @@ class State(cmdOptions: GlobalOptions) {
     }
   }
 
+  /** The state directory */
   def getStateDir: File = {
     new File(s"${cmdOptions.workdir}/${State.PATH_STATE}")
+  }
+
+  /** Get the path to the target assembly file for a goal instruction. */
+  def getTargetOfInstr(instruction: Instruction) = {
+    s"${cmdOptions.workdir}/instructions/$instruction/$instruction.s"
+  }
+
+  /** Read the meta information for an instruction. */
+  def getMetaOfInstr(instruction: Instruction): InstrMeta = {
+    implicit val formats = DefaultFormats
+    val file = new File(s"${cmdOptions.workdir}/instructions/$instruction/$instruction.meta.json")
+    parse(IO.readFile(file)).extract[InstrMeta]
+  }
+
+  /** Get the number of pseudo instructions. */
+  def getNumPseudoInstr: Int = {
+    
   }
 }
 
