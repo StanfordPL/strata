@@ -35,20 +35,20 @@ object Initialize {
     IO.info("producing pseudo functions ...")
     val functionTemplates = s"${IO.getProjectBase}/resources/function-templates"
     val functionOutput = s"$workdir/functions"
-    IO.subcommand(Vector("scripts/python/create_functions.py", functionTemplates, functionOutput))
+    IO.safeSubcommand(Vector("scripts/python/create_functions.py", functionTemplates, functionOutput))
 
     IO.info("initialize configuration using specgen init ...")
-    IO.subcommand(Vector("stoke/bin/specgen", "init", "--workdir", workdir))
+    IO.safeSubcommand(Vector("stoke/bin/specgen", "init", "--workdir", workdir))
 
     IO.info("generate random testcases ...")
-    IO.subcommand(Vector("stoke/bin/stoke", "testcase", "--out", state.getTestcasePath,
+    IO.safeSubcommand(Vector("stoke/bin/stoke", "testcase", "--out", state.getTestcasePath,
       "--target", "resources/empty.s", "--max_testcases", 1024,
       "--def_in", "{ }", "--live_out", "{ }"))
 
     IO.info("collecting basic information for all instructions ...")
     val config = State(options.globalOptions)
     config.getGoal.par foreach { goal =>
-      IO.subcommand(Vector("stoke/bin/specgen", "setup", "--workdir", workdir, "--opc", goal))
+      IO.safeSubcommand(Vector("stoke/bin/specgen", "setup", "--workdir", workdir, "--opc", goal))
     }
 
     IO.info("initialization complete")

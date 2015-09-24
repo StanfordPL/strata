@@ -37,6 +37,14 @@ object IO {
     (res, status)
   }
 
+  /**
+   * Run a command and return it's output (stderr and stdout) and exit code.
+   * Uses the base directory as working directory.
+   */
+  def runQuite(cmd: Seq[Any]): (String, Int) = {
+    run(cmd, x => (), x => ())
+  }
+
   /** Returns the base path of the whole project. */
   def getProjectBase: File = {
     var res = getClass.getResource("").getPath
@@ -58,7 +66,7 @@ object IO {
   }
 
   /** Run a subcommand, show it's output and abort if it fails. */
-  def subcommand(cmd: Seq[Any]): Unit = {
+  def safeSubcommand(cmd: Seq[Any]): Unit = {
     val (out, status) = run(cmd, s => print(s.gray), s => print(s.red))
     if (status != 0) {
       error(s"Command failed: ${

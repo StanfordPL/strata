@@ -1,8 +1,9 @@
 package denali
 
+import java.io.File
 import java.nio.file.Files
 
-import denali.data.{State, Instruction}
+import denali.data.{Stoke, State, Instruction}
 import denali.util.IO
 
 import scala.sys.process.{Process, ProcessLogger}
@@ -32,12 +33,14 @@ object InitialSearch {
         "--def_in", meta.def_in,
         "--live_out", meta.live_out,
         "--functions", s"$workdir/functions",
-        "--call_weight",
-        state.getNumPseudoInstr,
+        "--testcases", s"$workdir/testcases.tc",
+        "--machine_output", "search.json",
+        "--call_weight", state.getNumPseudoInstr,
         "--timeout_iterations", budget,
         "--cost", "correctness")
       println(cmd.mkString(" "))
-      IO.subcommand(cmd)
+      IO.runQuite(cmd)
+      println(Stoke.readStokeSearchOutput(new File("search.json")))
     } finally {
       // tear down tmp dir
       tmpDir.delete()
