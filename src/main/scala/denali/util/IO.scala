@@ -12,9 +12,9 @@ object IO {
 
   /**
    * Run a command and return it's output (stderr and stdout) and exit code.
-   * Uses the base directory as working directory.
+   * Uses the base directory as working directory by default.
    */
-  def run(cmd: Seq[Any], output_callback: String => Unit, err_callback: String => Unit): (String, Int) = {
+  def run(cmd: Seq[Any], output_callback: String => Unit, err_callback: String => Unit, workingDirectory: File = null): (String, Int) = {
     var res = ""
     val logger = ProcessLogger(
       line => {
@@ -26,7 +26,8 @@ object IO {
         err_callback(line + "\n")
       }
     )
-    val process = Process(cmd map (x => x.toString), getProjectBase).run(logger)
+    val cwd = if (workingDirectory == null) getProjectBase else workingDirectory
+    val process = Process(cmd map (x => x.toString), cwd).run(logger)
     sys.addShutdownHook {
       process.destroy()
     }
@@ -39,10 +40,10 @@ object IO {
 
   /**
    * Run a command and return it's output (stderr and stdout) and exit code.
-   * Uses the base directory as working directory.
+   * Uses the base directory as working directory by default.
    */
-  def runQuite(cmd: Seq[Any]): (String, Int) = {
-    run(cmd, x => (), x => ())
+  def runQuiet(cmd: Seq[Any], workingDirectory: File = null): (String, Int) = {
+    run(cmd, x => (), x => (), workingDirectory = workingDirectory)
   }
 
   /** Returns the base path of the whole project. */
@@ -87,7 +88,7 @@ object IO {
     val host = "hostname".!!.stripLineEnd
     val pid: Int = ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt
     val tid = Thread.currentThread().getId
-    f"$host / $pid%06d-$tid%06d"
+    f"${host}_$pid%06d-$tid%06d"
   }
 
   /** Read a file and return it's entire contents. */

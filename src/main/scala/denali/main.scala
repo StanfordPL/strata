@@ -45,7 +45,7 @@ object Denali {
 
           addGlobalOptions(this, "step", (x, c: InitialSearchOptions) => c.copy(globalOptions = c.globalOptions.copy(workdir = x)))
         }
-        parser.parse(localArgs, InitialSearchOptions(GlobalOptions(), null, 0)) match {
+        parser.parse(localArgs, InitialSearchOptions(GlobalOptions(), null, 300000)) match {
           case Some(c) =>
             State(c.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
             InitialSearch.run(c)

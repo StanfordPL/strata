@@ -30,7 +30,8 @@ object Initialize {
 
     val state = State(options.globalOptions)
     state.getStateDir.mkdirs()
-    State(options.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
+    state.appendLog(s"Entry point: denali ${args.mkString(" ")}")
+    state.appendLog(s"start initialize")
 
     IO.info("producing pseudo functions ...")
     val functionTemplates = s"${IO.getProjectBase}/resources/function-templates"
@@ -50,6 +51,10 @@ object Initialize {
     config.getGoal.par foreach { goal =>
       IO.safeSubcommand(Vector("stoke/bin/specgen", "setup", "--workdir", workdir, "--opc", goal))
     }
+
+    state.getTmpDir.mkdirs()
+
+    state.appendLog(s"end initialize")
 
     IO.info("initialization complete")
   }

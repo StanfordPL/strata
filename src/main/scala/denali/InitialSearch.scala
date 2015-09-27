@@ -22,13 +22,15 @@ object InitialSearch {
     // TODO: better values
     val budget = 200000
 
+    state.appendLog(s"start initial_search $instr")
+
     // set up tmp dir
-    val tmpDir = Files.createTempDirectory("stoke").toFile
+    val tmpDir = new File(s"${state.getTmpDir}/${IO.getExecContextId}")
 
     try {
       val meta = state.getMetaOfInstr(instr)
-      val cmd = Vector("stoke/bin/stoke", "search",
-        "--config", "resources/conf-files/search.conf",
+      val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "search",
+        "--config", s"${IO.getProjectBase}/resources/conf-files/search.conf",
         "--target", state.getTargetOfInstr(instr),
         "--def_in", meta.def_in,
         "--live_out", meta.live_out,
@@ -38,12 +40,25 @@ object InitialSearch {
         "--call_weight", state.getNumPseudoInstr,
         "--timeout_iterations", budget,
         "--cost", "correctness")
-      println(cmd.mkString(" "))
-      IO.runQuite(cmd)
-      println(Stoke.readStokeSearchOutput(new File("search.json")))
+      IO.runQuiet(cmd, workingDirectory = tmpDir)
+      val result = Stoke.readStokeSearchOutput(new File(s"$tmpDir/search.json"))
+      result match {
+        case None =>
+          state.appendLogUnexpected(s"no result for initial search of $instr")
+        case Some(res) =>
+          if (res.success && res.verified) {
+            // initial search succeeded
+            state.appendLog(s"initial search succeeded for $instr")
+          } else {
+            // search failed, update statistics
+            state.appendLog("initial search failed for $instr")
+          }
+      }
     } finally {
       // tear down tmp dir
       tmpDir.delete()
+
+      state.appendLog(s"end initial_search $instr")
     }
   }
 }

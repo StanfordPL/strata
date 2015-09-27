@@ -1,5 +1,7 @@
 package denali.util
 
+import scala.language.implicitConversions
+
 /**
  * Color output on the console
  */
@@ -34,7 +36,7 @@ trait ColoredOutput {
     def reversed = REVERSED + s + RESET
     def invisible = INVISIBLE + s + RESET
 
-    def gray = "\033[38;5;244m" + s + RESET
+    def gray = "\u001b[38;5;244m" + s + RESET
   }
 }
 
