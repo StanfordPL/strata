@@ -3,6 +3,7 @@ package denali
 import java.io.File
 
 import denali.data.{State, State$, Instruction}
+import denali.tasks.InitialSearch
 import denali.util.IO
 
 import scala.io.Source

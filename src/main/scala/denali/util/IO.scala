@@ -1,6 +1,6 @@
 package denali.util
 
-import java.io.File
+import java.io.{BufferedWriter, FileWriter, File}
 import java.lang.management.ManagementFactory
 import scala.sys.process._
 import ColoredOutput._
@@ -95,5 +95,16 @@ object IO {
   def readFile(file: File): String = {
     val source = scala.io.Source.fromFile(file)
     try source.getLines mkString "\n" finally source.close()
+  }
+
+  /** Write a string to a file. */
+  def writeFile(file: File, content: String, overwrite: Boolean = true): Unit = {
+    if (overwrite && file.exists()) {
+      assert(file.delete())
+    }
+    assert(!file.exists())
+    val bw = new BufferedWriter(new FileWriter(file))
+    bw.write(content)
+    bw.close()
   }
 }

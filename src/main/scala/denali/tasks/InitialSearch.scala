@@ -1,18 +1,17 @@
-package denali
+package denali.tasks
 
 import java.io.File
-import java.nio.file.Files
 
-import denali.data.{Stoke, State, Instruction}
+import denali.InitialSearchOptions
+import denali.data.{State, Stoke}
 import denali.util.IO
-
-import scala.sys.process.{Process, ProcessLogger}
 
 /**
  * Perform an initial search for a given instruction.
  */
 object InitialSearch {
-  def run(options: InitialSearchOptions): Unit = {
+  def run(options: InitialSearchOptions): InitialSearchResult = {
+    return InitialSearchSuccess()
     val state = State(options.globalOptions)
     val workdir = options.globalOptions.workdir
 
@@ -54,6 +53,7 @@ object InitialSearch {
             state.appendLog("initial search failed for $instr")
           }
       }
+      null
     } finally {
       // tear down tmp dir
       tmpDir.delete()

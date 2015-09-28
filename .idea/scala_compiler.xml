@@ -7,7 +7,7 @@
       <option name="featureWarnings" value="true" />
       <parameters>
         <parameter value="–Xcheck-null" />
-        <parameter value="" />
+        <parameter value="–Xfatal-warnings" />
       </parameters>
     </profile>
   </component>
