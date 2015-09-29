@@ -27,7 +27,7 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Remove an instruction from a file. */
   def removeInstructionToFile(instr: Instruction, file: InstructionFile) = {
-    val old = getInstructionFile(file)
+    val old = getInstructionFile(file, includeWorklist = true)
     assert(old.contains(instr))
     writeInstructionFile(file, old.filter(x => x != instr))
   }
@@ -102,7 +102,7 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Unlock the information directory. */
   def unlockInformation(): Unit = {
-    Locking.lockDir(new File(s"${globalOptions.workdir}/${State.PATH_INFO}"))
+    Locking.unlockDir(new File(s"${globalOptions.workdir}/${State.PATH_INFO}"))
   }
 
   /** Add an entry to the global log file of something unexpected that happened. */

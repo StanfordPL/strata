@@ -10,6 +10,7 @@ import denali.util.IO
  */
 object InitialSearch {
   def run(task: InitialSearchTask): InitialSearchResult = {
+    IO.info(s"starting initial search for ${task.instruction}")
     return InitialSearchSuccess(task)
     val state = State(task.globalOptions)
     val workdir = task.globalOptions.workdir

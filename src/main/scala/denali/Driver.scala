@@ -4,6 +4,8 @@ import java.util.concurrent.{Callable, Executors, ExecutorCompletionService}
 
 import denali.data.{InstructionFile, State, Instruction}
 import denali.tasks._
+import denali.util.IO
+import denali.util.ColoredOutput._
 
 import scala.util.Random
 
@@ -22,11 +24,13 @@ class Driver(val globalOptions: GlobalOptions) {
     val nThreads = 2
 
     // our pool of threads to do all the computation
-    val threadPool = new ExecutorCompletionService[TaskResult](Executors.newFixedThreadPool(nThreads))
+    val executor = Executors.newFixedThreadPool(nThreads)
+    val threadPool = new ExecutorCompletionService[TaskResult](executor)
     var tasksRunning = 0
 
     /** start a new task */
     def startNewTask(task: Task): Unit = {
+      IO.info(s"submitting task for ${task.instruction}")
       val callable: Callable[TaskResult] = new Callable[TaskResult] {
         def call(): TaskResult = {
           val res: TaskResult = task match {
@@ -61,27 +65,37 @@ class Driver(val globalOptions: GlobalOptions) {
         // TODO handle result
         handleTaskResult(taskRes)
       } catch {
-        case _: Throwable =>
+        case t: Throwable =>
           // TODO error handling
-          println("ERROR: failure")
+          IO.info(s"ERROR: failure: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}".red)
       }
       tasksRunning -= 1
 
       // start new tasks
       startNewTasks(nThreads - tasksRunning)
     }
+
+    executor.shutdown()
+    IO.info("Finished all tasks")
   }
 
   /** Handle the result of a task. */
   def handleTaskResult(taskRes: TaskResult): Unit = {
-    state.removeInstructionToFile(taskRes.instruction, InstructionFile.Worklist)
-    taskRes match {
-      case InitialSearchSuccess(task) =>
-        // TODO: actually this is only partial success
-        state.addInstructionToFile(taskRes.instruction, InstructionFile.Success)
-        println("initial search success")
-      case InitialSearchTimeout(task) =>
-        println("initial search timeout")
+    state.lockInformation()
+
+    try {
+      state.removeInstructionToFile(taskRes.instruction, InstructionFile.Worklist)
+      taskRes match {
+        case InitialSearchSuccess(task) =>
+          // TODO: actually this is only partial success
+          state.addInstructionToFile(taskRes.instruction, InstructionFile.Success)
+          state.removeInstructionToFile(taskRes.instruction, InstructionFile.RemainingGoal)
+          println("initial search success")
+        case InitialSearchTimeout(task) =>
+          println("initial search timeout")
+      }
+    } finally {
+      state.unlockInformation()
     }
   }
 

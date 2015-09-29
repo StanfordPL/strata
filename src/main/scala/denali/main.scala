@@ -36,6 +36,21 @@ object Denali {
           case None =>
           // arguments are bad, error message will have been displayed
         }
+      }),
+
+      ("run", "A full run of denali", (localArgs: Array[String], helpStr: String) => {
+        val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+          head(shortDescription)
+          note(helpStr)
+
+          addGlobalOptions(this, "init", (x, c: GlobalOptions) => c.copy(workdir = x))
+        }
+        parser.parse(localArgs, GlobalOptions()) match {
+          case Some(c) =>
+            Driver(c).run(args)
+          case None =>
+          // arguments are bad, error message will have been displayed
+        }
       })
 
 //      ("step", "Take one more step towards finding the right specification", (localArgs: Array[String], helpStr: String) => {
