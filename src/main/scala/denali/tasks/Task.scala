@@ -1,10 +1,16 @@
 package denali.tasks
 
+import denali.GlobalOptions
 import denali.data.Instruction
 
 /**
  * A trait for steps the driver can take
  */
-sealed trait Task
+sealed trait Task {
+  def globalOptions: GlobalOptions
+  def instruction: Instruction
+}
 
-case class InitialSearchStep(instruction: Instruction) extends Task
+case class InitialSearchTask(globalOptions: GlobalOptions,
+                             instruction: Instruction,
+                             budget: Int) extends Task

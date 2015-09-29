@@ -2,7 +2,6 @@ package denali.tasks
 
 import java.io.File
 
-import denali.InitialSearchOptions
 import denali.data.{State, Stoke}
 import denali.util.IO
 
@@ -10,10 +9,10 @@ import denali.util.IO
  * Perform an initial search for a given instruction.
  */
 object InitialSearch {
-  def run(options: InitialSearchOptions): InitialSearchResult = {
-    return InitialSearchSuccess()
-    val state = State(options.globalOptions)
-    val workdir = options.globalOptions.workdir
+  def run(task: InitialSearchTask): InitialSearchResult = {
+    return InitialSearchSuccess(task)
+    val state = State(task.globalOptions)
+    val workdir = task.globalOptions.workdir
 
     // TODO: fix this
     val instr = state.mkInstruction("andq_r64_r64").get

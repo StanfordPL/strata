@@ -2,8 +2,7 @@ package denali
 
 import java.io.File
 
-import denali.data.{State, State$, Instruction}
-import denali.tasks.InitialSearch
+import denali.data.{State, Instruction}
 import denali.util.IO
 
 import scala.io.Source
@@ -37,23 +36,23 @@ object Denali {
           case None =>
           // arguments are bad, error message will have been displayed
         }
-      }),
-
-      ("step", "Take one more step towards finding the right specification", (localArgs: Array[String], helpStr: String) => {
-        val parser = new scopt.OptionParser[InitialSearchOptions]("denali") {
-          head(shortDescription)
-          note(helpStr)
-
-          addGlobalOptions(this, "step", (x, c: InitialSearchOptions) => c.copy(globalOptions = c.globalOptions.copy(workdir = x)))
-        }
-        parser.parse(localArgs, InitialSearchOptions(GlobalOptions(), null, 300000)) match {
-          case Some(c) =>
-            State(c.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
-            InitialSearch.run(c)
-          case None =>
-          // arguments are bad, error message will have been displayed
-        }
       })
+
+//      ("step", "Take one more step towards finding the right specification", (localArgs: Array[String], helpStr: String) => {
+//        val parser = new scopt.OptionParser[InitialSearchOptions]("denali") {
+//          head(shortDescription)
+//          note(helpStr)
+//
+//          addGlobalOptions(this, "step", (x, c: InitialSearchOptions) => c.copy(globalOptions = c.globalOptions.copy(workdir = x)))
+//        }
+//        parser.parse(localArgs, InitialSearchOptions(GlobalOptions(), null, 300000)) match {
+//          case Some(c) =>
+//            State(c.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
+//            InitialSearch.run(c)
+//          case None =>
+//          // arguments are bad, error message will have been displayed
+//        }
+//      })
     )
 
     if (args(0) == "-h" || args(0) == "--help") {
@@ -108,7 +107,3 @@ case class GlobalOptions(workdir: File = new File(s"${System.getProperty("user.h
 }
 
 case class InitOptions(globalOptions: GlobalOptions)
-
-case class InitialSearchOptions(globalOptions: GlobalOptions,
-                                instruction: Instruction,
-                                budget: Int)

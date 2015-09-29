@@ -7,6 +7,11 @@ import denali.GlobalOptions
  */
 class Instruction(val opcode: String, cmdOptions: GlobalOptions) {
   override def toString = opcode
+
+  override def equals(other: Any): Boolean = {
+    if (!other.isInstanceOf[Instruction]) return false
+    other.asInstanceOf[Instruction].opcode == opcode
+  }
 }
 
 object Instruction {

@@ -2,7 +2,7 @@ package denali
 
 import java.util.concurrent.{Callable, Executors, ExecutorCompletionService}
 
-import denali.data.{State, Instruction}
+import denali.data.{InstructionFile, State, Instruction}
 import denali.tasks._
 
 import scala.util.Random
@@ -30,9 +30,8 @@ class Driver(val globalOptions: GlobalOptions) {
       val callable: Callable[TaskResult] = new Callable[TaskResult] {
         def call(): TaskResult = {
           val res: TaskResult = task match {
-            case InitialSearchStep(instruction) =>
-              // TODO right budget
-              InitialSearch.run(InitialSearchOptions(globalOptions, instruction, 300000))
+            case t: InitialSearchTask =>
+              InitialSearch.run(t)
           }
           res
         }
@@ -60,12 +59,7 @@ class Driver(val globalOptions: GlobalOptions) {
       try {
         val taskRes = task.get()
         // TODO handle result
-        taskRes match {
-          case InitialSearchSuccess() =>
-            println("initial search success")
-          case InitialSearchTimeout() =>
-            println("initial search timeout")
-        }
+        handleTaskResult(taskRes)
       } catch {
         case _: Throwable =>
           // TODO error handling
@@ -78,25 +72,39 @@ class Driver(val globalOptions: GlobalOptions) {
     }
   }
 
-  /** Select what next step should be done, and marks that task as being under construction. */
+  /** Handle the result of a task. */
+  def handleTaskResult(taskRes: TaskResult): Unit = {
+    state.removeInstructionToFile(taskRes.instruction, InstructionFile.Worklist)
+    taskRes match {
+      case InitialSearchSuccess(task) =>
+        // TODO: actually this is only partial success
+        state.addInstructionToFile(taskRes.instruction, InstructionFile.Success)
+        println("initial search success")
+      case InitialSearchTimeout(task) =>
+        println("initial search timeout")
+    }
+  }
+
+  /** Select what next step should be done, and puts the task into the worklist. */
   def selectNextTask(): Option[Task] = {
     state.lockInformation()
 
     try {
-      val goal = state.getGoalInstrs()
-      val partial_succ = state.getPartialSuccessInstrs()
+      val goal = state.getInstructionFile(InstructionFile.RemainingGoal)
+      val partial_succ = state.getInstructionFile(InstructionFile.PartialSuccess)
 
       // first deal with partial successes (so that we can put them into success as soon as possible)
       if (partial_succ.nonEmpty) {
-        // TODO
+        // TODO secondary search
         return Some(null)
       }
 
       // then try an intial search
       if (goal.nonEmpty) {
         val instr = goal(Random.nextInt(goal.size))
-        state.moveToWorklist(instr)
-        return Some(InitialSearchStep(instr))
+        state.addInstructionToFile(instr, InstructionFile.Worklist)
+        // TODO correct budget
+        return Some(InitialSearchTask(state.globalOptions, instr, 300000))
       }
 
       // cannot do anything for now

@@ -2,7 +2,7 @@ package denali
 
 import java.io.File
 
-import denali.data.State
+import denali.data.{InstructionFile, State}
 import denali.util.IO
 import org.apache.commons.io.FileUtils
 
@@ -48,7 +48,7 @@ object Initialize {
 
     IO.info("collecting basic information for all instructions ...")
     val config = State(options.globalOptions)
-    config.getGoal.par foreach { goal =>
+    config.getInstructionFile(InstructionFile.RemainingGoal).par foreach { goal =>
       IO.safeSubcommand(Vector("stoke/bin/specgen", "setup", "--workdir", workdir, "--opc", goal))
     }
 

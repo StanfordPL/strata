@@ -9,37 +9,46 @@ import denali.util.{IO, Locking}
 import org.json4s._
 import org.json4s.native.JsonMethods._
 
+object InstructionFile extends Enumeration {
+  type InstructionFile = Value
+  val RemainingGoal, Worklist, PartialSuccess, Success, Base = Value
+}
+import InstructionFile._
+
 /**
  * Code to interact with the state of a denali run (stored on disk).
  */
-class State(cmdOptions: GlobalOptions) {
+class State(val globalOptions: GlobalOptions) {
 
-  /** Move an instruction to the worklist. */
-  def moveToWorklist(instr: Instruction) = {
-    writeInstructionFile(State.PATH_WORKLIST, getWorklistInstrs ++ Seq(instr))
+  /** Add an instruction to a file. */
+  def addInstructionToFile(instr: Instruction, file: InstructionFile) = {
+    writeInstructionFile(file, getInstructionFile(file) ++ Seq(instr))
   }
 
-  /** Get all the remaining goal instructions. */
-  def getGoalInstrs(includeWorklist: Boolean = false): Seq[Instruction] = getInstructionFile(State.PATH_GOAL)
-
-  /** Get all the instructions with partial success. */
-  def getPartialSuccessInstrs(includeWorklist: Boolean = false): Seq[Instruction] = getInstructionFile(State.PATH_GOAL)
-
-  /** Get all the instructions for which the search already succeeded. */
-  def getSuccessInstr(excludeBase: Boolean = false): Seq[Instruction] = {
-    if (excludeBase) getInstructionFile(State.PATH_SUCCESS)
-    else getInstructionFile(State.PATH_SUCCESS) ++ getInstructionFile(State.PATH_INITIAL_BASE)
+  /** Remove an instruction from a file. */
+  def removeInstructionToFile(instr: Instruction, file: InstructionFile) = {
+    val old = getInstructionFile(file)
+    assert(old.contains(instr))
+    writeInstructionFile(file, old.filter(x => x != instr))
   }
 
-  /** Get all the instructions in the worklist. */
-  def getWorklistInstrs: Seq[Instruction] = getInstructionFile(State.PATH_WORKLIST, includeWorklist = true)
+  private def getPathForFile(file: InstructionFile): String = {
+    file match {
+      case RemainingGoal => State.PATH_GOAL
+      case Worklist => State.PATH_WORKLIST
+      case PartialSuccess => State.PATH_PARTIAL_SUCCESS
+      case Success => State.PATH_SUCCESS
+      case Base => State.PATH_INITIAL_BASE
+    }
+  }
 
   /** Read an instruction file. */
-  private def getInstructionFile(path: String, includeWorklist: Boolean = false): Seq[Instruction] = {
-    val exclude = if (includeWorklist) {
+  def getInstructionFile(file: InstructionFile, includeWorklist: Boolean = false): Seq[Instruction] = {
+    val path = getPathForFile(file)
+    val exclude = if (includeWorklist || file == InstructionFile.Worklist) {
       Nil
     } else {
-      getWorklistInstrs
+      getInstructionFile(InstructionFile.Worklist)
     }
     def isExcluded(opcode: String): Boolean = {
       for (e <- exclude) {
@@ -48,33 +57,33 @@ class State(cmdOptions: GlobalOptions) {
       false
     }
 
-    val file = Source.fromFile(s"${cmdOptions.workdir}/$path")
-    val lines = file.getLines()
+    val f = Source.fromFile(s"${globalOptions.workdir}/$path")
     var res = ListBuffer[Instruction]()
-    for (line <- file.getLines()) {
+    for (line <- f.getLines()) {
       val opcode = line.stripLineEnd
       if (!isExcluded(opcode))
-        res += new Instruction(opcode, cmdOptions)
+        res += new Instruction(opcode, globalOptions)
     }
-    file.close()
+    f.close()
     res.toSeq
   }
 
   /** Overwrite an instruction file with new contents. */
-  private def writeInstructionFile(path: String, instructions: Seq[Instruction]): Unit = {
-    IO.writeFile(new File(s"${cmdOptions.workdir}/$path"), instructions.mkString("\n"))
+  def writeInstructionFile(file: InstructionFile, instructions: Seq[Instruction]): Unit = {
+    val path = getPathForFile(file)
+    IO.writeFile(new File(s"${globalOptions.workdir}/$path"), instructions.mkString("\n"))
   }
 
   /** Has the state already been set up? */
   def exists: Boolean = {
-    new File(s"${cmdOptions.workdir}/${State.PATH_INFO}/").exists
+    new File(s"${globalOptions.workdir}/${State.PATH_INFO}/").exists
   }
 
   /** Add an entry to the global log file. */
   def appendLog(msg: String): Unit = {
     if (!exists) IO.error("state has not been initialized yet")
 
-    val file = new File(s"${cmdOptions.workdir}/${State.PATH_LOG}")
+    val file = new File(s"${globalOptions.workdir}/${State.PATH_LOG}")
     Locking.lockFile(file)
     if (!file.exists()) {
       file.createNewFile()
@@ -88,12 +97,12 @@ class State(cmdOptions: GlobalOptions) {
 
   /** Lock the information directory. */
   def lockInformation(): Unit = {
-    Locking.lockDir(new File(s"${cmdOptions.workdir}/${State.PATH_INFO}"))
+    Locking.lockDir(new File(s"${globalOptions.workdir}/${State.PATH_INFO}"))
   }
 
   /** Unlock the information directory. */
   def unlockInformation(): Unit = {
-    Locking.lockDir(new File(s"${cmdOptions.workdir}/${State.PATH_INFO}"))
+    Locking.lockDir(new File(s"${globalOptions.workdir}/${State.PATH_INFO}"))
   }
 
   /** Add an entry to the global log file of something unexpected that happened. */
@@ -103,10 +112,10 @@ class State(cmdOptions: GlobalOptions) {
 
   /** Create an instruction and check that it actually exists. */
   def mkInstruction(opcode: String): Option[Instruction] = {
-    val file = Source.fromFile(s"${cmdOptions.workdir}/${State.PATH_ALL}")
+    val file = Source.fromFile(s"${globalOptions.workdir}/${State.PATH_ALL}")
     try {
       for (o <- file.getLines()) {
-        if (o == opcode) return Some(new Instruction(opcode, cmdOptions))
+        if (o == opcode) return Some(new Instruction(opcode, globalOptions))
       }
       None
     } finally {
@@ -116,34 +125,34 @@ class State(cmdOptions: GlobalOptions) {
 
   /** The state directory */
   def getStateDir: File = {
-    new File(s"${cmdOptions.workdir}/${State.PATH_INFO}")
+    new File(s"${globalOptions.workdir}/${State.PATH_INFO}")
   }
 
   /** Temporary directory for things currently running */
   def getTmpDir: File = {
-    new File(s"${cmdOptions.workdir}/${State.PATH_TMP}")
+    new File(s"${globalOptions.workdir}/${State.PATH_TMP}")
   }
 
   /** Get the path to the target assembly file for a goal instruction. */
   def getTargetOfInstr(instruction: Instruction) = {
-    s"${cmdOptions.workdir}/instructions/$instruction/$instruction.s"
+    s"${globalOptions.workdir}/instructions/$instruction/$instruction.s"
   }
 
   /** Read the meta information for an instruction. */
   def getMetaOfInstr(instruction: Instruction): InstrMeta = {
     implicit val formats = DefaultFormats
-    val file = new File(s"${cmdOptions.workdir}/instructions/$instruction/$instruction.meta.json")
+    val file = new File(s"${globalOptions.workdir}/instructions/$instruction/$instruction.meta.json")
     parse(IO.readFile(file)).extract[InstrMeta]
   }
 
   /** Get the number of pseudo instructions. */
   def getNumPseudoInstr: Int = {
-    new File(s"${cmdOptions.workdir}/${State.PATH_FUNCTIONS}").list().length
+    new File(s"${globalOptions.workdir}/${State.PATH_FUNCTIONS}").list().length
   }
 
   /** The path to the testcases file. */
   def getTestcasePath: File = {
-    new File(s"${cmdOptions.workdir}/${State.PATH_TESTCASES}")
+    new File(s"${globalOptions.workdir}/${State.PATH_TESTCASES}")
   }
 }
 
