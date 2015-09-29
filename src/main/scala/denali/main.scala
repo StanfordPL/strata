@@ -3,6 +3,7 @@ package denali
 import java.io.File
 
 import denali.data.{State, Instruction}
+import denali.tasks.InitialSearch
 import denali.util.IO
 
 import scala.io.Source
@@ -51,23 +52,30 @@ object Denali {
           case None =>
           // arguments are bad, error message will have been displayed
         }
-      })
+      }),
 
-//      ("step", "Take one more step towards finding the right specification", (localArgs: Array[String], helpStr: String) => {
-//        val parser = new scopt.OptionParser[InitialSearchOptions]("denali") {
-//          head(shortDescription)
-//          note(helpStr)
-//
-//          addGlobalOptions(this, "step", (x, c: InitialSearchOptions) => c.copy(globalOptions = c.globalOptions.copy(workdir = x)))
-//        }
-//        parser.parse(localArgs, InitialSearchOptions(GlobalOptions(), null, 300000)) match {
-//          case Some(c) =>
-//            State(c.globalOptions).appendLog(s"Entry point: denali ${args.mkString(" ")}")
-//            InitialSearch.run(c)
-//          case None =>
-//          // arguments are bad, error message will have been displayed
-//        }
-//      })
+      ("step", "Take one more step towards finding the right specification", (localArgs: Array[String], helpStr: String) => {
+        val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+          head(shortDescription)
+          note(helpStr)
+
+          addGlobalOptions(this, "init", (x, c: GlobalOptions) => c.copy(workdir = x))
+        }
+        parser.parse(localArgs, GlobalOptions()) match {
+          case Some(c) =>
+            State(c).appendLog(s"Entry point: denali ${args.mkString(" ")}")
+            val driver = Driver(c)
+            driver.selectNextTask() match {
+              case None =>
+                IO.info("No task available")
+              case Some(t) =>
+                val res = driver.runTask(t)
+                driver.handleTaskResult(res)
+            }
+          case None =>
+          // arguments are bad, error message will have been displayed
+        }
+      })
     )
 
     if (args(0) == "-h" || args(0) == "--help") {

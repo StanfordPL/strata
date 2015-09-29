@@ -20,6 +20,16 @@ import InstructionFile._
  */
 class State(val globalOptions: GlobalOptions) {
 
+  /** Run a function with the information directory being locked. */
+  def lockedInformation[A](f: () => A): A = {
+    lockInformation()
+    try {
+      f()
+    } finally {
+      unlockInformation()
+    }
+  }
+
   /** Add an instruction to a file. */
   def addInstructionToFile(instr: Instruction, file: InstructionFile) = {
     writeInstructionFile(file, getInstructionFile(file) ++ Seq(instr))
@@ -140,10 +150,10 @@ class State(val globalOptions: GlobalOptions) {
   }
 
   /** Read the meta information for an instruction. */
-  def getMetaOfInstr(instruction: Instruction): InstrMeta = {
+  def getMetaOfInstr(instruction: Instruction): InstructionMeta = {
     implicit val formats = DefaultFormats
     val file = new File(s"${globalOptions.workdir}/instructions/$instruction/$instruction.meta.json")
-    parse(IO.readFile(file)).extract[InstrMeta]
+    parse(IO.readFile(file)).extract[InstructionMeta]
   }
 
   /** Get the number of pseudo instructions. */

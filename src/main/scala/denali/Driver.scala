@@ -33,11 +33,7 @@ class Driver(val globalOptions: GlobalOptions) {
     def startNewTask(task: Task): Unit = {
       val callable: Callable[TaskResult] = new Callable[TaskResult] {
         def call(): TaskResult = {
-          val res: TaskResult = task match {
-            case t: InitialSearchTask =>
-              InitialSearch.run(t)
-          }
-          res
+          runTask(task)
         }
       }
       tasksRunning += 1
@@ -84,6 +80,14 @@ class Driver(val globalOptions: GlobalOptions) {
     IO.info("Finished all tasks")
   }
 
+  /** Execute a task. */
+  def runTask(task: Task): TaskResult = {
+    task match {
+      case t: InitialSearchTask =>
+        InitialSearch.run(t)
+    }
+  }
+
   /** Handle the result of a task. */
   def handleTaskResult(taskRes: TaskResult): Unit = {
     state.lockInformation()
@@ -95,9 +99,9 @@ class Driver(val globalOptions: GlobalOptions) {
           // TODO: actually this is only partial success
           state.addInstructionToFile(taskRes.instruction, InstructionFile.Success)
           state.removeInstructionToFile(taskRes.instruction, InstructionFile.RemainingGoal)
-          IO.info("initial search success")
+          IO.info(s"initial search success for ${task.instruction}")
         case InitialSearchTimeout(task) =>
-          IO.info("initial search timeout")
+          IO.info(s"initial search timeout for ${task.instruction}")
       }
     } finally {
       state.unlockInformation()

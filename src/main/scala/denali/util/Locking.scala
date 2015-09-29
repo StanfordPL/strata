@@ -35,6 +35,7 @@ object Locking {
     while (!lock.createNewFile()) {
       Thread.sleep(50)
     }
+    lock.deleteOnExit()
   }
 
   private def unlockImpl(lock: File): Unit = {

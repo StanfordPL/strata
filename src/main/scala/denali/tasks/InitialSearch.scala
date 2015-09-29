@@ -2,8 +2,9 @@ package denali.tasks
 
 import java.io.File
 
-import denali.data.{State, Stoke}
+import denali.data.{InstructionFile, State, Stoke}
 import denali.util.IO
+import org.apache.commons.io.FileUtils
 
 /**
  * Perform an initial search for a given instruction.
@@ -20,11 +21,23 @@ object InitialSearch {
 
     // set up tmp dir
     val tmpDir = new File(s"${state.getTmpDir}/${IO.getExecContextId}")
+    tmpDir.mkdir()
+    sys.addShutdownHook {
+      try {
+        FileUtils.deleteDirectory(tmpDir)
+      } catch {
+        case _: Throwable =>
+      }
+    }
 
     try {
       val meta = state.getMetaOfInstr(instr)
+      val base = state.lockedInformation (() => state.getInstructionFile(InstructionFile.Success))
+      val baseConfig = new File(s"$tmpDir/base.conf")
+      IO.writeFile(baseConfig, s"--whitelist { ${base.mkString(" ")} }")
       val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "search",
         "--config", s"${IO.getProjectBase}/resources/conf-files/search.conf",
+        "--config", baseConfig,
         "--target", state.getTargetOfInstr(instr),
         "--def_in", meta.def_in,
         "--live_out", meta.live_out,
@@ -53,7 +66,7 @@ object InitialSearch {
       }
     } finally {
       // tear down tmp dir
-      tmpDir.delete()
+      FileUtils.deleteDirectory(tmpDir)
 
       state.appendLog(s"end initial_search $instr")
     }
