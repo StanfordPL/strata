@@ -10,16 +10,11 @@ import denali.util.IO
  */
 object InitialSearch {
   def run(task: InitialSearchTask): InitialSearchResult = {
-    IO.info(s"starting initial search for ${task.instruction}")
-    return InitialSearchSuccess(task)
     val state = State(task.globalOptions)
     val workdir = task.globalOptions.workdir
 
-    // TODO: fix this
-    val instr = state.mkInstruction("andq_r64_r64").get
-
-    // TODO: better values
-    val budget = 200000
+    val instr = task.instruction
+    val budget = task.budget
 
     state.appendLog(s"start initial_search $instr")
 
@@ -44,16 +39,18 @@ object InitialSearch {
       result match {
         case None =>
           state.appendLogUnexpected(s"no result for initial search of $instr")
+          InitialSearchTimeout(task)
         case Some(res) =>
           if (res.success && res.verified) {
             // initial search succeeded
             state.appendLog(s"initial search succeeded for $instr")
+            InitialSearchSuccess(task)
           } else {
             // search failed, update statistics
             state.appendLog("initial search failed for $instr")
+            InitialSearchTimeout(task)
           }
       }
-      null
     } finally {
       // tear down tmp dir
       tmpDir.delete()

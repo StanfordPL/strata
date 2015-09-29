@@ -90,7 +90,8 @@ class State(val globalOptions: GlobalOptions) {
     }
     val writer = new FileWriter(file, true)
     val time = Calendar.getInstance().getTime
-    writer.append(s"[ $time / ${IO.getExecContextId}} ] $msg\n")
+    val messsage = msg.replace("\n", "\\n")
+    writer.append(s"[ $time / ${IO.getExecContextId}} ] $messsage\n")
     writer.close()
     Locking.unlockFile(file)
   }

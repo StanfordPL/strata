@@ -1,6 +1,6 @@
 package denali
 
-import java.util.concurrent.{Callable, Executors, ExecutorCompletionService}
+import java.util.concurrent.{Future, Callable, Executors, ExecutorCompletionService}
 
 import denali.data.{InstructionFile, State, Instruction}
 import denali.tasks._
@@ -27,10 +27,10 @@ class Driver(val globalOptions: GlobalOptions) {
     val executor = Executors.newFixedThreadPool(nThreads)
     val threadPool = new ExecutorCompletionService[TaskResult](executor)
     var tasksRunning = 0
+    val taskMap = collection.mutable.HashMap[Future[TaskResult], Task]()
 
     /** start a new task */
     def startNewTask(task: Task): Unit = {
-      IO.info(s"submitting task for ${task.instruction}")
       val callable: Callable[TaskResult] = new Callable[TaskResult] {
         def call(): TaskResult = {
           val res: TaskResult = task match {
@@ -41,7 +41,8 @@ class Driver(val globalOptions: GlobalOptions) {
         }
       }
       tasksRunning += 1
-      threadPool.submit(callable)
+      val future = threadPool.submit(callable)
+      taskMap.put(future, task)
     }
 
     /** Start up to n new tasks. */
@@ -67,7 +68,11 @@ class Driver(val globalOptions: GlobalOptions) {
       } catch {
         case t: Throwable =>
           // TODO error handling
+          state.appendLogUnexpected(s"exception: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}")
           IO.info(s"ERROR: failure: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}".red)
+          state.lockInformation()
+          state.removeInstructionToFile(taskMap(task).instruction, InstructionFile.Worklist)
+          state.unlockInformation()
       }
       tasksRunning -= 1
 
@@ -90,9 +95,9 @@ class Driver(val globalOptions: GlobalOptions) {
           // TODO: actually this is only partial success
           state.addInstructionToFile(taskRes.instruction, InstructionFile.Success)
           state.removeInstructionToFile(taskRes.instruction, InstructionFile.RemainingGoal)
-          println("initial search success")
+          IO.info("initial search success")
         case InitialSearchTimeout(task) =>
-          println("initial search timeout")
+          IO.info("initial search timeout")
       }
     } finally {
       state.unlockInformation()
