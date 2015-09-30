@@ -14,6 +14,8 @@ import scala.io.Source
 object Denali {
   def main(args: Array[String]) {
 
+    implicit val InstructionRead: scopt.Read[Instruction] = scopt.Read.reads(x => Instruction(x))
+
     val shortDescription = "Automatic inference of a formal specification of the x86_64 instruction set"
 
     def addGlobalOptions[T](parser: scopt.OptionParser[T], command: String, updateGlobal: (File, T) => T): Unit = {
@@ -55,20 +57,28 @@ object Denali {
       }),
 
       ("step", "Take one more step towards finding the right specification", (localArgs: Array[String], helpStr: String) => {
+        var instr: Option[Instruction] = None
         val parser = new scopt.OptionParser[GlobalOptions]("denali") {
           head(shortDescription)
           note(helpStr)
 
           addGlobalOptions(this, "init", (x, c: GlobalOptions) => c.copy(workdir = x))
+          opt[Instruction]("instr") valueName ("<opcode>") action {
+            (x, c: GlobalOptions) => {
+              instr = Some(x)
+              c
+            }
+          } text (s"The instruction that should be processed next.")
         }
         parser.parse(localArgs, GlobalOptions()) match {
           case Some(c) =>
             State(c).appendLog(s"Entry point: denali ${args.mkString(" ")}")
             val driver = Driver(c)
-            driver.selectNextTask() match {
+            driver.selectNextTask(instr) match {
               case None =>
                 IO.info("No task available")
               case Some(t) =>
+                IO.info(s"Selected task '$t'")
                 val res = driver.runTask(t)
                 driver.handleTaskResult(res)
             }

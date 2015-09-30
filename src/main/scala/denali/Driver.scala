@@ -109,12 +109,24 @@ class Driver(val globalOptions: GlobalOptions) {
   }
 
   /** Select what next step should be done, and puts the task into the worklist. */
-  def selectNextTask(): Option[Task] = {
+  def selectNextTask(instruction: Option[Instruction] = None): Option[Task] = {
     state.lockInformation()
 
     try {
       val goal = state.getInstructionFile(InstructionFile.RemainingGoal)
       val partial_succ = state.getInstructionFile(InstructionFile.PartialSuccess)
+
+      if (instruction.isDefined) {
+        val instr = instruction.get
+        if (goal.contains(instr)) {
+          // TODO correct budget
+          state.addInstructionToFile(instr, InstructionFile.Worklist)
+          return Some(InitialSearchTask(state.globalOptions, instr, 300000))
+        } else {
+          // TODO secondary search
+          return None
+        }
+      }
 
       // first deal with partial successes (so that we can put them into success as soon as possible)
       if (partial_succ.nonEmpty) {

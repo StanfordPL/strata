@@ -74,7 +74,7 @@ class State(val globalOptions: GlobalOptions) {
     for (line <- f.getLines()) {
       val opcode = line.stripLineEnd
       if (!isExcluded(opcode))
-        res += new Instruction(opcode, globalOptions)
+        res += new Instruction(opcode)
     }
     f.close()
     res.toSeq
@@ -128,7 +128,7 @@ class State(val globalOptions: GlobalOptions) {
     val file = Source.fromFile(s"${globalOptions.workdir}/${State.PATH_ALL}")
     try {
       for (o <- file.getLines()) {
-        if (o == opcode) return Some(new Instruction(opcode, globalOptions))
+        if (o == opcode) return Some(new Instruction(opcode))
       }
       None
     } finally {
