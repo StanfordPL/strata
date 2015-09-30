@@ -3,6 +3,8 @@ package denali.data
 import java.io.{FileWriter, File}
 import java.util.Calendar
 import denali.GlobalOptions
+import org.json4s.native.Serialization
+import org.json4s.native.Serialization.write
 import scala.collection.mutable.ListBuffer
 import scala.io.{BufferedSource, Source}
 import denali.util.{IO, Locking}
@@ -154,6 +156,12 @@ class State(val globalOptions: GlobalOptions) {
     implicit val formats = DefaultFormats
     val file = new File(s"${globalOptions.workdir}/instructions/$instruction/$instruction.meta.json")
     parse(IO.readFile(file)).extract[InstructionMeta]
+  }
+
+  def writeMetaOfInstr(instruction: Instruction, meta: InstructionMeta): Unit = {
+    implicit val formats = Serialization.formats(NoTypeHints)
+    val file = new File(s"${globalOptions.workdir}/instructions/$instruction/$instruction.meta.json")
+    IO.writeFile(file, write(meta))
   }
 
   /** Get the number of pseudo instructions. */

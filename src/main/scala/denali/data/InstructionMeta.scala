@@ -12,13 +12,13 @@ case class InstructionMeta(def_in: String,
                             )
 
 case class InitialSearchMeta(success: Boolean,
-                             budget: Int,
-                             iterations: Int,
+                             budget: Long,
+                             iterations: Long,
                              start_ptime: Int
                               )
 
 case class SecondarySearchMeta(n_found: Int,
-                               budget: Int,
-                               iterations: Int,
+                               budget: Long,
+                               iterations: Long,
                                start_ptime: Int
                                 )

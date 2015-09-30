@@ -2,9 +2,10 @@ package denali.tasks
 
 import java.io.File
 
-import denali.data.{InstructionFile, State, Stoke}
+import denali.data.{InitialSearchMeta, InstructionFile, State, Stoke}
 import denali.util.IO
 import org.apache.commons.io.FileUtils
+import denali.util.ColoredOutput._
 
 /**
  * Perform an initial search for a given instruction.
@@ -34,7 +35,7 @@ object InitialSearch {
       val meta = state.getMetaOfInstr(instr)
       val base = state.lockedInformation (() => state.getInstructionFile(InstructionFile.Success))
       val baseConfig = new File(s"$tmpDir/base.conf")
-      IO.writeFile(baseConfig, s"--whitelist { ${base.mkString(" ")} }")
+      IO.writeFile(baseConfig, "--opc_whitelist \"{ " + base.mkString(" ") + " }\"\n")
       val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "search",
         "--config", s"${IO.getProjectBase}/resources/conf-files/search.conf",
         "--config", baseConfig,
@@ -52,15 +53,29 @@ object InitialSearch {
       result match {
         case None =>
           state.appendLogUnexpected(s"no result for initial search of $instr")
+          IO.info("stoke failed".red)
           InitialSearchTimeout(task)
         case Some(res) =>
+          val meta = state.getMetaOfInstr(instr)
           if (res.success && res.verified) {
             // initial search succeeded
             state.appendLog(s"initial search succeeded for $instr")
+
+            // update meta
+            val more = InitialSearchMeta(success = true, budget, res.statistics.total_iterations, base.length)
+            val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more))
+            state.writeMetaOfInstr(instr, newMeta)
+
             InitialSearchSuccess(task)
           } else {
             // search failed, update statistics
             state.appendLog("initial search failed for $instr")
+
+            // update meta
+            val more = InitialSearchMeta(success = false, budget, res.statistics.total_iterations, base.length)
+            val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more))
+            state.writeMetaOfInstr(instr, newMeta)
+
             InitialSearchTimeout(task)
           }
       }

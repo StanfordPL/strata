@@ -67,8 +67,8 @@ object IO {
   }
 
   /** Run a subcommand, show it's output and abort if it fails. */
-  def safeSubcommand(cmd: Seq[Any]): Unit = {
-    val (out, status) = run(cmd, s => print(s.gray), s => print(s.red))
+  def safeSubcommand(cmd: Seq[Any], workingDirectory: File = null): Unit = {
+    val (out, status) = run(cmd, s => print(s.gray), s => print(s.red), workingDirectory = workingDirectory)
     if (status != 0) {
       error(s"Command failed: ${
         cmd.map(x => {
