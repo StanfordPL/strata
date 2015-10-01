@@ -107,6 +107,6 @@ object InitialSearch {
     for (initalSearch <- meta.initial_searches) {
       res += 1.0 / Math.pow(1.5, pnow - initalSearch.start_ptime) * initalSearch.iterations
     }
-    Math.max(res.toLong, 50000000)
+    Math.min(res.toLong, 50000000)
   }
 }
