@@ -116,12 +116,14 @@ class Driver(val globalOptions: GlobalOptions) {
       val goal = state.getInstructionFile(InstructionFile.RemainingGoal)
       val partial_succ = state.getInstructionFile(InstructionFile.PartialSuccess)
 
+      // TODO correct budget
+      val budget = 10003
+
       if (instruction.isDefined) {
         val instr = instruction.get
         if (goal.contains(instr)) {
-          // TODO correct budget
           state.addInstructionToFile(instr, InstructionFile.Worklist)
-          return Some(InitialSearchTask(state.globalOptions, instr, 300000))
+          return Some(InitialSearchTask(state.globalOptions, instr, budget))
         } else {
           // TODO secondary search
           return None
@@ -139,7 +141,7 @@ class Driver(val globalOptions: GlobalOptions) {
         val instr = goal(Random.nextInt(goal.size))
         state.addInstructionToFile(instr, InstructionFile.Worklist)
         // TODO correct budget
-        return Some(InitialSearchTask(state.globalOptions, instr, 300000))
+        return Some(InitialSearchTask(state.globalOptions, instr, budget))
       }
 
       // cannot do anything for now

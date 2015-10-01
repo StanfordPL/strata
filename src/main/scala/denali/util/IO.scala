@@ -46,6 +46,14 @@ object IO {
     run(cmd, x => (), x => (), workingDirectory = workingDirectory)
   }
 
+  /**
+   * Run a command and return it's output (stderr and stdout) and exit code.
+   * Uses the base directory as working directory by default.
+   */
+  def runPrint(cmd: Seq[Any], workingDirectory: File = null): (String, Int) = {
+    run(cmd, s => print(s.gray), s => print(s.red), workingDirectory = workingDirectory)
+  }
+
   /** Returns the base path of the whole project. */
   def getProjectBase: File = {
     var res = getClass.getResource("").getPath
@@ -68,7 +76,7 @@ object IO {
 
   /** Run a subcommand, show it's output and abort if it fails. */
   def safeSubcommand(cmd: Seq[Any], workingDirectory: File = null): Unit = {
-    val (out, status) = run(cmd, s => print(s.gray), s => print(s.red), workingDirectory = workingDirectory)
+    val (out, status) = runPrint(cmd, workingDirectory = workingDirectory)
     if (status != 0) {
       error(s"Command failed: ${
         cmd.map(x => {

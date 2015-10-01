@@ -24,11 +24,11 @@ object Denali {
       parser.opt[File]('w', "workdir") valueName ("<dir>") action {
         (x, c) => updateGlobal(Some(x), None, None, c)
       } text (s"The directory where outputs and intermediate progress are stored. Default: ${GlobalOptions().workdir}")
-      parser.opt[Boolean]('v', "verbose") action {
-        (x, c) => updateGlobal(None, Some(x), None, c)
+      parser.opt[Unit]('v', "verbose") action {
+        (x, c) => updateGlobal(None, Some(true), None, c)
       } text (s"Verbose output.  Default: ${GlobalOptions().verbose}")
-      parser.opt[Boolean]('v', "keepTmpDirs") action {
-        (x, c) => updateGlobal(None, None, Some(x), c)
+      parser.opt[Unit]('v', "keepTmpDirs") action {
+        (x, c) => updateGlobal(None, None, Some(true), c)
       } text (s"Keep the temporary working directories intact.  Default: ${GlobalOptions().verbose}")
     }
     def normalUpdateGlobal(workdir: Option[File], verbose: Option[Boolean], keepTmpDirs: Option[Boolean], c: GlobalOptions): GlobalOptions = {

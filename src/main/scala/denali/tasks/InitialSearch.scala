@@ -12,8 +12,9 @@ import denali.util.ColoredOutput._
  */
 object InitialSearch {
   def run(task: InitialSearchTask): InitialSearchResult = {
-    val state = State(task.globalOptions)
-    val workdir = task.globalOptions.workdir
+    val globalOptions = task.globalOptions
+    val state = State(globalOptions)
+    val workdir = globalOptions.workdir
 
     val instr = task.instruction
     val budget = task.budget
@@ -48,7 +49,11 @@ object InitialSearch {
         "--call_weight", state.getNumPseudoInstr,
         "--timeout_iterations", budget,
         "--cost", "correctness")
-      IO.runQuiet(cmd, workingDirectory = tmpDir)
+      if (globalOptions.verbose) {
+        IO.runPrint(cmd, workingDirectory = tmpDir)
+      } else {
+        IO.runQuiet(cmd, workingDirectory = tmpDir)
+      }
       val result = Stoke.readStokeSearchOutput(new File(s"$tmpDir/search.json"))
       result match {
         case None =>
