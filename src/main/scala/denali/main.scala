@@ -18,11 +18,29 @@ object Denali {
 
     val shortDescription = "Automatic inference of a formal specification of the x86_64 instruction set"
 
-    def addGlobalOptions[T](parser: scopt.OptionParser[T], command: String, updateGlobal: (File, T) => T): Unit = {
+    def addGlobalOptions[T](parser: scopt.OptionParser[T], command: String,
+                            updateGlobal: (Option[File], Option[Boolean], Option[Boolean], T) => T): Unit = {
       parser.help("help") text s"Usage information for the $command command"
       parser.opt[File]('w', "workdir") valueName ("<dir>") action {
-        (x, c) => updateGlobal(x, c)
+        (x, c) => updateGlobal(Some(x), None, None, c)
       } text (s"The directory where outputs and intermediate progress are stored. Default: ${GlobalOptions().workdir}")
+      parser.opt[Boolean]('v', "verbose") action {
+        (x, c) => updateGlobal(None, Some(x), None, c)
+      } text (s"Verbose output.  Default: ${GlobalOptions().verbose}")
+      parser.opt[Boolean]('v', "keepTmpDirs") action {
+        (x, c) => updateGlobal(None, None, Some(x), c)
+      } text (s"Keep the temporary working directories intact.  Default: ${GlobalOptions().verbose}")
+    }
+    def normalUpdateGlobal(workdir: Option[File], verbose: Option[Boolean], keepTmpDirs: Option[Boolean], c: GlobalOptions): GlobalOptions = {
+      if (workdir.isDefined) {
+        c.copy(workdir = workdir.get)
+      } else if (verbose.isDefined) {
+        c.copy(verbose = verbose.get)
+      } else if (keepTmpDirs.isDefined) {
+        c.copy(keepTmpDirs = keepTmpDirs.get)
+      } else {
+        sys.exit(1)
+      }
     }
 
     val commands: List[(String, String, (Array[String], String) => Unit)] = List(
@@ -31,7 +49,18 @@ object Denali {
           head(shortDescription)
           note(helpStr)
 
-          addGlobalOptions(this, "init", (x, c: InitOptions) => c.copy(globalOptions = c.globalOptions.copy(workdir = x)))
+          addGlobalOptions(this, "init",
+            (workdir: Option[File], verbose: Option[Boolean], keepTmpDirs: Option[Boolean], c: InitOptions) => {
+              if (workdir.isDefined) {
+                c.copy(globalOptions = c.globalOptions.copy(workdir = workdir.get))
+              } else if (verbose.isDefined) {
+                c.copy(globalOptions = c.globalOptions.copy(verbose = verbose.get))
+              } else if (keepTmpDirs.isDefined) {
+                c.copy(globalOptions = c.globalOptions.copy(keepTmpDirs = keepTmpDirs.get))
+              } else {
+                sys.exit(1)
+              }
+            })
         }
         parser.parse(localArgs, InitOptions(GlobalOptions())) match {
           case Some(c) =>
@@ -47,7 +76,7 @@ object Denali {
           head(shortDescription)
           note(helpStr)
 
-          addGlobalOptions(this, "init", (x, c: GlobalOptions) => c.copy(workdir = x))
+          addGlobalOptions(this, "init", normalUpdateGlobal)
         }
         parser.parse(localArgs, GlobalOptions()) match {
           case Some(c) =>
@@ -64,7 +93,7 @@ object Denali {
           head(shortDescription)
           note(helpStr)
 
-          addGlobalOptions(this, "init", (x, c: GlobalOptions) => c.copy(workdir = x))
+          addGlobalOptions(this, "init", normalUpdateGlobal)
           opt[Instruction]("instr") valueName ("<opcode>") action {
             (x, c: GlobalOptions) => {
               instr = Some(x)
@@ -131,6 +160,6 @@ object Denali {
  * Command line argument class.
  */
 case class GlobalOptions(workdir: File = new File(s"${System.getProperty("user.home")}/dev/output-denali"),
-                         showStokeOutput: Boolean = false)
+                         verbose: Boolean = false, keepTmpDirs: Boolean = false)
 
 case class InitOptions(globalOptions: GlobalOptions)
