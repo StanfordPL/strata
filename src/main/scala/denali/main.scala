@@ -37,7 +37,8 @@ object Denali {
           case Some(c) =>
             Initialize.run(args, c)
           case None =>
-          // arguments are bad, error message will have been displayed
+            // arguments are bad, error message will have been displayed
+            sys.exit(1)
         }
       }),
 
@@ -52,7 +53,8 @@ object Denali {
           case Some(c) =>
             Driver(c).run(args)
           case None =>
-          // arguments are bad, error message will have been displayed
+            // arguments are bad, error message will have been displayed
+            sys.exit(1)
         }
       }),
 
@@ -83,7 +85,8 @@ object Denali {
                 driver.handleTaskResult(res)
             }
           case None =>
-          // arguments are bad, error message will have been displayed
+            // arguments are bad, error message will have been displayed
+            sys.exit(1)
         }
       })
     )
@@ -128,15 +131,6 @@ object Denali {
  * Command line argument class.
  */
 case class GlobalOptions(workdir: File = new File(s"${System.getProperty("user.home")}/dev/output-denali"),
-                         showStokeOutput: Boolean = false) {
-
-  /** Create an instruction and check that it actually exists. */
-  def mkInstruction(opcode: String): Instruction = {
-    State(this).mkInstruction(opcode) match {
-      case Some(i) => i
-      case None => IO.error(s"Could not find the opcode '$opcode'.")
-    }
-  }
-}
+                         showStokeOutput: Boolean = false)
 
 case class InitOptions(globalOptions: GlobalOptions)

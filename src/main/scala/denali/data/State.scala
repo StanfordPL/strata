@@ -123,19 +123,6 @@ class State(val globalOptions: GlobalOptions) {
     appendLog(s"UNEXPECTED: $msg")
   }
 
-  /** Create an instruction and check that it actually exists. */
-  def mkInstruction(opcode: String): Option[Instruction] = {
-    val file = Source.fromFile(s"${globalOptions.workdir}/${State.PATH_ALL}")
-    try {
-      for (o <- file.getLines()) {
-        if (o == opcode) return Some(new Instruction(opcode))
-      }
-      None
-    } finally {
-      file.close()
-    }
-  }
-
   /** The state directory */
   def getStateDir: File = {
     new File(s"${globalOptions.workdir}/${State.PATH_INFO}")
