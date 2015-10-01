@@ -138,6 +138,24 @@ class State(val globalOptions: GlobalOptions) {
     s"${globalOptions.workdir}/instructions/$instruction/$instruction.s"
   }
 
+  /** Get a fresh name for a result. */
+  def getFreshResultName(instruction: Instruction): File = {
+    val resDir = new File(s"${globalOptions.workdir}/instructions/results")
+    if (!resDir.exists()) {
+      resDir.mkdir()
+    }
+    var i = 0
+    while (true) {
+      val file = new File(s"$resDir/result-$i%05.s")
+      if (!file.exists()) {
+        return file
+      }
+      i += 1
+    }
+    assert(false)
+    null
+  }
+
   /** Read the meta information for an instruction. */
   def getMetaOfInstr(instruction: Instruction): InstructionMeta = {
     implicit val formats = DefaultFormats

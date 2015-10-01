@@ -2,6 +2,8 @@ package denali.util
 
 import java.io.{BufferedWriter, FileWriter, File}
 import java.lang.management.ManagementFactory
+import org.apache.commons.io.FileUtils
+
 import scala.sys.process._
 import ColoredOutput._
 
@@ -119,5 +121,10 @@ object IO {
     val bw = new BufferedWriter(new FileWriter(file))
     bw.write(content)
     bw.close()
+  }
+
+  /** Copy a file. */
+  def copyFile(a: File, b: File): Unit = {
+    FileUtils.copyFile(a, b)
   }
 }

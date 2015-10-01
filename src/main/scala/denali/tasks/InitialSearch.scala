@@ -68,6 +68,9 @@ object InitialSearch {
             // initial search succeeded
             state.appendLog(s"initial search succeeded for $instr")
 
+            val resFile = new File(s"$tmpDir/result.s")
+            IO.copyFile(resFile, state.getFreshResultName(instr))
+
             // update meta
             val more = InitialSearchMeta(success = true, budget, res.statistics.total_iterations, base.length)
             val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more))
