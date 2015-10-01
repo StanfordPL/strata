@@ -51,6 +51,7 @@ object IO {
    * Uses the base directory as working directory by default.
    */
   def runPrint(cmd: Seq[Any], workingDirectory: File = null): (String, Int) = {
+    IO.info(s"Running command '${cmd2String(cmd)}'")
     run(cmd, s => print(s.gray), s => print(s.red), workingDirectory = workingDirectory)
   }
 
@@ -79,16 +80,20 @@ object IO {
     val (out, status) = runPrint(cmd, workingDirectory = workingDirectory)
     if (status != 0) {
       error(s"Command failed: ${
-        cmd.map(x => {
-          if (x.toString.contains(" ")) {
-            "\"" + x + "\""
-          }
-          else {
-            x
-          }
-        }).mkString(" ")
+        cmd2String(cmd)
       }")
     }
+  }
+
+  def cmd2String(cmd: Seq[Any]): String = {
+    cmd.map(x => {
+      if (x.toString.contains(" ")) {
+        "\"" + x + "\""
+      }
+      else {
+        x
+      }
+    }).mkString(" ")
   }
 
   /** Returns an ID for the current execution context (host, process and thread). */

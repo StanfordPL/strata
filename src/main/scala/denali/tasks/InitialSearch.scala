@@ -24,17 +24,19 @@ object InitialSearch {
     // set up tmp dir
     val tmpDir = new File(s"${state.getTmpDir}/${IO.getExecContextId}")
     tmpDir.mkdir()
-    sys.addShutdownHook {
-      try {
-        FileUtils.deleteDirectory(tmpDir)
-      } catch {
-        case _: Throwable =>
+    if (!globalOptions.keepTmpDirs) {
+      sys.addShutdownHook {
+        try {
+          FileUtils.deleteDirectory(tmpDir)
+        } catch {
+          case _: Throwable =>
+        }
       }
     }
 
     try {
       val meta = state.getMetaOfInstr(instr)
-      val base = state.lockedInformation (() => state.getInstructionFile(InstructionFile.Success))
+      val base = state.lockedInformation(() => state.getInstructionFile(InstructionFile.Success))
       val baseConfig = new File(s"$tmpDir/base.conf")
       IO.writeFile(baseConfig, "--opc_whitelist \"{ " + base.mkString(" ") + " }\"\n")
       val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "search",
@@ -86,7 +88,9 @@ object InitialSearch {
       }
     } finally {
       // tear down tmp dir
-      FileUtils.deleteDirectory(tmpDir)
+      if (!globalOptions.keepTmpDirs) {
+        FileUtils.deleteDirectory(tmpDir)
+      }
 
       state.appendLog(s"end initial_search $instr")
     }

@@ -117,7 +117,7 @@ class Driver(val globalOptions: GlobalOptions) {
       val partial_succ = state.getInstructionFile(InstructionFile.PartialSuccess)
 
       // TODO correct budget
-      val budget = 10003
+      val budget = 100000
 
       if (instruction.isDefined) {
         val instr = instruction.get
