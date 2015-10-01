@@ -13,7 +13,7 @@ import org.json4s.native.JsonMethods._
 
 object InstructionFile extends Enumeration {
   type InstructionFile = Value
-  val RemainingGoal, Worklist, PartialSuccess, Success, Base = Value
+  val RemainingGoal, InitialGoal, Worklist, PartialSuccess, Success, Base = Value
 }
 import InstructionFile._
 
@@ -50,6 +50,7 @@ class State(val globalOptions: GlobalOptions) {
   private def getPathForFile(file: InstructionFile): String = {
     file match {
       case RemainingGoal => State.PATH_GOAL
+      case InitialGoal => State.PATH_INITIAL_GAOL
       case Worklist => State.PATH_WORKLIST
       case PartialSuccess => State.PATH_PARTIAL_SUCCESS
       case Success => State.PATH_SUCCESS
@@ -98,7 +99,7 @@ class State(val globalOptions: GlobalOptions) {
   def appendLog(msg: String): Unit = {
     if (!exists) IO.error("state has not been initialized yet")
 
-    val file = new File(s"${globalOptions.workdir}/${State.PATH_LOG}")
+    val file = getLogFile
     Locking.lockFile(file)
     if (!file.exists()) {
       file.createNewFile()
@@ -109,6 +110,11 @@ class State(val globalOptions: GlobalOptions) {
     writer.append(s"[ $time / ${IO.getExecContextId}} ] $messsage\n")
     writer.close()
     Locking.unlockFile(file)
+  }
+
+  /** Get the log file. */
+  def getLogFile: File = {
+    new File(s"${globalOptions.workdir}/${State.PATH_LOG}")
   }
 
   /** Lock the information directory. */
