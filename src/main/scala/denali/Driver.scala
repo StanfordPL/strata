@@ -21,7 +21,8 @@ class Driver(val globalOptions: GlobalOptions) {
     Initialize.run(args, InitOptions(globalOptions))
 
     // TODO better value
-    val nThreads = 2
+    val nThreads = Runtime.getRuntime.availableProcessors()
+    IO.info(s"Running with $nThreads threads")
 
     // our pool of threads to do all the computation
     val executor = Executors.newFixedThreadPool(nThreads)
