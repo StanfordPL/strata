@@ -112,18 +112,21 @@ class Driver(val globalOptions: GlobalOptions) {
   def selectNextTask(instruction: Option[Instruction] = None): Option[Task] = {
     state.lockInformation()
 
+    def mkInitialSearch(instr: Instruction): Option[Task] = {
+      // TODO correct budget
+      val budget = InitialSearch.computeBudget(state, instr)
+      state.addInstructionToFile(instr, InstructionFile.Worklist)
+      Some(InitialSearchTask(state.globalOptions, instr, budget))
+    }
+
     try {
       val goal = state.getInstructionFile(InstructionFile.RemainingGoal)
       val partial_succ = state.getInstructionFile(InstructionFile.PartialSuccess)
 
-      // TODO correct budget
-      val budget = 100000
-
       if (instruction.isDefined) {
         val instr = instruction.get
         if (goal.contains(instr)) {
-          state.addInstructionToFile(instr, InstructionFile.Worklist)
-          return Some(InitialSearchTask(state.globalOptions, instr, budget))
+          return mkInitialSearch(instr)
         } else {
           // TODO secondary search
           return None
@@ -139,9 +142,7 @@ class Driver(val globalOptions: GlobalOptions) {
       // then try an intial search
       if (goal.nonEmpty) {
         val instr = goal(Random.nextInt(goal.size))
-        state.addInstructionToFile(instr, InstructionFile.Worklist)
-        // TODO correct budget
-        return Some(InitialSearchTask(state.globalOptions, instr, budget))
+        return mkInitialSearch(instr)
       }
 
       // cannot do anything for now

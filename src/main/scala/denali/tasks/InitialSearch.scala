@@ -2,7 +2,7 @@ package denali.tasks
 
 import java.io.File
 
-import denali.data.{InitialSearchMeta, InstructionFile, State, Stoke}
+import denali.data._
 import denali.util.IO
 import org.apache.commons.io.FileUtils
 import denali.util.ColoredOutput._
@@ -97,5 +97,16 @@ object InitialSearch {
 
       state.appendLog(s"end initial_search $instr")
     }
+  }
+
+  def computeBudget(state: State, instr: Instruction): Long = {
+    val pnow = state.getPseudoTime
+    val meta = state.getMetaOfInstr(instr)
+    val default = 200000
+    var res: Double = default
+    for (initalSearch <- meta.initial_searches) {
+      res += 1.0 / Math.pow(1.5, pnow - initalSearch.start_ptime) * initalSearch.iterations
+    }
+    Math.max(res.toLong, 50000000)
   }
 }

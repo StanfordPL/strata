@@ -22,6 +22,9 @@ import InstructionFile._
  */
 class State(val globalOptions: GlobalOptions) {
 
+  /** Get the current pseudo time. */
+  def getPseudoTime = getInstructionFile(InstructionFile.Success).length
+
   /** Run a function with the information directory being locked. */
   def lockedInformation[A](f: () => A): A = {
     lockInformation()
@@ -140,13 +143,13 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Get a fresh name for a result. */
   def getFreshResultName(instruction: Instruction): File = {
-    val resDir = new File(s"${globalOptions.workdir}/instructions/results")
+    val resDir = new File(s"${globalOptions.workdir}/instructions/$instruction/results")
     if (!resDir.exists()) {
       resDir.mkdir()
     }
     var i = 0
     while (true) {
-      val file = new File(s"$resDir/result-$i%05.s")
+      val file = new File(f"$resDir/result-$i%05d.s")
       if (!file.exists()) {
         return file
       }
