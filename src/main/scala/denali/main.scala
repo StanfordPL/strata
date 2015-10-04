@@ -98,7 +98,9 @@ object Denali {
           }
           parser.parse(localArgs, GlobalOptions()) match {
             case Some(c) =>
-              Statistics.print(c)
+              while (true) {
+                Statistics.print(c)
+              }
             case None =>
               // arguments are bad, error message will have been displayed
               sys.exit(1)
