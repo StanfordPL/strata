@@ -189,10 +189,20 @@ class State(val globalOptions: GlobalOptions) {
     new File(s"${globalOptions.workdir}/${State.PATH_TESTCASES}")
   }
 
-  /** Remove old lockfiles. */
+  /** Cleanup working directory. */
   def cleanup(): Unit = {
+    // remove old lock files
     Locking.cleanupDir(getInfoPath)
     Locking.cleanupFile(getLogFile)
+
+    // remove stuff from workfiles
+    val worklist = getInstructionFile(InstructionFile.Worklist)
+    if (worklist.nonEmpty) {
+      IO.info(s"Removing ${worklist.length} instructions from the worklist.")
+      writeInstructionFile(InstructionFile.Worklist, Nil)
+    }
+
+    IO.info("All clear now.")
   }
 }
 
