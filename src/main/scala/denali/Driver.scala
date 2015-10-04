@@ -67,9 +67,9 @@ class Driver(val globalOptions: GlobalOptions) {
           // TODO error handling
           state.appendLogUnexpected(s"exception: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}")
           IO.info(s"ERROR: failure: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}".red)
-          state.lockInformation()
-          state.removeInstructionToFile(taskMap(task).instruction, InstructionFile.Worklist)
-          state.unlockInformation()
+          state.lockedInformation(() => {
+            state.removeInstructionToFile(taskMap(task).instruction, InstructionFile.Worklist)
+          })
       }
       tasksRunning -= 1
 
@@ -91,9 +91,7 @@ class Driver(val globalOptions: GlobalOptions) {
 
   /** Handle the result of a task. */
   def handleTaskResult(taskRes: TaskResult): Unit = {
-    state.lockInformation()
-
-    try {
+    state.lockedInformation(() => {
       state.removeInstructionToFile(taskRes.instruction, InstructionFile.Worklist)
       taskRes match {
         case InitialSearchSuccess(task) =>
@@ -104,23 +102,18 @@ class Driver(val globalOptions: GlobalOptions) {
         case InitialSearchTimeout(task) =>
           IO.info(s"initial search timeout for ${task.instruction}")
       }
-    } finally {
-      state.unlockInformation()
-    }
+    })
   }
 
   /** Select what next step should be done, and puts the task into the worklist. */
   def selectNextTask(instruction: Option[Instruction] = None): Option[Task] = {
-    state.lockInformation()
-
     def mkInitialSearch(instr: Instruction): Option[Task] = {
-      // TODO correct budget
       val budget = InitialSearch.computeBudget(state, instr)
       state.addInstructionToFile(instr, InstructionFile.Worklist)
       Some(InitialSearchTask(state.globalOptions, instr, budget))
     }
 
-    try {
+    state.lockedInformation(() => {
       val goal = state.getInstructionFile(InstructionFile.RemainingGoal)
       val partial_succ = state.getInstructionFile(InstructionFile.PartialSuccess)
 
@@ -148,9 +141,7 @@ class Driver(val globalOptions: GlobalOptions) {
 
       // cannot do anything for now
       None
-    } finally {
-      state.unlockInformation()
-    }
+    })
   }
 }
 
