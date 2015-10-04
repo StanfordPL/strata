@@ -29,7 +29,7 @@ object Initialize {
     }
 
     val state = State(options.globalOptions)
-    state.getStateDir.mkdirs()
+    state.getInfoPath.mkdirs()
     state.appendLog(s"Entry point: denali ${args.mkString(" ")}")
     state.appendLog(s"start initialize")
 

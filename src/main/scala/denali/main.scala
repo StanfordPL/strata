@@ -98,10 +98,24 @@ object Denali {
           }
           parser.parse(localArgs, GlobalOptions()) match {
             case Some(c) =>
-              while (true) {
-                Statistics.print(c)
-                Thread.sleep(100)
-              }
+              Statistics.print(c)
+            case None =>
+              // arguments are bad, error message will have been displayed
+              sys.exit(1)
+          }
+        }),
+
+      ("cleanup", "Clean up the working directory after a crash (removing stray lock files, etc.)",
+        (localArgs: Array[String], helpStr: String) => {
+          val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+            head(shortDescription)
+            note(helpStr)
+
+            addGlobalOptions(this, "cleanup", normalUpdateGlobal)
+          }
+          parser.parse(localArgs, GlobalOptions()) match {
+            case Some(c) =>
+              State(c).cleanup()
             case None =>
               // arguments are bad, error message will have been displayed
               sys.exit(1)

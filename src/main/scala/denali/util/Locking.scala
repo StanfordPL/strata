@@ -31,6 +31,22 @@ object Locking {
     unlockImpl(getLockNameForDir(file))
   }
 
+  def cleanupFile(file: File): Unit = {
+    val lock = getLockNameForFile(file)
+    if (lock.exists) {
+      IO.info(s"Remove lock for the file '$file'.")
+      lock.delete()
+    }
+  }
+
+  def cleanupDir(dir: File): Unit = {
+    val lock = getLockNameForDir(dir)
+    if (lock.exists) {
+      IO.info(s"Remove lock for the folder '$dir'.")
+      lock.delete()
+    }
+  }
+
   private def lockImpl(lock: File): Unit = {
     while (!lock.createNewFile()) {
       Thread.sleep(50)

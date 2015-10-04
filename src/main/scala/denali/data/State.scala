@@ -15,6 +15,7 @@ object InstructionFile extends Enumeration {
   type InstructionFile = Value
   val RemainingGoal, InitialGoal, Worklist, PartialSuccess, Success, Base = Value
 }
+
 import InstructionFile._
 
 /**
@@ -92,7 +93,12 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Has the state already been set up? */
   def exists: Boolean = {
-    new File(s"${globalOptions.workdir}/${State.PATH_INFO}/").exists
+    getInfoPath.exists
+  }
+
+  /** Returns the path to the info directory. */
+  def getInfoPath: File = {
+    new File(s"${globalOptions.workdir}/${State.PATH_INFO}/")
   }
 
   /** Add an entry to the global log file. */
@@ -119,22 +125,17 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Lock the information directory. */
   def lockInformation(): Unit = {
-    Locking.lockDir(new File(s"${globalOptions.workdir}/${State.PATH_INFO}"))
+    Locking.lockDir(getInfoPath)
   }
 
   /** Unlock the information directory. */
   def unlockInformation(): Unit = {
-    Locking.unlockDir(new File(s"${globalOptions.workdir}/${State.PATH_INFO}"))
+    Locking.unlockDir(getInfoPath)
   }
 
   /** Add an entry to the global log file of something unexpected that happened. */
   def appendLogUnexpected(msg: String): Unit = {
     appendLog(s"UNEXPECTED: $msg")
-  }
-
-  /** The state directory */
-  def getStateDir: File = {
-    new File(s"${globalOptions.workdir}/${State.PATH_INFO}")
   }
 
   /** Temporary directory for things currently running */
@@ -186,6 +187,12 @@ class State(val globalOptions: GlobalOptions) {
   /** The path to the testcases file. */
   def getTestcasePath: File = {
     new File(s"${globalOptions.workdir}/${State.PATH_TESTCASES}")
+  }
+
+  /** Remove old lockfiles. */
+  def cleanup(): Unit = {
+    Locking.cleanupDir(getInfoPath)
+    Locking.cleanupFile(getLogFile)
   }
 }
 
