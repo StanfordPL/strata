@@ -100,6 +100,7 @@ object Denali {
             case Some(c) =>
               while (true) {
                 Statistics.print(c)
+                Thread.sleep(100)
               }
             case None =>
               // arguments are bad, error message will have been displayed
