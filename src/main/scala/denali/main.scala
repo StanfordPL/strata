@@ -1,8 +1,9 @@
 package denali
 
 import java.io.File
+import java.util.Date
 
-import denali.data.{State, Instruction}
+import denali.data._
 import denali.tasks.InitialSearch
 import denali.util.IO
 
@@ -13,6 +14,11 @@ import scala.io.Source
  */
 object Denali {
   def main(args: Array[String]) {
+
+    val s = Log.serializeMessage(LogInitStart(new Date(), ThreadContext("blah", 1, 2)))
+    println(s)
+    println(Log.deserializeMessage(s))
+    return
 
     implicit val InstructionRead: scopt.Read[Instruction] = scopt.Read.reads(x => Instruction(x))
 
