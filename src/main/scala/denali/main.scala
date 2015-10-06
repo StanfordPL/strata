@@ -116,6 +116,7 @@ object Denali {
           }
           parser.parse(localArgs, GlobalOptions()) match {
             case Some(c) =>
+              State(c).appendLog(LogEntryPoint(args))
               State(c).cleanup()
             case None =>
               // arguments are bad, error message will have been displayed
@@ -133,6 +134,7 @@ object Denali {
           }
           parser.parse(localArgs, GlobalOptions()) match {
             case Some(c) =>
+              State(c).appendLog(LogEntryPoint(args))
               State(c) signalShutdown()
             case None =>
               // arguments are bad, error message will have been displayed
@@ -156,15 +158,15 @@ object Denali {
         }
         parser.parse(localArgs, GlobalOptions()) match {
           case Some(c) =>
-            State(c).appendLogOld(s"Entry point: denali ${args.mkString(" ")}")
+            State(c).appendLog(LogEntryPoint(args))
             val driver = Driver(c)
             driver.selectNextTask(instr) match {
               case None =>
                 IO.info("No task available")
-              case Some(t) =>
-                IO.info(s"Selected task '$t'")
-                val res = driver.runTask(t)
-                driver.handleTaskResult(res)
+              case Some(task) =>
+                IO.info(s"Selected task '$task'")
+                val res = driver.runTaskAsync(task)
+                driver.finishTask(task, res)
             }
           case None =>
             // arguments are bad, error message will have been displayed

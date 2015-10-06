@@ -5,6 +5,7 @@ import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
 import com.sun.xml.internal.messaging.saaj.util.Base64
+import denali.tasks.{TaskResult, Task}
 import denali.util.IO
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -113,5 +114,23 @@ case class LogInitStart(time: DateTime = DateTime.now, context: ThreadContext = 
 case class LogInitEnd(time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogEnd {
   override def toString = {
     super.toString + ": initialize end"
+  }
+}
+
+case class LogTaskStart(task: Task, time: DateTime = DateTime.now, context: ThreadContext = ThreadContext.self) extends LogStart {
+  override def toString = {
+    super.toString + s": task start: $task"
+  }
+}
+
+case class LogTaskEnd(task: Task, res: Option[TaskResult], time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogEnd {
+  override def toString = {
+    super.toString + s": task end: $task"
+  }
+}
+
+case class LogError(msg: String, time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogMessage {
+  override def toString = {
+    super.toString + s": error: $msg"
   }
 }

@@ -2,7 +2,7 @@ package denali
 
 import java.util.concurrent.{Future, Callable, Executors, ExecutorCompletionService}
 
-import denali.data.{InstructionFile, State, Instruction}
+import denali.data._
 import denali.tasks._
 import denali.util.IO
 import denali.util.ColoredOutput._
@@ -58,19 +58,7 @@ class Driver(val globalOptions: GlobalOptions) {
     // main loop
     while (tasksRunning > 0) {
       val task = threadPool.take()
-      try {
-        val taskRes = task.get()
-        // TODO handle result
-        handleTaskResult(taskRes)
-      } catch {
-        case t: Throwable =>
-          // TODO error handling
-          state.appendLogUnexpected(s"exception: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}")
-          IO.info(s"ERROR: failure: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}".red)
-          state.lockedInformation(() => {
-            state.removeInstructionToFile(taskMap(task).instruction, InstructionFile.Worklist)
-          })
-      }
+      finishTask(taskMap(task), task)
       tasksRunning -= 1
 
       // start new tasks
@@ -82,15 +70,41 @@ class Driver(val globalOptions: GlobalOptions) {
   }
 
   /** Execute a task. */
-  def runTask(task: Task): TaskResult = {
+  private def runTask(task: Task): TaskResult = {
+    state.appendLog(LogTaskStart(task))
     task match {
       case t: InitialSearchTask =>
         InitialSearch.run(t)
     }
   }
 
+  /** Run a task asynchronously. */
+  private val poolForOthers = Executors.newFixedThreadPool(1)
+  def runTaskAsync(task: Task): Future[TaskResult] = {
+    poolForOthers.submit(new Callable[TaskResult] {
+      override def call(): TaskResult = runTask(task)
+    })
+  }
+
+  /** Finish a task, correctly handling errors and taks results. */
+  def finishTask(task: Task, future: Future[TaskResult]): Unit = {
+    try {
+      val taskRes = future.get()
+      handleTaskResult(taskRes)
+      state.appendLog(LogTaskEnd(task, Some(taskRes)))
+    } catch {
+      case t: Throwable =>
+        state.appendLog(LogTaskEnd(task, None))
+        state.appendLog(LogError(s"exception in task: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}"))
+        IO.info(s"ERROR: failure: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}".red)
+        state.lockedInformation(() => {
+          state.removeInstructionToFile(task.instruction, InstructionFile.Worklist)
+        })
+    }
+  }
+
   /** Handle the result of a task. */
-  def handleTaskResult(taskRes: TaskResult): Unit = {
+  private def handleTaskResult(taskRes: TaskResult): Unit = {
     state.lockedInformation(() => {
       state.removeInstructionToFile(taskRes.instruction, InstructionFile.Worklist)
       taskRes match {
