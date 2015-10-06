@@ -122,6 +122,23 @@ object Denali {
           }
         }),
 
+      ("shutdown", "Indicate that all threads should shut down and safely exit.  May take some time.",
+        (localArgs: Array[String], helpStr: String) => {
+          val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+            head(shortDescription)
+            note(helpStr)
+
+            addGlobalOptions(this, "shutdown", normalUpdateGlobal)
+          }
+          parser.parse(localArgs, GlobalOptions()) match {
+            case Some(c) =>
+              State(c) signalShutdown()
+            case None =>
+              // arguments are bad, error message will have been displayed
+              sys.exit(1)
+          }
+        }),
+
       ("step", "Take one more step towards finding the right specification", (localArgs: Array[String], helpStr: String) => {
         var instr: Option[Instruction] = None
         val parser = new scopt.OptionParser[GlobalOptions]("denali") {

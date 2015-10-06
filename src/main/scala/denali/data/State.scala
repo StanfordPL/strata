@@ -23,6 +23,18 @@ import InstructionFile._
  */
 class State(val globalOptions: GlobalOptions) {
 
+  private val signal = new File(s"${globalOptions.workdir}/${State.PATH_SHUTDOWN}")
+
+  /** Signal that all threads should shut down. */
+  def signalShutdown(): Unit = {
+    if (!signal.exists()) {
+      signal.createNewFile()
+    }
+  }
+
+  /** Should all threads stop? */
+  def signalShutdownReceived = signal.exists()
+
   /** Get the current pseudo time. */
   def getPseudoTime = getInstructionFile(InstructionFile.Success).length
 
@@ -202,6 +214,12 @@ class State(val globalOptions: GlobalOptions) {
       writeInstructionFile(InstructionFile.Worklist, Nil)
     }
 
+    // remove signals
+    if (signal.exists()) {
+      IO.info("Removing shutdown signal.")
+      signal.delete()
+    }
+
     IO.info("All clear now.")
   }
 }
@@ -213,6 +231,7 @@ object State {
   private val PATH_TMP = "tmp"
   private val PATH_GOAL = s"$PATH_INFO/remaining_goal.instrs"
   private val PATH_WORKLIST = s"$PATH_INFO/worklist.instrs"
+  private val PATH_SHUTDOWN = s"$PATH_INFO/signal.shutdown"
   private val PATH_PARTIAL_SUCCESS = s"$PATH_INFO/partial_success.instrs"
   private val PATH_SUCCESS = s"$PATH_INFO/success.instrs"
   private val PATH_INITIAL_BASE = s"$PATH_INFO/initial_base.instrs"

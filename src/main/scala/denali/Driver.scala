@@ -114,6 +114,12 @@ class Driver(val globalOptions: GlobalOptions) {
     }
 
     state.lockedInformation(() => {
+
+      // should we stop?
+      if (state.signalShutdownReceived) {
+        return None
+      }
+
       val goal = state.getInstructionFile(InstructionFile.RemainingGoal)
       val partial_succ = state.getInstructionFile(InstructionFile.PartialSuccess)
 
