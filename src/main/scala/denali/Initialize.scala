@@ -5,6 +5,7 @@ import java.io.File
 import denali.data._
 import denali.util.IO
 import org.apache.commons.io.FileUtils
+import org.joda.time.DateTime
 
 /**
  * Initializing the configuration of a denali run.

@@ -15,6 +15,8 @@ libraryDependencies += "commons-io" % "commons-io" % "2.3"
 
 libraryDependencies += "org.json4s" %% "json4s-native" % "3.3.0.RC6"
 
+libraryDependencies += "org.json4s" %% "json4s-ext" % "3.3.0.RC6"
+
 libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.2.0"
 
 

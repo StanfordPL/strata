@@ -3,6 +3,8 @@ package denali.util
 import java.io.{BufferedWriter, FileWriter, File}
 import java.lang.management.ManagementFactory
 import org.apache.commons.io.FileUtils
+import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 
 import scala.sys.process._
 import ColoredOutput._
@@ -118,5 +120,10 @@ object IO {
   /** Copy a file. */
   def copyFile(a: File, b: File): Unit = {
     FileUtils.copyFile(a, b)
+  }
+
+  /** Format a DateTime nicely. */
+  def formatTime(time: DateTime): String = {
+    DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss").print(time)
   }
 }

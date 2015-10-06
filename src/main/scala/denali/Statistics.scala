@@ -1,8 +1,10 @@
 package denali
 
-import denali.data.{InstructionFile, Instruction, State}
+import denali.data._
 import denali.util.{ColoredOutput, IO}
 import ColoredOutput._
+import org.joda.time.DateTime
+import org.joda.time.format.{PeriodFormatterBuilder, PeriodFormat}
 
 import scala.collection.mutable.ListBuffer
 
@@ -19,7 +21,7 @@ object Statistics {
 
     // clear console
     clearConsole()
-    printStats(getStats(state))
+    printStats(state.getLogMessages, getStats(state))
 
   }
 
@@ -74,11 +76,12 @@ object Statistics {
       res.append(label.gray)
       res.append(": ".gray)
       res.append(data(i))
-      res.toString()
+      res.append(" " * (width - ColoredOutput.uncoloredLength(res.toString)))
+      res.toString
     }
   }
 
-  def printStats(stats: Stats): Unit = {
+  def printStats(logMessages: Seq[LogMessage], stats: Stats): Unit = {
     val width = getConsoleWidth
     def horizontalLine(dividerDown: Seq[Int] = Nil, dividerUp: Seq[Int] = Nil): String = {
       val res = new StringBuilder()
@@ -134,9 +137,41 @@ object Statistics {
       f"${x._1}%4d (${x._1.toDouble * 100.0 / total}%5.2f %%) " + x._3("█")
     }))
 
+    val globalStartTime = if (logMessages.nonEmpty) IO.formatTime(logMessages.head.time) else "n/a"
+
+    // compute cpu time
+    val startMap = collection.mutable.Map[ThreadContext, DateTime]()
+    import com.github.nscala_time.time.Imports._
+    var cpuTime = new Duration(0)
+    for (m <- logMessages) {
+      m match {
+        case start: LogStart =>
+          assert(!startMap.contains(start.context))
+          startMap(start.context) = start.time
+        case end: LogEnd =>
+          assert(startMap.contains(end.context))
+          val startTime = startMap(end.context)
+          val duration = startTime to end.time
+          cpuTime += duration.duration
+          startMap.remove(end.context)
+        case _ =>
+      }
+    }
+
+    val formatter = new PeriodFormatterBuilder()
+      .appendDays()
+      .appendSuffix("d ")
+      .appendHours()
+      .appendSuffix("h ")
+      .appendMinutes()
+      .appendSuffix("m ")
+      .appendSeconds()
+      .appendSuffix("s ")
+      .toFormatter
+
     val basicBox = Box("Basic information",
-      Vector("running since", "running threads"),
-      Vector("?", s"${stats.nWorklist}"))
+      Vector("running since", "cpu time", "running threads"),
+      Vector(globalStartTime, formatter.print(cpuTime.toPeriod), s"${stats.nWorklist}"))
 
     val (out, breaks) = printBoxesHorizontally(Vector(progressBox, basicBox), width)
 

@@ -40,11 +40,11 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Run a function with the information directory being locked. */
   def lockedInformation[A](f: () => A): A = {
-    lockInformation()
+    Locking.lockDir(getInfoPath)
     try {
       f()
     } finally {
-      unlockInformation()
+      Locking.unlockDir(getInfoPath)
     }
   }
 
@@ -131,6 +131,13 @@ class State(val globalOptions: GlobalOptions) {
     })
   }
 
+  def getLogMessages: Seq[LogMessage] = {
+    Locking.lockedFile(getLogFile)(() => {
+      val s = IO.readFile(getLogFile).split("\n")
+      s map (line => Log.deserializeMessage(line))
+    })
+  }
+
   def appendLogOld(msg: String): Unit = {
     if (!exists) IO.error("state has not been initialized yet")
 
@@ -148,22 +155,12 @@ class State(val globalOptions: GlobalOptions) {
   }
 
   /** Get the log file. */
-  def getLogFile: File = {
+  private def getLogFile: File = {
     new File(s"${globalOptions.workdir}/${State.PATH_LOG}")
   }
   /** Get the log file. */
-  def getReadableLogFile: File = {
+  private def getReadableLogFile: File = {
     new File(s"${globalOptions.workdir}/${State.PATH_READABLE_LOG}")
-  }
-
-  /** Lock the information directory. */
-  def lockInformation(): Unit = {
-    Locking.lockDir(getInfoPath)
-  }
-
-  /** Unlock the information directory. */
-  def unlockInformation(): Unit = {
-    Locking.unlockDir(getInfoPath)
   }
 
   /** Add an entry to the global log file of something unexpected that happened. */

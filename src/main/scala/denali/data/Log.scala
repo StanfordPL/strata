@@ -5,6 +5,7 @@ import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
 import com.sun.xml.internal.messaging.saaj.util.Base64
+import denali.util.IO
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.json4s._
@@ -17,21 +18,32 @@ import scala.sys.process._
  * Helper methods to deal with log entries.
  */
 object Log {
+  case object MyDateTimeSerializer extends CustomSerializer[DateTime](format => (
+    {
+      case JString(s) => new DateTime(s)
+      case JNull => null
+    },
+    {
+      case d: DateTime => JString(format.dateFormat.format(d.toDate))
+    }
+    ))
+
   def serializeMessage(logMessage: LogMessage): String = {
-    implicit val formats = Serialization.formats(NoTypeHints)
+    implicit val formats = Serialization.formats(NoTypeHints) ++ Vector(MyDateTimeSerializer)
     logMessage.getClass.getSimpleName + ";" + new String(Base64.encode(write(logMessage).getBytes))
   }
 
   def deserializeMessage(s: String): LogMessage = {
-    implicit val formats = DefaultFormats
+    implicit val formats = org.json4s.DefaultFormats ++ Vector(MyDateTimeSerializer)
     val split = s.split(";")
     assert(split.length == 2)
     val decoded = Base64.base64Decode(split(1))
     split(0) match {
       case "LogInitStart" => parse(decoded).extract[LogInitStart]
       case "LogInitEnd" => parse(decoded).extract[LogInitEnd]
+      case "LogEntryPoint" => parse(decoded).extract[LogEntryPoint]
       case _ =>
-        assert(false)
+        assert(assertion = false, s"Unknown message type: ${split(0)}")
         sys.exit(1)
     }
   }
@@ -78,24 +90,27 @@ sealed trait LogMessage {
   def context: ThreadContext
 
   override def toString = {
-    s"[ ${DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss").print(time)} / $context ]"
+    s"[ ${IO.formatTime(time)} / $context ]"
   }
 }
+
+trait LogStart extends LogMessage
+trait LogEnd extends LogMessage
 
 case class LogEntryPoint(arguments: Seq[String],
                          time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogMessage {
   override def toString = {
-    super.toString + s": denali ${arguments.mkString(" ")}"
+    super.toString + s": entry point: denali ${arguments.mkString(" ")}"
   }
 }
 
-case class LogInitStart(time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogMessage {
+case class LogInitStart(time: DateTime = DateTime.now, context: ThreadContext = ThreadContext.self) extends LogStart {
   override def toString = {
     super.toString + ": initialize start"
   }
 }
 
-case class LogInitEnd(time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogMessage {
+case class LogInitEnd(time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogEnd {
   override def toString = {
     super.toString + ": initialize end"
   }
