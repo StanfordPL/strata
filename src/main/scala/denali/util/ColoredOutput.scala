@@ -37,10 +37,15 @@ trait ColoredOutput {
     def invisible = INVISIBLE + s + RESET
 
     def gray = "\u001b[38;5;244m" + s + RESET
+    def color(id: Int) = s"\u001b[38;5;${id}m" + s + RESET
   }
 }
 
 /**
  * An object to use the colored output
  */
-object ColoredOutput extends ColoredOutput
+object ColoredOutput extends ColoredOutput {
+  def uncoloredLength(s: String): Int = {
+    s.replaceAll("\\e\\[[\\d;]*[^\\d;]","").length
+  }
+}
