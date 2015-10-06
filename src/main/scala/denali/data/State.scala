@@ -114,10 +114,27 @@ class State(val globalOptions: GlobalOptions) {
   }
 
   /** Add an entry to the global log file. */
-  def appendLog(msg: String): Unit = {
+  def appendLog(logMessage: LogMessage): Unit = {
     if (!exists) IO.error("state has not been initialized yet")
 
-    val file = getLogFile
+    def writeMessage(file: File, message: String): Unit = {
+      if (!file.exists()) {
+        file.createNewFile()
+      }
+      val writer = new FileWriter(file, true)
+      writer.append(s"$message\n")
+      writer.close()
+    }
+    Locking.lockedFile(getLogFile)(() => {
+      writeMessage(getReadableLogFile, logMessage.toString)
+      writeMessage(getLogFile, s"${Log.serializeMessage(logMessage)}")
+    })
+  }
+
+  def appendLogOld(msg: String): Unit = {
+    if (!exists) IO.error("state has not been initialized yet")
+
+    val file = getReadableLogFile
     Locking.lockFile(file)
     if (!file.exists()) {
       file.createNewFile()
@@ -125,7 +142,7 @@ class State(val globalOptions: GlobalOptions) {
     val writer = new FileWriter(file, true)
     val time = Calendar.getInstance().getTime
     val messsage = msg.replace("\n", "\\n")
-    writer.append(s"[ $time / ${IO.getExecContextId}} ] $messsage\n")
+    writer.append(s"[ $time / ${ThreadContext.self}} ] $messsage\n")
     writer.close()
     Locking.unlockFile(file)
   }
@@ -133,6 +150,10 @@ class State(val globalOptions: GlobalOptions) {
   /** Get the log file. */
   def getLogFile: File = {
     new File(s"${globalOptions.workdir}/${State.PATH_LOG}")
+  }
+  /** Get the log file. */
+  def getReadableLogFile: File = {
+    new File(s"${globalOptions.workdir}/${State.PATH_READABLE_LOG}")
   }
 
   /** Lock the information directory. */
@@ -147,7 +168,7 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Add an entry to the global log file of something unexpected that happened. */
   def appendLogUnexpected(msg: String): Unit = {
-    appendLog(s"UNEXPECTED: $msg")
+    appendLogOld(s"UNEXPECTED: $msg")
   }
 
   /** Temporary directory for things currently running */
@@ -237,7 +258,8 @@ object State {
   private val PATH_INITIAL_BASE = s"$PATH_INFO/initial_base.instrs"
   private val PATH_INITIAL_GAOL = s"$PATH_INFO/initial_goal.instrs"
   private val PATH_ALL = s"$PATH_INFO/all.instrs"
-  private val PATH_LOG = s"$PATH_INFO/log.txt"
+  private val PATH_LOG = s"$PATH_INFO/log.bin"
+  private val PATH_READABLE_LOG = s"$PATH_INFO/log.txt"
   private val PATH_FUNCTIONS = "functions"
   private val PATH_TESTCASES = "testcases.tc"
 }

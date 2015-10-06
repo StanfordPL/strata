@@ -15,11 +15,6 @@ import scala.io.Source
 object Denali {
   def main(args: Array[String]) {
 
-    val s = Log.serializeMessage(LogInitStart(new Date(), ThreadContext("blah", 1, 2)))
-    println(s)
-    println(Log.deserializeMessage(s))
-    return
-
     implicit val InstructionRead: scopt.Read[Instruction] = scopt.Read.reads(x => Instruction(x))
 
     val shortDescription = "Automatic inference of a formal specification of the x86_64 instruction set"
@@ -161,7 +156,7 @@ object Denali {
         }
         parser.parse(localArgs, GlobalOptions()) match {
           case Some(c) =>
-            State(c).appendLog(s"Entry point: denali ${args.mkString(" ")}")
+            State(c).appendLogOld(s"Entry point: denali ${args.mkString(" ")}")
             val driver = Driver(c)
             driver.selectNextTask(instr) match {
               case None =>

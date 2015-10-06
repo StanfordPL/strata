@@ -19,10 +19,10 @@ object InitialSearch {
     val instr = task.instruction
     val budget = task.budget
 
-    state.appendLog(s"start initial_search $instr")
+    state.appendLogOld(s"start initial_search $instr")
 
     // set up tmp dir
-    val tmpDir = new File(s"${state.getTmpDir}/${IO.getExecContextId}")
+    val tmpDir = new File(s"${state.getTmpDir}/${ThreadContext.self.fileNameSafe}")
     tmpDir.mkdir()
     if (!globalOptions.keepTmpDirs) {
       sys.addShutdownHook {
@@ -66,7 +66,7 @@ object InitialSearch {
           val meta = state.getMetaOfInstr(instr)
           if (res.success && res.verified) {
             // initial search succeeded
-            state.appendLog(s"initial search succeeded for $instr")
+            state.appendLogOld(s"initial search succeeded for $instr")
 
             val resFile = new File(s"$tmpDir/result.s")
             IO.copyFile(resFile, state.getFreshResultName(instr))
@@ -79,7 +79,7 @@ object InitialSearch {
             InitialSearchSuccess(task)
           } else {
             // search failed, update statistics
-            state.appendLog("initial search failed for $instr")
+            state.appendLogOld("initial search failed for $instr")
 
             // update meta
             val more = InitialSearchMeta(success = false, budget, res.statistics.total_iterations, base.length)
@@ -95,7 +95,7 @@ object InitialSearch {
         FileUtils.deleteDirectory(tmpDir)
       }
 
-      state.appendLog(s"end initial_search $instr")
+      state.appendLogOld(s"end initial_search $instr")
     }
   }
 

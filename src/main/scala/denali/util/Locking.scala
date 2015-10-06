@@ -21,6 +21,15 @@ object Locking {
     unlockImpl(getLockNameForFile(file))
   }
 
+  def lockedFile[A](file: File)(f: () => A): A = {
+    lockFile(file)
+    try {
+      f()
+    } finally {
+      unlockFile(file)
+    }
+  }
+
   /** Lock a given directory.  Blocks until the lock is available. */
   def lockDir(file: File): Unit = {
     lockImpl(getLockNameForDir(file))

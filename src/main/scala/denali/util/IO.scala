@@ -98,14 +98,6 @@ object IO {
     }).mkString(" ")
   }
 
-  /** Returns an ID for the current execution context (host, process and thread). */
-  def getExecContextId: String = {
-    val host = "hostname".!!.stripLineEnd
-    val pid: Int = ManagementFactory.getRuntimeMXBean.getName.split("@")(0).toInt
-    val tid = Thread.currentThread().getId
-    f"${host}_$pid%06d-$tid%06d"
-  }
-
   /** Read a file and return it's entire contents. */
   def readFile(file: File): String = {
     val source = scala.io.Source.fromFile(file)

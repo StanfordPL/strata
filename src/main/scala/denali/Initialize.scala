@@ -2,7 +2,7 @@ package denali
 
 import java.io.File
 
-import denali.data.{InstructionFile, State}
+import denali.data._
 import denali.util.IO
 import org.apache.commons.io.FileUtils
 
@@ -30,8 +30,8 @@ object Initialize {
 
     val state = State(options.globalOptions)
     state.getInfoPath.mkdirs()
-    state.appendLog(s"Entry point: denali ${args.mkString(" ")}")
-    state.appendLog(s"start initialize")
+    state.appendLog(LogEntryPoint(args))
+    state.appendLog(LogInitStart())
 
     IO.info("producing pseudo functions ...")
     val functionTemplates = s"${IO.getProjectBase}/resources/function-templates"
@@ -54,8 +54,7 @@ object Initialize {
 
     state.getTmpDir.mkdirs()
 
-    state.appendLog(s"end initialize")
-
+    state.appendLog(LogInitEnd())
     IO.info("initialization complete")
   }
 }
