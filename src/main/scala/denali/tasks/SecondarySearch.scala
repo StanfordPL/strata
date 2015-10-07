@@ -49,7 +49,8 @@ object SecondarySearch {
         "--call_weight", state.getNumPseudoInstr,
         "--timeout_iterations", budget,
         "--non_goal", state.getInstructionResultDir(instr),
-        "--cost", "correctness + nongoal")
+        "--cost", "correctness + nongoal",
+        "--correctness", "(correctness + nongoal) == 0")
       if (globalOptions.verbose) {
         IO.runPrint(cmd, workingDirectory = tmpDir)
       } else {
