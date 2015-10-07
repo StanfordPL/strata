@@ -10,11 +10,23 @@ sealed trait TaskResult {
 }
 
 sealed trait InitialSearchResult extends TaskResult
-case class InitialSearchSuccess(task: InitialSearchTask) extends InitialSearchResult
-case class InitialSearchTimeout(task: InitialSearchTask) extends InitialSearchResult
-case class InitialSearchError(task: InitialSearchTask) extends InitialSearchResult
+case class InitialSearchSuccess(task: InitialSearchTask) extends InitialSearchResult {
+  override def toString = "initial search success"
+}
+case class InitialSearchTimeout(task: InitialSearchTask) extends InitialSearchResult {
+  override def toString = "initial search timeout"
+}
+case class InitialSearchError(task: InitialSearchTask) extends InitialSearchResult {
+  override def toString = "initial search error"
+}
 
 sealed trait SecondarySearchResult extends TaskResult
-case class SecondarySearchSuccess(task: SecondarySearchTask) extends SecondarySearchResult
-case class SecondarySearchTimeout(task: SecondarySearchTask) extends SecondarySearchResult
-case class SecondarySearchError(task: SecondarySearchTask) extends SecondarySearchResult
+case class SecondarySearchSuccess(task: SecondarySearchTask) extends SecondarySearchResult {
+  override def toString = "secondary search success"
+}
+case class SecondarySearchTimeout(task: SecondarySearchTask) extends SecondarySearchResult {
+  override def toString = "secondary search timeout"
+}
+case class SecondarySearchError(task: SecondarySearchTask) extends SecondarySearchResult {
+  override def toString = "secondary search error"
+}
