@@ -1,6 +1,7 @@
 package denali
 
 import denali.data._
+import denali.tasks.InitialSearchTimeout
 import denali.util.{ColoredOutput, IO}
 import ColoredOutput._
 import org.joda.time.DateTime
@@ -54,7 +55,10 @@ object Statistics {
                     delim: Int
                     )
 
-  case class Box(title: String, labels: Seq[String], data: Seq[String]) {
+  case class Box(title: String, labelsAny: Seq[Any], dataAny: Seq[Any]) {
+
+    val labels = labelsAny map (x => x.toString)
+    val data = dataAny map (x => x.toString)
 
     val maxLabel: Int = {
       labels.map(x => ColoredOutput.uncoloredLength(x)).max
@@ -76,8 +80,8 @@ object Statistics {
       res.append(label.gray)
       res.append(": ".gray)
       res.append(data(i))
-      res.append(" " * (width - ColoredOutput.uncoloredLength(res.toString)))
-      res.toString
+      res.append(" " * (width - ColoredOutput.uncoloredLength(res.toString())))
+      res.toString()
     }
   }
 
@@ -116,8 +120,8 @@ object Statistics {
 
     val progress = Vector(
       (stats.nBase, "base", (x: String) => x.color(240)),
-      (stats.nSuccess, "success", (x: String) => x.color(28)),
-      (stats.nPartialSuccess + 100, "partial success", (x: String) => x.color(21)),
+      (stats.nSuccess - stats.nBase, "success", (x: String) => x.color(28)),
+      (stats.nPartialSuccess, "partial success", (x: String) => x.color(21)),
       (stats.nRemainingGoal, "remaining", (x: String) => x.color(124))
     )
     val total = progress.map(x => x._1).sum.toDouble
@@ -128,8 +132,8 @@ object Statistics {
     var cur = 0.0
     for ((p, i) <- progress.zipWithIndex) {
       val char = if (i == progress.length - 1) "█" else "█"
-      print(p._3(char) * (((cur - cur.round.toInt) + p._1.toDouble) / total * width).round.toInt)
-      cur += p._1.toDouble / total * width
+      print(p._3(char) * (cur + p._1.toDouble/ total * (width - 2) - cur.round.toInt).round.toInt)
+      cur += p._1.toDouble / total * (width - 2)
     }
     println(" │".gray)
 
@@ -169,15 +173,29 @@ object Statistics {
       .appendSuffix("s ")
       .toFormatter
 
+    val errors = logMessages.collect({
+      case e: LogError => e
+    })
+    val errorStr = if (errors.nonEmpty) errors.length.toString.red else "0"
     val basicBox = Box("Basic information",
-      Vector("running since", "cpu time", "running threads"),
-      Vector(globalStartTime, formatter.print(cpuTime.toPeriod), s"${stats.nWorklist}"))
+      Vector("started at", "cpu time", "running threads", "number of errors"),
+      Vector(globalStartTime, formatter.print(cpuTime.toPeriod), stats.nWorklist, errorStr))
 
     val (out, breaks) = printBoxesHorizontally(Vector(progressBox, basicBox), width)
 
     println(horizontalLine(beginEnd ++ breaks, beginEnd).gray)
     print(out)
-    println(horizontalLine(Nil, beginEnd ++ breaks).gray)
+
+    val failedInitial = logMessages.count({
+      case LogTaskEnd(t, Some(InitialSearchTimeout(_)), _, _) => true
+      case _ => false
+    })
+    val eventBox = Box("Search events", Vector("failed initial searches"), Vector(failedInitial))
+    val (out2, breaks2) = printBoxesHorizontally(Vector(eventBox), width)
+
+    println(horizontalLine(beginEnd ++ breaks2, beginEnd ++ breaks).gray)
+    print(out2)
+    println(horizontalLine(Nil, beginEnd ++ breaks2).gray)
   }
 
   def printBoxesHorizontally(boxes: Vector[Box], width: Int): (String, Seq[Int]) = {
@@ -191,22 +209,23 @@ object Statistics {
       var cur = 0
       for (j <- 1 to boxes.length) {
         val box = boxes(j-1)
-        cur += box.width + 2
         if (j != 1) {
           res.append(" ")
           res.append("│".gray)
           res.append(" ")
+          cur += 3
         }
-        if (j != boxes.length && i == 0) {
-          breaks.append(cur)
-        }
+        cur += box.width
         if (i <= box.lines) {
           res.append(box.renderLine(i - 1))
         } else {
           res.append(" " * box.width)
         }
+        if (j != boxes.length && i == 0) {
+          breaks.append(cur + 2)
+        }
       }
-      res.append(" " * (width - cur))
+      res.append(" " * (width - cur - 1))
       res.append("│".gray)
       res.append("\n")
     }
