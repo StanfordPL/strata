@@ -50,7 +50,7 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Add an instruction to a file. */
   def addInstructionToFile(instr: Instruction, file: InstructionFile) = {
-    writeInstructionFile(file, getInstructionFile(file) ++ Seq(instr))
+    writeInstructionFile(file, getInstructionFile(file, includeWorklist = true) ++ Seq(instr))
   }
 
   /** Remove an instruction from a file. */
@@ -180,7 +180,7 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Get a fresh name for a result. */
   def getFreshResultName(instruction: Instruction): File = {
-    val resDir = new File(s"${globalOptions.workdir}/instructions/$instruction/results")
+    val resDir = getInstructionResultDir(instruction)
     if (!resDir.exists()) {
       resDir.mkdir()
     }
@@ -194,6 +194,10 @@ class State(val globalOptions: GlobalOptions) {
     }
     assert(false)
     null
+  }
+
+  def getInstructionResultDir(instruction: Instruction): File = {
+    new File(s"${globalOptions.workdir}/instructions/$instruction/results")
   }
 
   /** Read the meta information for an instruction. */

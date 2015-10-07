@@ -20,3 +20,11 @@ case class InitialSearchTask(globalOptions: GlobalOptions,
     s"initial search for $instruction with budget=$budget"
   }
 }
+
+case class SecondarySearchTask(globalOptions: GlobalOptions,
+                             instruction: Instruction,
+                             budget: Long) extends Task {
+  override def toString = {
+    s"secondary search for $instruction with budget=$budget"
+  }
+}

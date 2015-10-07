@@ -1,6 +1,6 @@
 package denali
 
-import java.util.concurrent.{Future, Callable, Executors, ExecutorCompletionService}
+import java.util.concurrent._
 
 import denali.data._
 import denali.tasks._
@@ -77,15 +77,21 @@ class Driver(val globalOptions: GlobalOptions) {
     task match {
       case t: InitialSearchTask =>
         InitialSearch.run(t)
+      case t: SecondarySearchTask =>
+        SecondarySearch.run(t)
     }
   }
 
   /** Run a task asynchronously. */
-  private val poolForOthers = Executors.newFixedThreadPool(1)
+  private var poolForOthers: ExecutorService = null
   def runTaskAsync(task: Task): Future[TaskResult] = {
+    poolForOthers = Executors.newFixedThreadPool(1)
     poolForOthers.submit(new Callable[TaskResult] {
       override def call(): TaskResult = runTask(task)
     })
+  }
+  def endAsync(): Unit = {
+    poolForOthers.shutdown()
   }
 
   /** Finish a task, correctly handling errors and taks results. */
@@ -111,22 +117,53 @@ class Driver(val globalOptions: GlobalOptions) {
       state.removeInstructionToFile(taskRes.instruction, InstructionFile.Worklist)
       taskRes match {
         case InitialSearchSuccess(task) =>
-          // TODO: actually this is only partial success
-          state.addInstructionToFile(taskRes.instruction, InstructionFile.Success)
           state.removeInstructionToFile(taskRes.instruction, InstructionFile.RemainingGoal)
+          state.addInstructionToFile(taskRes.instruction, InstructionFile.PartialSuccess)
           IO.info(s"initial search success for ${task.instruction}")
         case InitialSearchTimeout(task) =>
           IO.info(s"initial search timeout for ${task.instruction}")
+        case InitialSearchError(_) =>
+        case SecondarySearchError(_) =>
+        case SecondarySearchSuccess(task) =>
+          IO.info(s"secondary search success for ${task.instruction}")
+        case SecondarySearchTimeout(task) =>
+          // no more instructions found
+          state.removeInstructionToFile(taskRes.instruction, InstructionFile.PartialSuccess)
+          state.addInstructionToFile(taskRes.instruction, InstructionFile.Success)
+          IO.info(s"secondary search timeout for ${task.instruction}")
       }
     })
+  }
+
+  /** Compute the budget for the initial search. */
+  def initialSearchBudget(instr: Instruction): Long = {
+    val pnow = state.getPseudoTime
+    val meta = state.getMetaOfInstr(instr)
+    val default = 200000
+    var res: Double = default
+    for (initalSearch <- meta.initial_searches) {
+      res += 1.0 / Math.pow(1.5, pnow - initalSearch.start_ptime) * initalSearch.iterations
+    }
+    Math.min(res.toLong, 10000000)
+  }
+
+  /** Compute the budget for the secondary search. */
+  def secondarySearchBudget(instr: Instruction): Long = {
+    10000000
   }
 
   /** Select what next step should be done, and puts the task into the worklist. */
   def selectNextTask(instruction: Option[Instruction] = None): Option[Task] = {
     def mkInitialSearch(instr: Instruction): Option[Task] = {
-      val budget = InitialSearch.computeBudget(state, instr)
+      val budget = initialSearchBudget(instr)
       state.addInstructionToFile(instr, InstructionFile.Worklist)
       Some(InitialSearchTask(state.globalOptions, instr, budget))
+    }
+
+    def mkSecondarySearch(instr: Instruction): Option[Task] = {
+      val budget = secondarySearchBudget(instr)
+      state.addInstructionToFile(instr, InstructionFile.Worklist)
+      Some(SecondarySearchTask(state.globalOptions, instr, budget))
     }
 
     state.lockedInformation(() => {
@@ -137,22 +174,23 @@ class Driver(val globalOptions: GlobalOptions) {
       }
 
       val goal = state.getInstructionFile(InstructionFile.RemainingGoal)
-      val partial_succ = state.getInstructionFile(InstructionFile.PartialSuccess)
+      val partialSucc = state.getInstructionFile(InstructionFile.PartialSuccess)
 
       if (instruction.isDefined) {
         val instr = instruction.get
         if (goal.contains(instr)) {
           return mkInitialSearch(instr)
+        } else if (partialSucc.contains(instr)) {
+          return mkSecondarySearch(instr)
         } else {
-          // TODO secondary search
           return None
         }
       }
 
       // first deal with partial successes (so that we can put them into success as soon as possible)
-      if (partial_succ.nonEmpty) {
-        // TODO secondary search
-        return Some(null)
+      if (partialSucc.nonEmpty) {
+        val instr = partialSucc(Random.nextInt(partialSucc.size))
+        return mkSecondarySearch(instr)
       }
 
       // then try an intial search

@@ -170,6 +170,7 @@ object Denali {
                 IO.info(s"Selected task '$task'")
                 val res = driver.runTaskAsync(task)
                 driver.finishTask(task, res)
+                driver.endAsync()
             }
           case None =>
             // arguments are bad, error message will have been displayed

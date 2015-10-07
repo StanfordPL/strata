@@ -3,15 +3,15 @@ package denali.tasks
 import java.io.File
 
 import denali.data._
+import denali.util.ColoredOutput._
 import denali.util.IO
 import org.apache.commons.io.FileUtils
-import denali.util.ColoredOutput._
 
 /**
- * Perform an initial search for a given instruction.
+ * Perform an secondary search for a given instruction.
  */
-object InitialSearch {
-  def run(task: InitialSearchTask): InitialSearchResult = {
+object SecondarySearch {
+  def run(task: SecondarySearchTask): SecondarySearchResult = {
     val globalOptions = task.globalOptions
     val state = State(globalOptions)
     val workdir = globalOptions.workdir
@@ -48,7 +48,8 @@ object InitialSearch {
         "--machine_output", "search.json",
         "--call_weight", state.getNumPseudoInstr,
         "--timeout_iterations", budget,
-        "--cost", "correctness")
+        "--non_goal", state.getInstructionResultDir(instr),
+        "--cost", "correctness + nongoal")
       if (globalOptions.verbose) {
         IO.runPrint(cmd, workingDirectory = tmpDir)
       } else {
@@ -59,7 +60,7 @@ object InitialSearch {
         case None =>
           state.appendLog(LogError(s"no result for initial search of $instr"))
           IO.info("stoke failed".red)
-          InitialSearchError(task)
+          SecondarySearchError(task)
         case Some(res) =>
           val meta = state.getMetaOfInstr(instr)
           if (res.success && res.verified) {
@@ -72,14 +73,14 @@ object InitialSearch {
             val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more))
             state.writeMetaOfInstr(instr, newMeta)
 
-            InitialSearchSuccess(task)
+            SecondarySearchSuccess(task)
           } else {
             // update meta
-            val more = InitialSearchMeta(success = false, budget, res.statistics.total_iterations, base.length)
-            val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more))
+            val more = SecondarySearchMeta(1, budget, res.statistics.total_iterations, base.length)
+            val newMeta = meta.copy(secondary_searches = meta.secondary_searches ++ Vector(more))
             state.writeMetaOfInstr(instr, newMeta)
 
-            InitialSearchTimeout(task)
+            SecondarySearchTimeout(task)
           }
       }
     } finally {
