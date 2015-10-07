@@ -1,7 +1,7 @@
 package denali
 
 import denali.data._
-import denali.tasks.InitialSearchTimeout
+import denali.tasks.{SecondarySearchSuccess, SecondarySearchTimeout, InitialSearchTimeout}
 import denali.util.{ColoredOutput, IO}
 import ColoredOutput._
 import org.joda.time.DateTime
@@ -189,7 +189,13 @@ object Statistics {
       case LogTaskEnd(t, Some(InitialSearchTimeout(_)), _, _) => true
       case _ => false
     })
-    val eventBox = Box("Search events", Vector("failed initial searches"), Vector(failedInitial))
+    val successfulSecondary = logMessages.count({
+      case LogTaskEnd(t, Some(SecondarySearchSuccess(_)), _, _) => true
+      case _ => false
+    })
+    val eventBox = Box("Search events",
+      Vector("failed initial searches", "successful secondary searches"),
+      Vector(failedInitial, successfulSecondary))
     val (out2, breaks2) = printBoxesHorizontally(Vector(eventBox), width)
 
     println(horizontalLine(beginEnd ++ breaks2, beginEnd ++ breaks).gray)
