@@ -1,7 +1,7 @@
 package denali.tasks
 
 import denali.GlobalOptions
-import denali.data.Instruction
+import denali.data.{ThreadContext, Instruction}
 
 /**
  * A trait for steps the driver can take
@@ -9,6 +9,8 @@ import denali.data.Instruction
 sealed trait Task {
   def globalOptions: GlobalOptions
   def instruction: Instruction
+
+  var runnerContext: ThreadContext = null
 }
 
 case class InitialSearchTask(globalOptions: GlobalOptions,

@@ -6,6 +6,7 @@ import denali.data._
 import denali.tasks._
 import denali.util.IO
 import denali.util.ColoredOutput._
+import org.joda.time.DateTime
 
 import scala.util.Random
 
@@ -71,6 +72,7 @@ class Driver(val globalOptions: GlobalOptions) {
 
   /** Execute a task. */
   private def runTask(task: Task): TaskResult = {
+    task.runnerContext = ThreadContext.self
     state.appendLog(LogTaskStart(task))
     task match {
       case t: InitialSearchTask =>
@@ -91,10 +93,10 @@ class Driver(val globalOptions: GlobalOptions) {
     try {
       val taskRes = future.get()
       handleTaskResult(taskRes)
-      state.appendLog(LogTaskEnd(task, Some(taskRes)))
+      state.appendLog(LogTaskEnd(task, Some(taskRes), DateTime.now, task.runnerContext))
     } catch {
       case t: Throwable =>
-        state.appendLog(LogTaskEnd(task, None))
+        state.appendLog(LogTaskEnd(task, None, DateTime.now, task.runnerContext))
         state.appendLog(LogError(s"exception in task: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}"))
         IO.info(s"ERROR: failure: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}".red)
         state.lockedInformation(() => {

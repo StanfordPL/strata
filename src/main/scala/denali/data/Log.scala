@@ -5,37 +5,48 @@ import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
 import com.sun.xml.internal.messaging.saaj.util.Base64
-import denali.tasks.{TaskResult, Task}
+import denali.GlobalOptions
+import denali.tasks.{InitialSearchTask, TaskResult, Task}
 import denali.util.IO
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
+import org.json4s
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.json4s.native.Serialization
 import org.json4s.native.Serialization._
+import org.json4s.reflect.Reflector
 import scala.sys.process._
+
 
 /**
  * Helper methods to deal with log entries.
  */
 object Log {
-  case object MyDateTimeSerializer extends CustomSerializer[DateTime](format => (
-    {
-      case JString(s) => new DateTime(s)
-      case JNull => null
-    },
-    {
-      case d: DateTime => JString(format.dateFormat.format(d.toDate))
-    }
-    ))
+
+  case object DateTimeSerializer extends CustomSerializer[DateTime](format => ({
+    case JString(s) => new DateTime(s)
+    case JNull => null
+  }, {
+    case d: DateTime => JString(format.dateFormat.format(d.toDate))
+  }))
 
   def serializeMessage(logMessage: LogMessage): String = {
-    implicit val formats = Serialization.formats(NoTypeHints) ++ Vector(MyDateTimeSerializer)
-    logMessage.getClass.getSimpleName + ";" + new String(Base64.encode(write(logMessage).getBytes))
+    implicit val formats = Serialization.formats(FullTypeHints(List(
+      classOf[Task],
+      classOf[TaskResult]
+    ))) ++ Vector(DateTimeSerializer)
+    val serialized = write(logMessage)
+    logMessage.getClass.getSimpleName + ";" + new String(Base64.encode(serialized.getBytes))
   }
 
   def deserializeMessage(s: String): LogMessage = {
-    implicit val formats = org.json4s.DefaultFormats ++ Vector(MyDateTimeSerializer)
+    implicit val formats = org.json4s.DefaultFormats ++
+      Vector(
+        new CustomSerializer[Task](serializerImpl),
+        new CustomSerializer[TaskResult](serializerImpl),
+        DateTimeSerializer
+      )
     val split = s.split(";")
     assert(split.length == 2)
     val decoded = Base64.base64Decode(split(1))
@@ -43,12 +54,55 @@ object Log {
       case "LogInitStart" => parse(decoded).extract[LogInitStart]
       case "LogInitEnd" => parse(decoded).extract[LogInitEnd]
       case "LogEntryPoint" => parse(decoded).extract[LogEntryPoint]
+      case "LogTaskStart" => parse(decoded).extract[LogTaskStart]
+      case "LogTaskEnd" => parse(decoded).extract[LogTaskEnd]
+      case "LogError" => parse(decoded).extract[LogError]
       case _ =>
         assert(assertion = false, s"Unknown message type: ${split(0)}")
         sys.exit(1)
     }
   }
+
+  def serializerImpl[A]: (Formats) => (PartialFunction[json4s.JValue, A], PartialFunction[Any, JsonAST.JString]) = {
+    format => ({
+      case JObject(JField("jsonClass", JString(className)) :: l) =>
+        implicit val formats = format
+        Extraction.extract(JObject(l), Reflector.scalaTypeOf(className).get).asInstanceOf[A]
+    }, {
+      case _ if false => JString("")
+    })
+  }
+
+  def test() = {
+    val s = {
+      implicit val formats = Serialization.formats(FullTypeHints(List(
+        classOf[Top], classOf[Top2], classOf[Task]
+      ))) ++ Vector()
+      write(A(1))
+      write(B(GlobalOptions(), Instruction("addb_r8_r8"), 100))
+      write(InitialSearchTask(GlobalOptions(), Instruction("addb_r8_r8"), 100))
+    }
+    println(s)
+    val res = {
+      implicit val formats = org.json4s.DefaultFormats ++
+        Vector(
+          new CustomSerializer[Top](serializerImpl),
+          new CustomSerializer[Top2](serializerImpl),
+          new CustomSerializer[Task](serializerImpl)
+        )
+      parse(s).extract[Task]
+    }
+    println(res)
+  }
 }
+
+trait Top
+case class A(i: Int) extends Top
+case class B(globalOptions: GlobalOptions, instruction: Instruction, budget: Long) extends Top
+
+trait Top2
+case class A2(i: Int) extends Top2
+case class B2(s: String) extends Top2
 
 /**
  * Context information
@@ -63,6 +117,7 @@ case class ThreadContext(hostname: String, pid: Long, tid: Long) {
     val host = hostname + (" " * (hostMinLength - hostname.length))
     f"$host / $pid%6d / $tid%6d"
   }
+
   def fileNameSafe: String = {
     s"$hostname-$pid-$tid"
   }
@@ -96,6 +151,7 @@ sealed trait LogMessage {
 }
 
 trait LogStart extends LogMessage
+
 trait LogEnd extends LogMessage
 
 case class LogEntryPoint(arguments: Seq[String],
@@ -125,7 +181,10 @@ case class LogTaskStart(task: Task, time: DateTime = DateTime.now, context: Thre
 
 case class LogTaskEnd(task: Task, res: Option[TaskResult], time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogEnd {
   override def toString = {
-    super.toString + s": task end: $task"
+    res match {
+      case None => super.toString + s": task end: '$task' without result"
+      case Some(r) => super.toString + s": task end: '$task' with result '$r'"
+    }
   }
 }
 

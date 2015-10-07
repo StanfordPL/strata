@@ -21,9 +21,7 @@ object Statistics {
     val state = State(globalOptions)
 
     // clear console
-    clearConsole()
     printStats(state.getLogMessages, getStats(state))
-
   }
 
   def clearConsole(): Unit = {
@@ -104,6 +102,7 @@ object Statistics {
       res.toString()
     }
 
+    clearConsole()
     val header =
       " ____  ____  __ _   __   __    __ \n" +
         "(    \\(  __)(  ( \\ / _\\ (  )  (  )\n" +

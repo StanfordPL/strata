@@ -15,6 +15,9 @@ import scala.io.Source
 object Denali {
   def main(args: Array[String]) {
 
+//    Log.test()
+//    return
+
     implicit val InstructionRead: scopt.Read[Instruction] = scopt.Read.reads(x => Instruction(x))
 
     val shortDescription = "Automatic inference of a formal specification of the x86_64 instruction set"
@@ -34,7 +37,7 @@ object Denali {
     }
     def normalUpdateGlobal(workdir: Option[File], verbose: Option[Boolean], keepTmpDirs: Option[Boolean], c: GlobalOptions): GlobalOptions = {
       if (workdir.isDefined) {
-        c.copy(workdir = workdir.get)
+        c.copy(workdirPath = workdir.get.toString)
       } else if (verbose.isDefined) {
         c.copy(verbose = verbose.get)
       } else if (keepTmpDirs.isDefined) {
@@ -53,7 +56,7 @@ object Denali {
           addGlobalOptions(this, "init",
             (workdir: Option[File], verbose: Option[Boolean], keepTmpDirs: Option[Boolean], c: InitOptions) => {
               if (workdir.isDefined) {
-                c.copy(globalOptions = c.globalOptions.copy(workdir = workdir.get))
+                c.copy(globalOptions = c.globalOptions.copy(workdirPath = workdir.get.toString))
               } else if (verbose.isDefined) {
                 c.copy(globalOptions = c.globalOptions.copy(verbose = verbose.get))
               } else if (keepTmpDirs.isDefined) {
@@ -214,7 +217,9 @@ object Denali {
 /**
  * Command line argument class.
  */
-case class GlobalOptions(workdir: File = new File(s"${System.getProperty("user.home")}/dev/output-denali"),
-                         verbose: Boolean = false, keepTmpDirs: Boolean = false)
+case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home")}/dev/output-denali",
+                         verbose: Boolean = false, keepTmpDirs: Boolean = false) {
+  val workdir = new File(workdirPath)
+}
 
 case class InitOptions(globalOptions: GlobalOptions)
