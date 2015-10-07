@@ -17,9 +17,14 @@ class Driver(val globalOptions: GlobalOptions) {
 
   val state = State(globalOptions)
 
-  def run(args: Array[String]): Unit = {
+  def run(args: Array[String], continue: Boolean = false): Unit = {
     // initialize
-    Initialize.run(args, InitOptions(globalOptions))
+    if (!continue) {
+      Initialize.run(args, InitOptions(globalOptions))
+    } else {
+      if (!state.exists) IO.error("workdir does not exist, cannot continue")
+      state.appendLog(LogEntryPoint(args))
+    }
 
     // TODO better value
     val nThreads = Runtime.getRuntime.availableProcessors() / 2

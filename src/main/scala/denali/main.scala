@@ -92,6 +92,23 @@ object Denali {
           }
         }),
 
+      ("continue", "Continue an already running run of denali",
+        (localArgs: Array[String], helpStr: String) => {
+          val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+            head(shortDescription)
+            note(helpStr)
+
+            addGlobalOptions(this, "continue", normalUpdateGlobal)
+          }
+          parser.parse(localArgs, GlobalOptions()) match {
+            case Some(c) =>
+              Driver(c).run(args, continue=true)
+            case None =>
+              // arguments are bad, error message will have been displayed
+              sys.exit(1)
+          }
+        }),
+
       ("stats", "Gather statistics for the working directory (which may still be running)",
         (localArgs: Array[String], helpStr: String) => {
           val parser = new scopt.OptionParser[GlobalOptions]("denali") {
