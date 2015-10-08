@@ -46,6 +46,10 @@ object Initialize {
     IO.safeSubcommand(Vector("stoke/bin/stoke", "testcase", "--out", state.getTestcasePath,
       "--target", "resources/empty.s", "--max_testcases", 1024,
       "--def_in", "{ }", "--live_out", "{ }"))
+    IO.safeSubcommand(Vector("stoke/bin/specgen", "augment_tests",
+      "--testcases", state.getTestcasePath,
+      "--out", state.getTestcasePath
+    ))
 
     IO.info("collecting basic information for all instructions ...")
     val config = State(options.globalOptions)

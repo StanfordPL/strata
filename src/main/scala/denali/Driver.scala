@@ -63,8 +63,9 @@ class Driver(val globalOptions: GlobalOptions) {
 
     // main loop
     while (tasksRunning > 0) {
-      val task = threadPool.take()
-      finishTask(taskMap(task), task)
+      val future = threadPool.take()
+      finishTask(taskMap(future), future)
+      taskMap.remove(future)
       tasksRunning -= 1
 
       // start new tasks
