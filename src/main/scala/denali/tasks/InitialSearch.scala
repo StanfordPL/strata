@@ -7,6 +7,8 @@ import denali.util.IO
 import org.apache.commons.io.FileUtils
 import denali.util.ColoredOutput._
 
+import scala.sys.ShutdownHookThread
+
 /**
  * Perform an initial search for a given instruction.
  */
@@ -22,14 +24,15 @@ object InitialSearch {
     // set up tmp dir
     val tmpDir = new File(s"${state.getTmpDir}/${ThreadContext.self.fileNameSafe}")
     tmpDir.mkdir()
+    var hook: Option[ShutdownHookThread] = None
     if (!globalOptions.keepTmpDirs) {
-      sys.addShutdownHook {
+      hook = Some(sys.addShutdownHook {
         try {
           FileUtils.deleteDirectory(tmpDir)
         } catch {
           case _: Throwable =>
         }
-      }
+      })
     }
 
     try {
@@ -86,6 +89,10 @@ object InitialSearch {
       // tear down tmp dir
       if (!globalOptions.keepTmpDirs) {
         FileUtils.deleteDirectory(tmpDir)
+        hook match {
+          case None =>
+          case Some(h) => h.remove()
+        }
       }
     }
   }

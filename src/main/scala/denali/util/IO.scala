@@ -32,10 +32,11 @@ object IO {
     )
     val cwd = if (workingDirectory == null) getProjectBase else workingDirectory
     val process = Process(cmd map (x => x.toString), cwd).run(logger)
-    sys.addShutdownHook {
+    val hook = sys.addShutdownHook {
       process.destroy()
     }
     val status = process.exitValue()
+    hook.remove()
     if (res.endsWith("\n")) {
       res = res.substring(0, res.length - 1)
     }

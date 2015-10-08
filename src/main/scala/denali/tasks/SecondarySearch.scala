@@ -7,6 +7,8 @@ import denali.util.ColoredOutput._
 import denali.util.IO
 import org.apache.commons.io.FileUtils
 
+import scala.sys.ShutdownHookThread
+
 /**
  * Perform an secondary search for a given instruction.
  */
@@ -22,14 +24,15 @@ object SecondarySearch {
     // set up tmp dir
     val tmpDir = new File(s"${state.getTmpDir}/${ThreadContext.self.fileNameSafe}")
     tmpDir.mkdir()
+    var hook: Option[ShutdownHookThread] = None
     if (!globalOptions.keepTmpDirs) {
-      sys.addShutdownHook {
+      hook = Some(sys.addShutdownHook {
         try {
           FileUtils.deleteDirectory(tmpDir)
         } catch {
           case _: Throwable =>
         }
-      }
+      })
     }
 
     try {
@@ -88,6 +91,10 @@ object SecondarySearch {
       // tear down tmp dir
       if (!globalOptions.keepTmpDirs) {
         FileUtils.deleteDirectory(tmpDir)
+        hook match {
+          case None =>
+          case Some(h) => h.remove()
+        }
       }
     }
   }
