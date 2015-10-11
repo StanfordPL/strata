@@ -94,7 +94,7 @@ object SecondarySearch {
               IO.runQuiet(cmd, workingDirectory = tmpDir)
             }
 
-            Stoke.readStokeVerifyOutput(new File(s"$tmpDir/search.json")) match {
+            Stoke.readStokeVerifyOutput(new File(s"$tmpDir/verify.json")) match {
               case None =>
                 state.appendLog(LogError(s"no result for stoke verify of $instr"))
                 IO.info("stoke verify failed".red)
