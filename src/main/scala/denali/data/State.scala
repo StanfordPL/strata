@@ -195,6 +195,25 @@ class State(val globalOptions: GlobalOptions) {
     assert(false)
     null
   }
+  /** Get all result files. */
+  def getResultFiles(instruction: Instruction): Seq[File] = {
+    val resDir = getInstructionResultDir(instruction)
+    if (!resDir.exists()) {
+      return Nil
+    }
+    val res = ListBuffer[File]()
+    var i = 0
+    while (true) {
+      val file = new File(f"$resDir/result-$i%05d.s")
+      if (!file.exists()) {
+        return res.toList
+      }
+      res += file
+      i += 1
+    }
+    assert(false)
+    null
+  }
 
   def getInstructionResultDir(instruction: Instruction): File = {
     new File(s"${globalOptions.workdir}/instructions/$instruction/results")

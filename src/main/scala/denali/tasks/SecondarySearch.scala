@@ -59,8 +59,7 @@ object SecondarySearch {
       } else {
         IO.runQuiet(cmd, workingDirectory = tmpDir)
       }
-      val result = Stoke.readStokeSearchOutput(new File(s"$tmpDir/search.json"))
-      result match {
+      Stoke.readStokeSearchOutput(new File(s"$tmpDir/search.json")) match {
         case None =>
           state.appendLog(LogError(s"no result for initial search of $instr"))
           IO.info("stoke failed".red)
@@ -75,9 +74,40 @@ object SecondarySearch {
           state.writeMetaOfInstr(instr, newMeta)
 
           if (res.success && res.verified) {
-            // copy result file
+
             val resFile = new File(s"$tmpDir/result.s")
-            IO.copyFile(resFile, state.getFreshResultName(instr))
+            val firstRes = state.getResultFiles(instr).head
+            val newResultFileName = state.getFreshResultName(instr)
+
+            // verify against first program
+            val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "debug", "verify",
+              "--config", s"${IO.getProjectBase}/resources/conf-files/formal.conf",
+              "--target", resFile,
+              "--rewrite", firstRes,
+              "--def_in", meta.def_in,
+              "--live_out", meta.live_out,
+              "--functions", s"$workdir/functions",
+              "--machine_output", "verify.json")
+            if (globalOptions.verbose) {
+              IO.runPrint(cmd, workingDirectory = tmpDir)
+            } else {
+              IO.runQuiet(cmd, workingDirectory = tmpDir)
+            }
+
+            Stoke.readStokeVerifyOutput(new File(s"$tmpDir/search.json")) match {
+              case None =>
+                state.appendLog(LogError(s"no result for stoke verify of $instr"))
+                IO.info("stoke verify failed".red)
+              case Some(verifyRes) if verifyRes.hasError =>
+                val message = s"stoke verify errored with ${verifyRes.error} for $instr"
+                state.appendLog(LogError(message))
+                IO.info(message.red)
+              case Some(verifyRes) =>
+                state.appendLog(LogVerifyResult(instr, verifyRes))
+            }
+
+            // copy result file
+            IO.copyFile(resFile, newResultFileName)
 
             SecondarySearchSuccess(task)
           } else {

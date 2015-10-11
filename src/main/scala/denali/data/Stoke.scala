@@ -20,6 +20,16 @@ object Stoke {
       case _: Throwable => None
     }
   }
+
+  /** Parse the machine-readable output of `stoke search`. */
+  def readStokeVerifyOutput(machineOutput: File): Option[StokeVerifyOutput] = {
+    try {
+      implicit val formats = DefaultFormats
+      Some(parse(IO.readFile(machineOutput)).extract[StokeVerifyOutput])
+    } catch {
+      case _: Throwable => None
+    }
+  }
 }
 
 case class StokeSearchOutput(
@@ -40,3 +50,12 @@ case class StokeSearchStatistics(
                                   total_search_time: Double,
                                   total_time: Double
                                   )
+
+case class StokeVerifyOutput(
+                              verified: Boolean,
+                              counter_examples_available: Boolean,
+                              counterexample: String,
+                              error: String
+                              ) {
+  def hasError = error != ""
+}

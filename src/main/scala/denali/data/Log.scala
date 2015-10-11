@@ -193,3 +193,18 @@ case class LogError(msg: String, time: DateTime = DateTime.now(), context: Threa
     super.toString + s": error: $msg"
   }
 }
+
+case class LogVerifyResult(instr: Instruction,
+                           verifyResult: StokeVerifyOutput,
+                           time: DateTime = DateTime.now(),
+                           context: ThreadContext = ThreadContext.self) extends LogMessage {
+  override def toString = {
+    assert(!verifyResult.hasError)
+    (verifyResult.verified, verifyResult.counter_examples_available) match {
+      case (true, true) => assert(false); ""
+      case (true, false) => super.toString + s": verification for $instr: verified"
+      case (false, false) => super.toString + s": verification for $instr: unknown"
+      case (false, true) => super.toString + s": verification for $instr: counterexample"
+    }
+  }
+}
