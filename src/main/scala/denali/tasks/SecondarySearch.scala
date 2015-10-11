@@ -84,8 +84,8 @@ object SecondarySearch {
               "--config", s"${IO.getProjectBase}/resources/conf-files/formal.conf",
               "--target", resFile,
               "--rewrite", firstRes,
-              "--def_in", meta.def_in,
-              "--live_out", meta.live_out,
+              "--def_in", meta.def_in_formal,
+              "--live_out", meta.live_out_formal,
               "--functions", s"$workdir/functions",
               "--machine_output", "verify.json")
             if (globalOptions.verbose) {
