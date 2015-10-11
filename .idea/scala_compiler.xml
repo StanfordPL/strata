@@ -10,5 +10,6 @@
         <parameter value="–Xfatal-warnings" />
       </parameters>
     </profile>
+    <profile name="SBT 2" modules="project" />
   </component>
 </project>

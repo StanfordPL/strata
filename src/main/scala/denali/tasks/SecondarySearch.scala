@@ -67,23 +67,20 @@ object SecondarySearch {
           SecondarySearchError(task)
         case Some(res) =>
           val meta = state.getMetaOfInstr(instr)
+
+          // update meta
+          val more = SecondarySearchMeta(if (res.success && res.verified) 1 else 0,
+            budget, res.statistics.total_iterations, base.length)
+          val newMeta = meta.copy(secondary_searches = meta.secondary_searches ++ Vector(more))
+          state.writeMetaOfInstr(instr, newMeta)
+
           if (res.success && res.verified) {
             // copy result file
             val resFile = new File(s"$tmpDir/result.s")
             IO.copyFile(resFile, state.getFreshResultName(instr))
 
-            // update meta
-            val more = InitialSearchMeta(success = true, budget, res.statistics.total_iterations, base.length)
-            val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more))
-            state.writeMetaOfInstr(instr, newMeta)
-
             SecondarySearchSuccess(task)
           } else {
-            // update meta
-            val more = SecondarySearchMeta(1, budget, res.statistics.total_iterations, base.length)
-            val newMeta = meta.copy(secondary_searches = meta.secondary_searches ++ Vector(more))
-            state.writeMetaOfInstr(instr, newMeta)
-
             SecondarySearchTimeout(task)
           }
       }
