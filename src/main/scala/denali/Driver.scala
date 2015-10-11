@@ -131,12 +131,11 @@ class Driver(val globalOptions: GlobalOptions) {
         case InitialSearchError(_) =>
         case SecondarySearchError(_) =>
         case SecondarySearchSuccess(task) =>
-          IO.info(s"secondary search success for ${task.instruction}")
           val meta = state.getMetaOfInstr(task.instruction)
           val n = meta.secondary_searches.map(s => s.n_found).sum + 1 // +1 for initial search
+          IO.info(s"secondary search success #$n for ${task.instruction}")
           // stop after we found enough
           if (n >= 100) {
-            IO.info(s"found $n programs for ${task.instruction}")
             state.removeInstructionToFile(taskRes.instruction, InstructionFile.PartialSuccess)
             state.addInstructionToFile(taskRes.instruction, InstructionFile.Success)
           }
