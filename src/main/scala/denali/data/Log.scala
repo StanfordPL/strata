@@ -1,5 +1,6 @@
 package denali.data
 
+import java.io.File
 import java.lang.management.ManagementFactory
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
@@ -34,10 +35,11 @@ object Log {
   def serializeMessage(logMessage: LogMessage): String = {
     implicit val formats = Serialization.formats(FullTypeHints(List(
       classOf[Task],
-      classOf[TaskResult]
+      classOf[TaskResult],
+      classOf[LogMessage]
     ))) ++ Vector(DateTimeSerializer)
     val serialized = write(logMessage)
-    logMessage.getClass.getSimpleName + ";" + new String(Base64.encode(serialized.getBytes))
+    new String(Base64.encode(serialized.getBytes))
   }
 
   def deserializeMessage(s: String): LogMessage = {
@@ -45,22 +47,11 @@ object Log {
       Vector(
         new CustomSerializer[Task](serializerImpl),
         new CustomSerializer[TaskResult](serializerImpl),
+        new CustomSerializer[LogMessage](serializerImpl),
         DateTimeSerializer
       )
-    val split = s.split(";")
-    assert(split.length == 2)
-    val decoded = Base64.base64Decode(split(1))
-    split(0) match {
-      case "LogInitStart" => parse(decoded).extract[LogInitStart]
-      case "LogInitEnd" => parse(decoded).extract[LogInitEnd]
-      case "LogEntryPoint" => parse(decoded).extract[LogEntryPoint]
-      case "LogTaskStart" => parse(decoded).extract[LogTaskStart]
-      case "LogTaskEnd" => parse(decoded).extract[LogTaskEnd]
-      case "LogError" => parse(decoded).extract[LogError]
-      case _ =>
-        assert(assertion = false, s"Unknown message type: ${split(0)}")
-        sys.exit(1)
-    }
+    val decoded = Base64.base64Decode(s)
+    parse(decoded).extract[LogMessage]
   }
 
   def serializerImpl[A]: (Formats) => (PartialFunction[json4s.JValue, A], PartialFunction[Any, JsonAST.JString]) = {
@@ -196,6 +187,8 @@ case class LogError(msg: String, time: DateTime = DateTime.now(), context: Threa
 
 case class LogVerifyResult(instr: Instruction,
                            verifyResult: StokeVerifyOutput,
+                           program1: File,
+                           program2: File,
                            time: DateTime = DateTime.now(),
                            context: ThreadContext = ThreadContext.self) extends LogMessage {
   override def toString = {

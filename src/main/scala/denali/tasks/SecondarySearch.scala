@@ -103,7 +103,7 @@ object SecondarySearch {
                 state.appendLog(LogError(message))
                 IO.info(message.red)
               case Some(verifyRes) =>
-                state.appendLog(LogVerifyResult(instr, verifyRes))
+                state.appendLog(LogVerifyResult(instr, verifyRes, newResultFileName, firstRes))
             }
 
             // copy result file

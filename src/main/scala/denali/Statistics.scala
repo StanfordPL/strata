@@ -16,6 +16,31 @@ object Statistics {
 
   val CLEAR_CONSOLE: String = "\u001b[H\u001b[2J"
 
+  /** Some adhoc statistics. */
+  def tmp(globalOptions: GlobalOptions): Unit = {
+    val state = State(globalOptions)
+
+    val messages = state.getLogMessages
+    val verifyMessage = messages.collect {
+      case l: LogVerifyResult => l
+    }
+
+    println(s"Total messages: ${messages.length}")
+    println("Verification results")
+    println(s"  verified:       ${verifyMessage.count(m => m.verifyResult.verified)}")
+    println(s"  unknown:        ${verifyMessage.count(m => !m.verifyResult.verified && !m.verifyResult.counter_examples_available)}")
+    println(s"  counterexample: ${verifyMessage.count(m => !m.verifyResult.verified && m.verifyResult.counter_examples_available)}")
+
+    val counterExamples = verifyMessage.collect {
+      case l: LogVerifyResult if l.verifyResult.counter_examples_available =>
+        l.instr
+    }
+    val instrs = counterExamples.groupBy(_.toString).map(x => (x._1, x._2.length))
+    for ((k, i) <- instrs) {
+      println(s"$k - $i")
+    }
+  }
+
   /** Show statistics and update them periodically. */
   def run(globalOptions: GlobalOptions): Unit = {
     val state = State(globalOptions)
