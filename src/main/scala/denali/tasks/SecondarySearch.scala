@@ -103,6 +103,9 @@ object SecondarySearch {
                 state.appendLog(LogError(message))
                 IO.info(message.red)
               case Some(verifyRes) =>
+                if (verifyRes.counter_examples_available) {
+                  IO.info(s"counter example avialable for $instr: $newResultFileName".red)
+                }
                 state.appendLog(LogVerifyResult(instr, verifyRes, newResultFileName, firstRes))
             }
 
