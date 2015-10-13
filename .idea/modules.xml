@@ -4,8 +4,6 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/denali.iml" filepath="$PROJECT_DIR$/.idea/modules/denali.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/denali-build.iml" filepath="$PROJECT_DIR$/.idea/modules/denali-build.iml" />
-      <module fileurl="file://$PROJECT_DIR$/project/.idea/modules/project.iml" filepath="$PROJECT_DIR$/project/.idea/modules/project.iml" />
-      <module fileurl="file://$PROJECT_DIR$/project/.idea/modules/project-build.iml" filepath="$PROJECT_DIR$/project/.idea/modules/project-build.iml" />
     </modules>
   </component>
 </project>
