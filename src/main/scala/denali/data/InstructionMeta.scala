@@ -1,5 +1,7 @@
 package denali.data
 
+import java.io.File
+
 /**
  * Meta information about a goal instruction
  */
@@ -8,7 +10,8 @@ case class InstructionMeta(def_in: String,
                            def_in_formal: String,
                            live_out_formal: String,
                            initial_searches: Seq[InitialSearchMeta],
-                           secondary_searches: Seq[SecondarySearchMeta]
+                           secondary_searches: Seq[SecondarySearchMeta],
+                           equivalent_programs: Seq[File]
                             )
 
 case class InitialSearchMeta(success: Boolean,

@@ -76,37 +76,39 @@ object SecondarySearch {
           if (res.success && res.verified) {
 
             val resFile = new File(s"$tmpDir/result.s")
-            val firstRes = state.getResultFiles(instr).head
             val newResultFileName = state.getFreshResultName(instr)
 
             // verify against first program
-            val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "debug", "verify",
-              "--config", s"${IO.getProjectBase}/resources/conf-files/formal.conf",
-              "--target", resFile,
-              "--rewrite", firstRes,
-              "--def_in", meta.def_in_formal,
-              "--live_out", meta.live_out_formal,
-              "--functions", s"$workdir/functions",
-              "--machine_output", "verify.json")
-            if (globalOptions.verbose) {
-              IO.runPrint(cmd, workingDirectory = tmpDir)
-            } else {
-              IO.runQuiet(cmd, workingDirectory = tmpDir)
-            }
+            for (previousRes <- state.getResultFiles(instr)) {
+              val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "debug", "verify",
+                "--config", s"${IO.getProjectBase}/resources/conf-files/formal.conf",
+                "--target", resFile,
+                "--rewrite", previousRes,
+                "--def_in", meta.def_in_formal,
+                "--live_out", meta.live_out_formal,
+                "--strata_path", state.getCircuitDir,
+                "--functions", s"$workdir/functions",
+                "--machine_output", "verify.json")
+              if (globalOptions.verbose) {
+                IO.runPrint(cmd, workingDirectory = tmpDir)
+              } else {
+                IO.runQuiet(cmd, workingDirectory = tmpDir)
+              }
 
-            Stoke.readStokeVerifyOutput(new File(s"$tmpDir/verify.json")) match {
-              case None =>
-                state.appendLog(LogError(s"no result for stoke verify of $instr"))
-                IO.info("stoke verify failed".red)
-              case Some(verifyRes) if verifyRes.hasError =>
-                val message = s"stoke verify errored with ${verifyRes.error} for $instr"
-                state.appendLog(LogError(message))
-                IO.info(message.red)
-              case Some(verifyRes) =>
-                if (verifyRes.counter_examples_available) {
-                  IO.info(s"counter example avialable for $instr: $newResultFileName".red)
-                }
-                state.appendLog(LogVerifyResult(instr, verifyRes, newResultFileName, firstRes))
+              Stoke.readStokeVerifyOutput(new File(s"$tmpDir/verify.json")) match {
+                case None =>
+                  state.appendLog(LogError(s"no result for stoke verify of $instr"))
+                  IO.info("stoke verify failed".red)
+                case Some(verifyRes) if verifyRes.hasError =>
+                  val message = s"stoke verify errored with ${verifyRes.error} for $instr"
+                  state.appendLog(LogError(message))
+                  IO.info(message.red)
+                case Some(verifyRes) =>
+                  if (verifyRes.counter_examples_available) {
+                    IO.info(s"counter example avialable for $instr: $newResultFileName".red)
+                  }
+                  state.appendLog(LogVerifyResult(instr, verifyRes, newResultFileName, previousRes))
+              }
             }
 
             // copy result file

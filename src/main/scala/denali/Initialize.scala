@@ -58,6 +58,7 @@ object Initialize {
     }
 
     state.getTmpDir.mkdirs()
+    state.getCircuitDir.mkdirs()
 
     state.appendLog(LogInitEnd())
     IO.info("initialization complete")

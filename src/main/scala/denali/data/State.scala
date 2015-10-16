@@ -173,6 +173,11 @@ class State(val globalOptions: GlobalOptions) {
     new File(s"${globalOptions.workdir}/${State.PATH_TMP}")
   }
 
+  /** Get the path where circuits are stored. */
+  def getCircuitDir: File = {
+    new File(s"${globalOptions.workdir}/${State.PATH_CIRCUITS}")
+  }
+
   /** Get the path to the target assembly file for a goal instruction. */
   def getTargetOfInstr(instruction: Instruction) = {
     s"${globalOptions.workdir}/instructions/$instruction/$instruction.s"
@@ -270,6 +275,7 @@ object State {
 
   private val PATH_INFO = "information"
   private val PATH_TMP = "tmp"
+  private val PATH_CIRCUITS = "circuits"
   private val PATH_GOAL = s"$PATH_INFO/remaining_goal.instrs"
   private val PATH_WORKLIST = s"$PATH_INFO/worklist.instrs"
   private val PATH_SHUTDOWN = s"$PATH_INFO/signal.shutdown"
