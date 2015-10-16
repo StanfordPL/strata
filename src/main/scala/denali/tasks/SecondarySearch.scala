@@ -102,12 +102,16 @@ object SecondarySearch {
                 case Some(verifyRes) if verifyRes.hasError =>
                   val message = s"stoke verify errored with ${verifyRes.error} for $instr"
                   state.appendLog(LogError(message))
-                  IO.info(message.red)
+                  if (!verifyRes.error.contains("Instruction not supported")) {
+                    if (!verifyRes.error.contains("unsupported")) {
+                      IO.info(message.red)
+                    }
+                  }
                 case Some(verifyRes) =>
                   if (verifyRes.counter_examples_available) {
                     IO.info(s"counter example avialable for $instr: $newResultFileName".red)
                   }
-                  state.appendLog(LogVerifyResult(instr, verifyRes, newResultFileName, previousRes))
+                  state.appendLog(LogVerifyResult(instr, verifyRes, newResultFileName.toString, previousRes.toString))
               }
             }
 

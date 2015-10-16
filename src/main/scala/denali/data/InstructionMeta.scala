@@ -11,7 +11,7 @@ case class InstructionMeta(def_in: String,
                            live_out_formal: String,
                            initial_searches: Seq[InitialSearchMeta],
                            secondary_searches: Seq[SecondarySearchMeta],
-                           equivalent_programs: Seq[File]
+                           equivalent_programs: Seq[String]
                             )
 
 case class InitialSearchMeta(success: Boolean,

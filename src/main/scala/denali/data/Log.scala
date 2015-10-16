@@ -51,6 +51,7 @@ object Log {
         DateTimeSerializer
       )
     val decoded = Base64.base64Decode(s)
+    println(decoded)
     parse(decoded).extract[LogMessage]
   }
 
@@ -187,8 +188,8 @@ case class LogError(msg: String, time: DateTime = DateTime.now(), context: Threa
 
 case class LogVerifyResult(instr: Instruction,
                            verifyResult: StokeVerifyOutput,
-                           program1: File,
-                           program2: File,
+                           program1: String,
+                           program2: String,
                            time: DateTime = DateTime.now(),
                            context: ThreadContext = ThreadContext.self) extends LogMessage {
   override def toString = {
