@@ -1,5 +1,6 @@
 package denali
 
+import java.io.File
 import java.util.concurrent._
 
 import denali.data._
@@ -119,12 +120,13 @@ class Driver(val globalOptions: GlobalOptions) {
 
   /** Handle the result of a task. */
   private def handleTaskResult(taskRes: TaskResult): Unit = {
+    val instr = taskRes.instruction
     state.lockedInformation(() => {
-      state.removeInstructionToFile(taskRes.instruction, InstructionFile.Worklist)
+      state.removeInstructionToFile(instr, InstructionFile.Worklist)
       taskRes match {
         case InitialSearchSuccess(task) =>
-          state.removeInstructionToFile(taskRes.instruction, InstructionFile.RemainingGoal)
-          state.addInstructionToFile(taskRes.instruction, InstructionFile.PartialSuccess)
+          state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
+          state.addInstructionToFile(instr, InstructionFile.PartialSuccess)
           IO.info(s"initial search success for ${task.instruction}")
         case InitialSearchTimeout(task) =>
           IO.info(s"initial search timeout for ${task.instruction}")
@@ -136,13 +138,16 @@ class Driver(val globalOptions: GlobalOptions) {
           IO.info(s"secondary search success #$n for ${task.instruction}")
           // stop after we found enough
           if (n >= 30) {
-            state.removeInstructionToFile(taskRes.instruction, InstructionFile.PartialSuccess)
-            state.addInstructionToFile(taskRes.instruction, InstructionFile.Success)
+            // copy a file to the circuits directory
+            // TODO pick a good program, rather than just any program
+            IO.copyFile(state.getResultFiles(instr).head, new File(s"${state.getCircuitDir}/$instr.s"))
+            state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
+            state.addInstructionToFile(instr, InstructionFile.Success)
           }
         case SecondarySearchTimeout(task) =>
           // no more instructions found
-          state.removeInstructionToFile(taskRes.instruction, InstructionFile.PartialSuccess)
-          state.addInstructionToFile(taskRes.instruction, InstructionFile.Success)
+          state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
+          state.addInstructionToFile(instr, InstructionFile.Success)
           IO.info(s"secondary search timeout for ${task.instruction}")
       }
     })
