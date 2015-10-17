@@ -213,21 +213,27 @@ object Denali {
       })
     )
 
-    if (args(0) == "-h" || args(0) == "--help") {
+    if (args.length > 0) {
+      if (args(0) == "-h" || args(0) == "--help") {
       showHelp(shortDescription, commands)
       return
-    }
-
-    for (c <- commands) {
-      if (args(0) == c._1) {
-        c._3(args.slice(1, args.length), c._2)
-        return
       }
-    }
 
-    println(s"Command '${args(0)}' not found.\n")
-    showHelp(shortDescription, commands)
-    sys.exit(1)
+      for (c <- commands) {
+        if (args(0) == c._1) {
+          c._3(args.slice(1, args.length), c._2)
+          return
+        }
+      }
+
+      println(s"Command '${args(0)}' not found.\n")
+      showHelp(shortDescription, commands)
+      sys.exit(1)
+    } else {
+      println(s"No command given.\n")
+      showHelp(shortDescription, commands)
+      sys.exit(1)
+    }
   }
 
   def showHelp(shortDescription: String, commands: List[(String, String, (Array[String], String) => Unit)]): Unit = {
