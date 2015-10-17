@@ -1,17 +1,15 @@
 package denali.util
 
-import denali.util.TimingKind.TimingKind
-
 /**
  * A class to collect timing information
  */
 case class TimingBuilder() {
 
-  private val timings = collection.mutable.Map[TimingKind, Long]()
+  private val timings = collection.mutable.Map[String, Long]()
   private val start = Timing.start
 
   /** Time a task. */
-  def timeOperation[A](kind: TimingKind)(block: => A): A = {
+  def timeOperation[A](kind: String)(block: => A): A = {
     val t0 = System.nanoTime()
     val result = block // call by name
     val t1 = System.nanoTime()
@@ -20,7 +18,7 @@ case class TimingBuilder() {
   }
 
   /** Manually insert a timing. */
-  def insert(kind: TimingKind, time: Long): Unit = {
+  def insert(kind: String, time: Long): Unit = {
     if (timings.contains(kind)) {
       timings(kind) += time
     } else {
@@ -29,21 +27,26 @@ case class TimingBuilder() {
   }
 
   /** Get the result. */
-  def result: Timing.TimingMap = {
+  def result: TimingInfo = {
     assert(!timings.contains(TimingKind.Total))
     insert(TimingKind.Total, start.stop)
-    timings.toMap
+    TimingInfo(timings.toMap)
   }
 }
 
+/** A wrapper for more convenient access. */
+case class TimingInfo(data: Map[String, Long]) {
+
+}
+
 object TimingKind extends Enumeration {
-  type TimingKind = Value
-  val Search, Verification, Total = Value
+  type TimingKind = String
+  val Search = "search"
+  val Verification = "verification"
+  val Total = "total"
 }
 
 object Timing {
-
-  type TimingMap = Map[TimingKind, Long]
 
   /** Time an operation. */
   def timeOperation[A](block: => A): (A, Long) = {

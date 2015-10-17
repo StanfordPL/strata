@@ -15,8 +15,8 @@ import scala.io.Source
 object Denali {
   def main(args: Array[String]) {
 
-//    Log.test()
-//    return
+    Log.test()
+    return
 
     implicit val InstructionRead: scopt.Read[Instruction] = scopt.Read.reads(x => Instruction(x))
 

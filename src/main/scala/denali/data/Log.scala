@@ -7,8 +7,8 @@ import java.util.{Calendar, Date}
 
 import com.sun.xml.internal.messaging.saaj.util.Base64
 import denali.GlobalOptions
-import denali.tasks.{InitialSearchTask, TaskResult, Task}
-import denali.util.IO
+import denali.tasks.{InitialSearchSuccess, InitialSearchTask, TaskResult, Task}
+import denali.util.{TimingInfo, IO}
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.json4s
@@ -65,25 +65,9 @@ object Log {
   }
 
   def test() = {
-    val s = {
-      implicit val formats = Serialization.formats(FullTypeHints(List(
-        classOf[Top], classOf[Top2], classOf[Task]
-      ))) ++ Vector()
-      write(A(1))
-      write(B(GlobalOptions(), Instruction("addb_r8_r8"), 100))
-      write(InitialSearchTask(GlobalOptions(), Instruction("addb_r8_r8"), 100))
-    }
-    println(s)
-    val res = {
-      implicit val formats = org.json4s.DefaultFormats ++
-        Vector(
-          new CustomSerializer[Top](serializerImpl),
-          new CustomSerializer[Top2](serializerImpl),
-          new CustomSerializer[Task](serializerImpl)
-        )
-      parse(s).extract[Task]
-    }
-    println(res)
+    val task = InitialSearchTask(GlobalOptions(), Instruction("xorb_r8_r8"), 100)
+    val res = InitialSearchSuccess(task, TimingInfo(Map("a" -> 2)))
+    serializeMessage(LogTaskEnd(task, Some(res)))
   }
 }
 
