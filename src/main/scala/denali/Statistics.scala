@@ -239,16 +239,13 @@ object Statistics {
 
     clearConsole()
     val header =
-      " ____  ____  __ _   __   __    __ \n" +
-        "(    \\(  __)(  ( \\ / _\\ (  )  (  )\n" +
-        " ) D ( ) _) /    //    \\/ (_/\\ )( \n" +
-        "(____/(____)\\_)__)\\_/\\_/\\____/(__)"
+      " ____  ____  ____   __  ____  __  \n/ ___)(_  _)(  _ \\ / _\\(_  _)/ _\\ \n\\___ \\  )(   )   //    \\ )( /    \\\n(____/ (__) (__\\_)\\_/\\_/(__)\\_/\\_/"
     val headerLines = header.split("\n")
     val headerWidth = headerLines(0).length
     for ((line, i) <- headerLines.zipWithIndex) {
       print(" " * 12)
       print(line)
-      if (i == headerLines.length - 1) print(" denali v1.0")
+      if (i == headerLines.length - 1) print("   strata v1.0")
       println("")
     }
 
