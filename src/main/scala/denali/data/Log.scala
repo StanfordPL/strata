@@ -141,8 +141,6 @@ sealed trait LogMessage {
   }
 }
 
-trait LogStart extends LogMessage
-
 trait LogEnd extends LogMessage
 
 case class LogEntryPoint(arguments: Seq[String],
@@ -152,21 +150,9 @@ case class LogEntryPoint(arguments: Seq[String],
   }
 }
 
-case class LogInitStart(time: DateTime = DateTime.now, context: ThreadContext = ThreadContext.self) extends LogStart {
-  override def toString = {
-    super.toString + ": initialize start"
-  }
-}
-
 case class LogInitEnd(time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogEnd {
   override def toString = {
     super.toString + ": initialize end"
-  }
-}
-
-case class LogTaskStart(task: Task, time: DateTime = DateTime.now, context: ThreadContext = ThreadContext.self) extends LogStart {
-  override def toString = {
-    super.toString + s": task start: $task"
   }
 }
 

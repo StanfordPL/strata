@@ -222,20 +222,6 @@ object Statistics {
     val startMap = collection.mutable.Map[ThreadContext, DateTime]()
     import com.github.nscala_time.time.Imports._
     var cpuTime = new Duration(0)
-    for (m <- logMessages) {
-      m match {
-        case start: LogStart =>
-          assert(!startMap.contains(start.context))
-          startMap(start.context) = start.time
-        case end: LogEnd =>
-          assert(startMap.contains(end.context))
-          val startTime = startMap(end.context)
-          val duration = startTime to end.time
-          cpuTime += duration.duration
-          startMap.remove(end.context)
-        case _ =>
-      }
-    }
 
     val formatter = new PeriodFormatterBuilder()
       .appendDays()

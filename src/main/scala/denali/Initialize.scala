@@ -32,7 +32,6 @@ object Initialize {
     val state = State(options.globalOptions)
     state.getInfoPath.mkdirs()
     state.appendLog(LogEntryPoint(args))
-    state.appendLog(LogInitStart())
 
     IO.info("producing pseudo functions ...")
     val functionTemplates = s"${IO.getProjectBase}/resources/function-templates"

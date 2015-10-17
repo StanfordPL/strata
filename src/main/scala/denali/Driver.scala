@@ -80,7 +80,6 @@ class Driver(val globalOptions: GlobalOptions) {
   /** Execute a task. */
   private def runTask(task: Task): TaskResult = {
     task.runnerContext = ThreadContext.self
-    state.appendLog(LogTaskStart(task))
     task match {
       case t: InitialSearchTask =>
         InitialSearch.run(t)
