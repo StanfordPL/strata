@@ -8,6 +8,7 @@ import org.joda.time.DateTime
 import org.joda.time.format.{PeriodFormatterBuilder, PeriodFormat}
 
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.{Future, ExecutionContext}
 
 /**
  * A class to collect various statistics of the current run.
@@ -46,9 +47,11 @@ object Statistics {
     println(s"  unknown:        ${verifyMessage.count(m => !m.verifyResult.verified && !m.verifyResult.counter_examples_available)}")
     println(s"  counterexample: ${verifyMessage.count(m => !m.verifyResult.verified && m.verifyResult.counter_examples_available)}")
     println(s"  error:          ${errors.length}")
-    println(s"  error:          ${messages.collect({
-      case l: LogError => l
-    }).length}")
+    println(s"  error:          ${
+      messages.collect({
+        case l: LogError => l
+      }).length
+    }")
 
     val counterExamples = verifyMessage.collect {
       case l: LogVerifyResult if l.verifyResult.counter_examples_available =>
@@ -96,8 +99,58 @@ object Statistics {
   def run(globalOptions: GlobalOptions): Unit = {
     val state = State(globalOptions)
 
-    // clear console
-    printStats(state.getLogMessages, getStats(state))
+    sys.addShutdownHook {
+      sys.exit(0)
+    }
+
+    import ExecutionContext.Implicits.global
+    var messageFuture: Future[ExtendedStats] = Future {
+      getExtendedStats(state.getLogMessages)
+    }
+
+    // start without parsing the log
+    var extendedStats = ExtendedStats()
+    while (true) {
+      if (messageFuture.isCompleted) {
+        messageFuture.onSuccess({
+          case m => {
+            extendedStats = m
+            messageFuture = Future {
+              // do computation again in 4.5 seconds
+              Thread.sleep(4500)
+              getExtendedStats(state.getLogMessages)
+            }
+          }
+        })
+      }
+      printStats(getStats(state), extendedStats)
+      Thread.sleep(1000)
+    }
+  }
+
+  def getExtendedStats(messages: Seq[LogMessage]): ExtendedStats = {
+    if (messages.isEmpty) ExtendedStats()
+    else {
+      val errors = messages.collect({
+        case e: LogError => e
+      }).length
+      val failedInitial = messages.count({
+        case LogTaskEnd(t, Some(res: InitialSearchTimeout), _, _) => true
+        case _ => false
+      })
+      val successfulSecondary = messages.count({
+        case LogTaskEnd(t, Some(res: SecondarySearchSuccess), _, _) => true
+        case _ => false
+      })
+      ExtendedStats(
+        globalStartTime = IO.formatTime(messages.head.time),
+        errors = errors,
+        searchEvents = Vector(
+          ("failed initial searches", failedInitial),
+          ("successful secondary searches", successfulSecondary)
+        )
+      )
+    }
   }
 
   def clearConsole(): Unit = {
@@ -129,6 +182,12 @@ object Statistics {
                     delim: Int
                     )
 
+  case class ExtendedStats(
+                            globalStartTime: String = "n/a",
+                            errors: Int = 0,
+                            searchEvents: Seq[(Any, Any)] = Nil
+                            )
+
   case class Box(title: String, labelsAny: Seq[Any], dataAny: Seq[Any]) {
 
     val labels = labelsAny map (x => x.toString)
@@ -159,7 +218,7 @@ object Statistics {
     }
   }
 
-  def printStats(logMessages: Seq[LogMessage], stats: Stats): Unit = {
+  def printStats(stats: Stats, extendedStats: ExtendedStats): Unit = {
     val width = getConsoleWidth
     def horizontalLine(dividerDown: Seq[Int] = Nil, dividerUp: Seq[Int] = Nil): String = {
       val res = new StringBuilder()
@@ -207,7 +266,7 @@ object Statistics {
     var cur = 0.0
     for ((p, i) <- progress.zipWithIndex) {
       val char = if (i == progress.length - 1) "█" else "█"
-      print(p._3(char) * (cur + p._1.toDouble/ total * (width - 2) - cur.round.toInt).round.toInt)
+      print(p._3(char) * (cur + p._1.toDouble / total * (width - 2) - cur.round.toInt).round.toInt)
       cur += p._1.toDouble / total * (width - 2)
     }
     println(" │".gray)
@@ -216,7 +275,7 @@ object Statistics {
       f"${x._1}%4d (${x._1.toDouble * 100.0 / total}%5.2f %%) " + x._3("█")
     }))
 
-    val globalStartTime = if (logMessages.nonEmpty) IO.formatTime(logMessages.head.time) else "n/a"
+    val globalStartTime = extendedStats.globalStartTime
 
     // compute cpu time
     val startMap = collection.mutable.Map[ThreadContext, DateTime]()
@@ -234,10 +293,7 @@ object Statistics {
       .appendSuffix("s ")
       .toFormatter
 
-    val errors = logMessages.collect({
-      case e: LogError => e
-    })
-    val errorStr = if (errors.nonEmpty) errors.length.toString.red else "0"
+    val errorStr = if (extendedStats.errors > 0) extendedStats.errors.toString.red else "0"
     val basicBox = Box("Basic information",
       Vector("started at", "cpu time", "running threads", "number of errors"),
       Vector(globalStartTime, formatter.print(cpuTime.toPeriod), stats.nWorklist, errorStr))
@@ -247,27 +303,25 @@ object Statistics {
     println(horizontalLine(beginEnd ++ breaks, beginEnd).gray)
     print(out)
 
-    val failedInitial = logMessages.count({
-      case LogTaskEnd(t, Some(res: InitialSearchTimeout), _, _) => true
-      case _ => false
-    })
-    val successfulSecondary = logMessages.count({
-      case LogTaskEnd(t, Some(res: SecondarySearchSuccess), _, _) => true
-      case _ => false
-    })
-    val eventBox = Box("Search events",
-      Vector("failed initial searches", "successful secondary searches"),
-      Vector(failedInitial, successfulSecondary))
-    val (out2, breaks2) = printBoxesHorizontally(Vector(eventBox), width)
+    val lastBreaks = if (extendedStats.searchEvents.nonEmpty) {
+      val eventBox = Box("Search events",
+        extendedStats.searchEvents.map(_._1),
+        extendedStats.searchEvents.map(_._2))
+      val (out2, breaks2) = printBoxesHorizontally(Vector(eventBox), width)
 
-    println(horizontalLine(beginEnd ++ breaks2, beginEnd ++ breaks).gray)
-    print(out2)
-    println(horizontalLine(Nil, beginEnd ++ breaks2).gray)
+      println(horizontalLine(beginEnd ++ breaks2, beginEnd ++ breaks).gray)
+      print(out2)
+      breaks2
+    } else {
+      breaks
+    }
+
+    println(horizontalLine(Nil, beginEnd ++ lastBreaks).gray)
   }
 
   def printBoxesHorizontally(boxes: Vector[Box], width: Int): (String, Seq[Int]) = {
     val res = new StringBuilder()
-    val breaks=  new ListBuffer[Int]()
+    val breaks = new ListBuffer[Int]()
 
     val lines = boxes.map(x => x.lines).max
     for (i <- 0 to lines) {
@@ -275,7 +329,7 @@ object Statistics {
       res.append(" ")
       var cur = 0
       for (j <- 1 to boxes.length) {
-        val box = boxes(j-1)
+        val box = boxes(j - 1)
         if (j != 1) {
           res.append(" ")
           res.append("│".gray)
