@@ -51,7 +51,6 @@ object Log {
         DateTimeSerializer
       )
     val decoded = Base64.base64Decode(s)
-    println(decoded)
     parse(decoded).extract[LogMessage]
   }
 
