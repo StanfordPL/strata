@@ -38,8 +38,7 @@ object Log {
       classOf[TaskResult],
       classOf[LogMessage]
     ))) ++ Vector(DateTimeSerializer)
-    val serialized = write(logMessage)
-    new String(Base64.encode(serialized.getBytes))
+    write(logMessage)
   }
 
   def deserializeMessage(s: String): LogMessage = {
@@ -50,8 +49,7 @@ object Log {
         new CustomSerializer[LogMessage](serializerImpl),
         DateTimeSerializer
       )
-    val decoded = Base64.base64Decode(s)
-    parse(decoded).extract[LogMessage]
+    parse(s).extract[LogMessage]
   }
 
   def serializerImpl[A]: (Formats) => (PartialFunction[json4s.JValue, A], PartialFunction[Any, JsonAST.JString]) = {
