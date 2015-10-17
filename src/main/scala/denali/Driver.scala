@@ -120,19 +120,20 @@ class Driver(val globalOptions: GlobalOptions) {
 
   /** Handle the result of a task. */
   private def handleTaskResult(taskRes: TaskResult): Unit = {
+    val task = taskRes.task
     val instr = taskRes.instruction
     state.lockedInformation(() => {
       state.removeInstructionToFile(instr, InstructionFile.Worklist)
       taskRes match {
-        case InitialSearchSuccess(task) =>
+        case _: InitialSearchSuccess =>
           state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
           state.addInstructionToFile(instr, InstructionFile.PartialSuccess)
           IO.info(s"initial search success for ${task.instruction}")
-        case InitialSearchTimeout(task) =>
+        case _: InitialSearchTimeout =>
           IO.info(s"initial search timeout for ${task.instruction}")
-        case InitialSearchError(_) =>
-        case SecondarySearchError(_) =>
-        case SecondarySearchSuccess(task) =>
+        case _: InitialSearchError =>
+        case _: SecondarySearchError =>
+        case _: SecondarySearchSuccess =>
           val meta = state.getMetaOfInstr(task.instruction)
           val n = meta.secondary_searches.map(s => s.n_found).sum + 1 // +1 for initial search
           IO.info(s"secondary search success #$n for ${task.instruction}")
@@ -144,7 +145,7 @@ class Driver(val globalOptions: GlobalOptions) {
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
           }
-        case SecondarySearchTimeout(task) =>
+        case _: SecondarySearchTimeout =>
           // no more instructions found
           state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
           state.addInstructionToFile(instr, InstructionFile.Success)

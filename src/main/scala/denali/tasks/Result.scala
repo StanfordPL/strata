@@ -1,5 +1,7 @@
 package denali.tasks
 
+import denali.util.Timing.TimingMap
+
 
 /**
  * The result of a task in denali
@@ -10,23 +12,23 @@ sealed trait TaskResult {
 }
 
 sealed trait InitialSearchResult extends TaskResult
-case class InitialSearchSuccess(task: InitialSearchTask) extends InitialSearchResult {
+case class InitialSearchSuccess(task: InitialSearchTask, timing: TimingMap) extends InitialSearchResult {
   override def toString = "initial search success"
 }
-case class InitialSearchTimeout(task: InitialSearchTask) extends InitialSearchResult {
+case class InitialSearchTimeout(task: InitialSearchTask, timing: TimingMap) extends InitialSearchResult {
   override def toString = "initial search timeout"
 }
-case class InitialSearchError(task: InitialSearchTask) extends InitialSearchResult {
+case class InitialSearchError(task: InitialSearchTask, timing: TimingMap) extends InitialSearchResult {
   override def toString = "initial search error"
 }
 
 sealed trait SecondarySearchResult extends TaskResult
-case class SecondarySearchSuccess(task: SecondarySearchTask) extends SecondarySearchResult {
+case class SecondarySearchSuccess(task: SecondarySearchTask, timing: TimingMap) extends SecondarySearchResult {
   override def toString = "secondary search success"
 }
-case class SecondarySearchTimeout(task: SecondarySearchTask) extends SecondarySearchResult {
+case class SecondarySearchTimeout(task: SecondarySearchTask, timing: TimingMap) extends SecondarySearchResult {
   override def toString = "secondary search timeout"
 }
-case class SecondarySearchError(task: SecondarySearchTask) extends SecondarySearchResult {
+case class SecondarySearchError(task: SecondarySearchTask, timing: TimingMap) extends SecondarySearchResult {
   override def toString = "secondary search error"
 }

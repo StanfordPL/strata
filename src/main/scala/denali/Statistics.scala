@@ -262,11 +262,11 @@ object Statistics {
     print(out)
 
     val failedInitial = logMessages.count({
-      case LogTaskEnd(t, Some(InitialSearchTimeout(_)), _, _) => true
+      case LogTaskEnd(t, Some(res: InitialSearchTimeout), _, _) => true
       case _ => false
     })
     val successfulSecondary = logMessages.count({
-      case LogTaskEnd(t, Some(SecondarySearchSuccess(_)), _, _) => true
+      case LogTaskEnd(t, Some(res: SecondarySearchSuccess), _, _) => true
       case _ => false
     })
     val eventBox = Box("Search events",

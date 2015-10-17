@@ -3,7 +3,7 @@ package denali.tasks
 import java.io.File
 
 import denali.data._
-import denali.util.IO
+import denali.util.{TimingKind, TimingBuilder, IO}
 import org.apache.commons.io.FileUtils
 import denali.util.ColoredOutput._
 
@@ -14,6 +14,8 @@ import scala.sys.ShutdownHookThread
  */
 object InitialSearch {
   def run(task: InitialSearchTask): InitialSearchResult = {
+    val timing = TimingBuilder()
+
     val globalOptions = task.globalOptions
     val state = State(globalOptions)
     val workdir = globalOptions.workdir
@@ -40,29 +42,31 @@ object InitialSearch {
       val base = state.lockedInformation(() => state.getInstructionFile(InstructionFile.Success))
       val baseConfig = new File(s"$tmpDir/base.conf")
       IO.writeFile(baseConfig, "--opc_whitelist \"{ " + base.mkString(" ") + " }\"\n")
-      val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "search",
-        "--config", s"${IO.getProjectBase}/resources/conf-files/search.conf",
-        "--config", baseConfig,
-        "--target", state.getTargetOfInstr(instr),
-        "--def_in", meta.def_in,
-        "--live_out", meta.live_out,
-        "--functions", s"$workdir/functions",
-        "--testcases", s"$workdir/testcases.tc",
-        "--machine_output", "search.json",
-        "--call_weight", state.getNumPseudoInstr,
-        "--timeout_iterations", budget,
-        "--cost", "correctness")
-      if (globalOptions.verbose) {
-        IO.runPrint(cmd, workingDirectory = tmpDir)
-      } else {
-        IO.runQuiet(cmd, workingDirectory = tmpDir)
-      }
+      timing.timeOperation(TimingKind.Search)({
+        val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "search",
+          "--config", s"${IO.getProjectBase}/resources/conf-files/search.conf",
+          "--config", baseConfig,
+          "--target", state.getTargetOfInstr(instr),
+          "--def_in", meta.def_in,
+          "--live_out", meta.live_out,
+          "--functions", s"$workdir/functions",
+          "--testcases", s"$workdir/testcases.tc",
+          "--machine_output", "search.json",
+          "--call_weight", state.getNumPseudoInstr,
+          "--timeout_iterations", budget,
+          "--cost", "correctness")
+        if (globalOptions.verbose) {
+          IO.runPrint(cmd, workingDirectory = tmpDir)
+        } else {
+          IO.runQuiet(cmd, workingDirectory = tmpDir)
+        }
+      })
       val result = Stoke.readStokeSearchOutput(new File(s"$tmpDir/search.json"))
       result match {
         case None =>
           state.appendLog(LogError(s"no result for initial search of $instr"))
           IO.info("stoke failed".red)
-          InitialSearchError(task)
+          InitialSearchError(task, timing.result)
         case Some(res) =>
           val meta = state.getMetaOfInstr(instr)
           if (res.success && res.verified) {
@@ -75,14 +79,14 @@ object InitialSearch {
             val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more))
             state.writeMetaOfInstr(instr, newMeta)
 
-            InitialSearchSuccess(task)
+            InitialSearchSuccess(task, timing.result)
           } else {
             // update meta
             val more = InitialSearchMeta(success = false, budget, res.statistics.total_iterations, base.length)
             val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more))
             state.writeMetaOfInstr(instr, newMeta)
 
-            InitialSearchTimeout(task)
+            InitialSearchTimeout(task, timing.result)
           }
       }
     } finally {
