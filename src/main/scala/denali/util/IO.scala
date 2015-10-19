@@ -14,6 +14,12 @@ import ColoredOutput._
  */
 object IO {
 
+  /** Return the current git hash. */
+  def getGitHash: String = {
+    val hash = "git rev-parse HEAD".!!
+    hash.stripLineEnd
+  }
+
   /**
    * Run a command and return it's output (stderr and stdout) and exit code.
    * Uses the base directory as working directory by default.
