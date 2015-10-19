@@ -3,7 +3,7 @@ package denali
 import java.io.File
 
 import denali.data._
-import denali.util.IO
+import denali.util.{TimingBuilder, IO}
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 
@@ -12,6 +12,8 @@ import org.joda.time.DateTime
  */
 object Initialize {
   def run(args: Array[String], options: InitOptions, skipIfExists: Boolean = false): Unit = {
+
+    val timing = TimingBuilder()
 
     val workdir = options.globalOptions.workdir
 
@@ -59,7 +61,7 @@ object Initialize {
     state.getTmpDir.mkdirs()
     state.getCircuitDir.mkdirs()
 
-    state.appendLog(LogInitEnd())
+    state.appendLog(LogInitEnd(timing.result))
     IO.info("initialization complete")
   }
 }

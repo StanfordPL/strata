@@ -132,7 +132,7 @@ case class LogEntryPoint(arguments: Seq[String], gitHash: String = IO.getGitHash
   }
 }
 
-case class LogInitEnd(time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogEnd {
+case class LogInitEnd(timing: TimingInfo, time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogEnd {
   override def toString = {
     super.toString + ": initialize end"
   }
