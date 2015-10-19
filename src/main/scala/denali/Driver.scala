@@ -104,11 +104,11 @@ class Driver(val globalOptions: GlobalOptions) {
   def finishTask(task: Task, future: Future[TaskResult]): Unit = {
     try {
       val taskRes = future.get()
-      handleTaskResult(taskRes)
-      state.appendLog(LogTaskEnd(task, Some(taskRes), DateTime.now, task.runnerContext))
+      val pseudoTimeEnd = handleTaskResult(taskRes)
+      state.appendLog(LogTaskEnd(task, Some(taskRes), pseudoTimeEnd, DateTime.now, task.runnerContext))
     } catch {
       case t: Throwable =>
-        state.appendLog(LogTaskEnd(task, None, DateTime.now, task.runnerContext))
+        state.appendLog(LogTaskEnd(task, None, -1, DateTime.now, task.runnerContext))
         state.appendLog(LogError(s"exception in task: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}"))
         IO.info(s"ERROR: failure: ${t.getMessage}\n${t.getStackTrace.mkString("\n")}".red)
         state.lockedInformation(() => {
@@ -118,7 +118,7 @@ class Driver(val globalOptions: GlobalOptions) {
   }
 
   /** Handle the result of a task. */
-  private def handleTaskResult(taskRes: TaskResult): Unit = {
+  private def handleTaskResult(taskRes: TaskResult): Int = {
     val task = taskRes.task
     val instr = taskRes.instruction
     state.lockedInformation(() => {
@@ -150,6 +150,7 @@ class Driver(val globalOptions: GlobalOptions) {
           state.addInstructionToFile(instr, InstructionFile.Success)
           IO.info(s"secondary search timeout for ${task.instruction}")
       }
+      state.getPseudoTime
     })
   }
 
@@ -172,16 +173,16 @@ class Driver(val globalOptions: GlobalOptions) {
 
   /** Select what next step should be done, and puts the task into the worklist. */
   def selectNextTask(instruction: Option[Instruction] = None): Option[Task] = {
-    def mkInitialSearch(instr: Instruction): Option[Task] = {
+    def mkInitialSearch(instr: Instruction, pseudoTime: Int): Option[Task] = {
       val budget = initialSearchBudget(instr)
       state.addInstructionToFile(instr, InstructionFile.Worklist)
-      Some(InitialSearchTask(state.globalOptions, instr, budget))
+      Some(InitialSearchTask(state.globalOptions, instr, budget, pseudoTime))
     }
 
-    def mkSecondarySearch(instr: Instruction): Option[Task] = {
+    def mkSecondarySearch(instr: Instruction, pseudoTime: Int): Option[Task] = {
       val budget = secondarySearchBudget(instr)
       state.addInstructionToFile(instr, InstructionFile.Worklist)
-      Some(SecondarySearchTask(state.globalOptions, instr, budget))
+      Some(SecondarySearchTask(state.globalOptions, instr, budget, pseudoTime))
     }
 
     state.lockedInformation(() => {
@@ -191,15 +192,16 @@ class Driver(val globalOptions: GlobalOptions) {
         return None
       }
 
+      val pseudoTime = state.getPseudoTime
       val goal = state.getInstructionFile(InstructionFile.RemainingGoal)
       val partialSucc = state.getInstructionFile(InstructionFile.PartialSuccess)
 
       if (instruction.isDefined) {
         val instr = instruction.get
         if (goal.contains(instr)) {
-          return mkInitialSearch(instr)
+          return mkInitialSearch(instr, pseudoTime)
         } else if (partialSucc.contains(instr)) {
-          return mkSecondarySearch(instr)
+          return mkSecondarySearch(instr, pseudoTime)
         } else {
           return None
         }
@@ -208,13 +210,13 @@ class Driver(val globalOptions: GlobalOptions) {
       // first deal with partial successes (so that we can put them into success as soon as possible)
       if (partialSucc.nonEmpty) {
         val instr = partialSucc(Random.nextInt(partialSucc.size))
-        return mkSecondarySearch(instr)
+        return mkSecondarySearch(instr, pseudoTime)
       }
 
       // then try an intial search
       if (goal.nonEmpty) {
         val instr = goal(Random.nextInt(goal.size))
-        return mkInitialSearch(instr)
+        return mkInitialSearch(instr, pseudoTime)
       }
 
       // cannot do anything for now

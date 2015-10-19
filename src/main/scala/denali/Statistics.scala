@@ -135,11 +135,11 @@ object Statistics {
         case e: LogError => e
       }).length
       val failedInitial = messages.count({
-        case LogTaskEnd(t, Some(res: InitialSearchTimeout), _, _) => true
+        case LogTaskEnd(t, Some(res: InitialSearchTimeout), _, _, _) => true
         case _ => false
       })
       val successfulSecondary = messages.count({
-        case LogTaskEnd(t, Some(res: SecondarySearchSuccess), _, _) => true
+        case LogTaskEnd(t, Some(res: SecondarySearchSuccess), _, _, _) => true
         case _ => false
       })
       ExtendedStats(

@@ -63,9 +63,9 @@ object Log {
   }
 
   def test() = {
-    val task = InitialSearchTask(GlobalOptions(), Instruction("xorb_r8_r8"), 100)
-    val res = InitialSearchSuccess(task, TimingInfo(Map("a" -> 2)))
-    serializeMessage(LogTaskEnd(task, Some(res)))
+//    val task = InitialSearchTask(GlobalOptions(), Instruction("xorb_r8_r8"), 100)
+//    val res = InitialSearchSuccess(task, TimingInfo(Map("a" -> 2)))
+//    serializeMessage(LogTaskEnd(task, Some(res)))
   }
 }
 
@@ -138,7 +138,7 @@ case class LogInitEnd(timing: TimingInfo, time: DateTime = DateTime.now(), conte
   }
 }
 
-case class LogTaskEnd(task: Task, res: Option[TaskResult], time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogEnd {
+case class LogTaskEnd(task: Task, res: Option[TaskResult], pseudoTimeEnd: Int, time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogEnd {
   override def toString = {
     res match {
       case None => super.toString + s": task end: '$task' without result"

@@ -8,6 +8,7 @@ import denali.data.{ThreadContext, Instruction}
  */
 sealed trait Task {
   def globalOptions: GlobalOptions
+
   def instruction: Instruction
 
   var runnerContext: ThreadContext = null
@@ -15,15 +16,17 @@ sealed trait Task {
 
 case class InitialSearchTask(globalOptions: GlobalOptions,
                              instruction: Instruction,
-                             budget: Long) extends Task {
+                             budget: Long,
+                             pseudoTime: Int) extends Task {
   override def toString = {
     s"initial search for $instruction with budget=$budget"
   }
 }
 
 case class SecondarySearchTask(globalOptions: GlobalOptions,
-                             instruction: Instruction,
-                             budget: Long) extends Task {
+                               instruction: Instruction,
+                               budget: Long,
+                               pseudoTime: Int) extends Task {
   override def toString = {
     s"secondary search for $instruction with budget=$budget"
   }
