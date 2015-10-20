@@ -63,6 +63,11 @@ object Log {
   }
 
   def test() = {
+    val m = deserializeMessage(IO.readFile(new File("blah.json")))
+    m match {
+      case LogVerifyResult(_, _, res, _, _, _, _) =>
+        res
+    }
 //    val task = InitialSearchTask(GlobalOptions(), Instruction("xorb_r8_r8"), 100)
 //    val res = InitialSearchSuccess(task, TimingInfo(Map("a" -> 2)))
 //    serializeMessage(LogTaskEnd(task, Some(res)))

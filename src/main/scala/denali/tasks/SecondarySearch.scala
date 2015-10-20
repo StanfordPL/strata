@@ -1,6 +1,6 @@
 package denali.tasks
 
-import java.io.File
+import java.io.{FileWriter, File}
 
 import denali.data._
 import denali.util.ColoredOutput._
@@ -37,6 +37,25 @@ object SecondarySearch {
           case _: Throwable =>
         }
       })
+    }
+
+    /** Takes a testcase file and appends a new testcase. */
+    def addTestcase(tcFile: File, testcase: String): Unit = {
+      val buf = scala.io.Source.fromFile(tcFile)
+      val Pattern = "Testcase ([0-9]*):".r
+      val nTests = (buf.getLines().collect({
+        case Pattern(c) => c.toInt
+      }) ++ Vector(-1)).max
+      buf.close()
+      val fw = new FileWriter(tcFile, true)
+      try {
+        fw.write(s"\n\nTestcase ${nTests + 1}:\n\n")
+        fw.write(testcase.stripLineEnd)
+        fw.write("\n")
+      }
+      finally {
+        fw.close()
+      }
     }
 
     /**
@@ -90,7 +109,9 @@ object SecondarySearch {
     def addCounterexample(verifyRes: StokeVerifyOutput): Unit = {
       var equiv = meta.equivalent_programs
       // add counterexample to tests
-      println(verifyRes)
+      state.lockedInformation(() => {
+        addTestcase(state.getTestcasePath, verifyRes.counterexample)
+      })
       // run tests on all programs
       for (candidate <- state.getResultFiles(instr)) {
         stokeVerify(state.getTargetOfInstr(instr), candidate, useFormal = false) match {
@@ -149,7 +170,9 @@ object SecondarySearch {
           meta = meta.copy(secondary_searches = meta.secondary_searches ++ Vector(more))
           state.writeMetaOfInstr(instr, meta)
 
-          if (res.success && res.verified) {
+          if (!(res.success && res.verified)) {
+            return SecondarySearchTimeout(task, timing.result)
+          } else {
 
             val resultFile = state.getFreshResultName(instr)
             // move result to result folder
@@ -177,9 +200,9 @@ object SecondarySearch {
                       return SecondarySearchSuccess(task, timing.result)
                     }
                 }
-                // case 1c: we only got unknown answers
-                return SecondarySearchSuccess(task, timing.result)
               }
+              // case 1c: we only got unknown answers
+              return SecondarySearchSuccess(task, timing.result)
             }
 
             // case 2: we already have a set of equivalent programs
@@ -189,6 +212,7 @@ object SecondarySearch {
                 case None =>
                   // an error happened
                   IO.moveFile(resultFile, state.getFreshDiscardedName("error", instr))
+                  return SecondarySearchSuccess(task, timing.result)
                 case Some(verifyRes) =>
                   if (verifyRes.isVerified) {
                     // case 2a: verified: add the verified program to the list
@@ -202,13 +226,10 @@ object SecondarySearch {
                     assert(verifyRes.isCounterExample)
                     // case 2c: counterexample
                     addCounterexample(verifyRes)
+                    return SecondarySearchSuccess(task, timing.result)
                   }
               }
             }
-
-            SecondarySearchSuccess(task, timing.result)
-          } else {
-            SecondarySearchTimeout(task, timing.result)
           }
       }
     } finally {

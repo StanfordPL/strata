@@ -1,6 +1,6 @@
 package denali
 
-import java.io.File
+import java.io.{FileWriter, File}
 import java.util.Date
 
 import denali.data._
