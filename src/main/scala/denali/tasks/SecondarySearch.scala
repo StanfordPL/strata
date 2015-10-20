@@ -41,12 +41,14 @@ object SecondarySearch {
     /**
      * Take two programs and compare them formally.  Returns a verification result only if there was no error.
      */
-    def formalVerify(meta: InstructionMeta, a: File, b: File): Option[StokeVerifyOutput] = {
+    def stokeVerify(meta: InstructionMeta, a: File, b: File, useFormal: Boolean): Option[StokeVerifyOutput] = {
       val (_, res) = timing.timeOperation(TimingKind.Verification)({
-        val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "debug", "verify",
+        val cmd = Vector("timeout", "10s",
+          s"${IO.getProjectBase}/stoke/bin/stoke", "debug", "verify",
           "--config", s"${IO.getProjectBase}/resources/conf-files/formal.conf",
           "--target", a,
           "--rewrite", b,
+          "--strategy", if (useFormal) "bounded" else "hold_out",
           "--def_in", meta.def_in_formal,
           "--live_out", meta.live_out_formal,
           "--strata_path", state.getCircuitDir,
@@ -128,9 +130,8 @@ object SecondarySearch {
             val resFile = new File(s"$tmpDir/result.s")
             val newResultFileName = state.getFreshResultName(instr)
 
-            // verify against first program
             for (previousRes <- state.getResultFiles(instr)) {
-              formalVerify(meta, resFile, previousRes) match {
+              stokeVerify(meta, resFile, previousRes, useFormal = true) match {
                 case None =>
                 case Some(verifyRes) =>
 
