@@ -14,9 +14,7 @@ import scala.sys.ShutdownHookThread
  */
 object SecondarySearch {
   def run(task: SecondarySearchTask): SecondarySearchResult = {
-
     val timing = TimingBuilder()
-
     val globalOptions = task.globalOptions
     val state = State(globalOptions)
     val workdir = globalOptions.workdir
@@ -28,16 +26,6 @@ object SecondarySearch {
     // set up tmp dir
     val tmpDir = new File(s"${state.getTmpDir}/${ThreadContext.self.fileNameSafe}")
     tmpDir.mkdir()
-    var hook: Option[ShutdownHookThread] = None
-    if (!globalOptions.keepTmpDirs) {
-      hook = Some(sys.addShutdownHook {
-        try {
-          FileUtils.deleteDirectory(tmpDir)
-        } catch {
-          case _: Throwable =>
-        }
-      })
-    }
 
     /** Takes a testcase file and appends a new testcase. */
     def addTestcase(tcFile: File, testcase: String): Unit = {
@@ -250,10 +238,6 @@ object SecondarySearch {
       // tear down tmp dir
       if (!globalOptions.keepTmpDirs) {
         FileUtils.deleteDirectory(tmpDir)
-        hook match {
-          case None =>
-          case Some(h) => h.remove()
-        }
       }
     }
   }
