@@ -106,12 +106,14 @@ object SecondarySearch {
     }
 
     /** Add a counterexample to the list of tests, and then re-test all programs. */
-    def addCounterexample(verifyRes: StokeVerifyOutput): Unit = {
+    def addCounterexample(verifyRes: StokeVerifyOutput): (Int, Int) = {
       var equiv = meta.equivalent_programs
       // add counterexample to tests
       state.lockedInformation(() => {
         addTestcase(state.getTestcasePath, verifyRes.counterexample)
       })
+      var correct = 0
+      var incorrect = 0
       // run tests on all programs
       for (candidate <- state.getResultFiles(instr)) {
         stokeVerify(state.getTargetOfInstr(instr), candidate, useFormal = false) match {
@@ -119,22 +121,33 @@ object SecondarySearch {
             // this should not happen, but remove this program
             IO.moveFile(candidate, state.getFreshDiscardedName("error", instr))
             equiv = equiv.filter(p => p != candidate.getName)
+            incorrect += 1
           case Some(testResult) =>
             if (testResult.isVerified) {
               // keep the program
+              correct += 1
             } else {
               // this program is definitely wrong, let's remove it
               IO.moveFile(candidate, state.getFreshDiscardedName("counterexample", instr))
               equiv = equiv.filter(p => p != candidate.getName)
+              incorrect +=1
             }
         }
       }
       meta = meta.copy(equivalent_programs = equiv)
       state.writeMetaOfInstr(instr, meta)
+      (correct, incorrect)
     }
 
     try {
-      val base = state.lockedInformation(() => state.getInstructionFile(InstructionFile.Success))
+      val testcases = new File(s"$tmpDir/testcases.tc")
+      val base = state.lockedInformation(() => {
+        // copy the tests to the local directory
+        IO.copyFile(state.getTestcasePath, testcases)
+
+        // get the base instructions
+        state.getInstructionFile(InstructionFile.Success)
+      })
       val baseConfig = new File(s"$tmpDir/base.conf")
       IO.writeFile(baseConfig, "--opc_whitelist \"{ " + base.mkString(" ") + " }\"\n")
       timing.timeOperation(TimingKind.Search)({
@@ -145,7 +158,7 @@ object SecondarySearch {
           "--def_in", meta.def_in,
           "--live_out", meta.live_out,
           "--functions", s"$workdir/functions",
-          "--testcases", s"$workdir/testcases.tc",
+          "--testcases", testcases,
           "--machine_output", "search.json",
           "--call_weight", state.getNumPseudoInstr,
           "--timeout_iterations", budget,
@@ -181,7 +194,8 @@ object SecondarySearch {
             // case 1: we have not found any equivalent programs
             if (meta.equivalent_programs.isEmpty) {
               // try all previously found programs
-              for (previousRes <- state.getResultFiles(instr) if previousRes != resultFile) {
+              val resultFiles = state.getResultFiles(instr)
+              for (previousRes <- resultFiles if previousRes != resultFile) {
                 stokeVerify(resultFile, previousRes, useFormal = true) match {
                   case None => // just ignore this error and try the next one
                   case Some(verifyRes) =>
@@ -191,18 +205,18 @@ object SecondarySearch {
                       // add both programs to the list of known equivalent programs
                       meta = meta.copy(equivalent_programs = Vector(previousRes.getName, resultFile.getName))
                       state.writeMetaOfInstr(instr, meta)
-                      return SecondarySearchSuccess(task, timing.result)
+                      return SecondarySearchSuccess(task, SrkEquivalent(), timing.result)
                     }
 
                     // case 1b: we found a counterexample
                     else if (verifyRes.isCounterExample) {
-                      addCounterexample(verifyRes)
-                      return SecondarySearchSuccess(task, timing.result)
+                      val (correct, incorrect) = addCounterexample(verifyRes)
+                      return SecondarySearchSuccess(task, SrkCounterExample(correct, incorrect), timing.result)
                     }
                 }
               }
               // case 1c: we only got unknown answers
-              return SecondarySearchSuccess(task, timing.result)
+              return SecondarySearchSuccess(task, SrkUnknown(resultFiles.length, againstEquiv = false), timing.result)
             }
 
             // case 2: we already have a set of equivalent programs
@@ -212,21 +226,21 @@ object SecondarySearch {
                 case None =>
                   // an error happened
                   IO.moveFile(resultFile, state.getFreshDiscardedName("error", instr))
-                  return SecondarySearchSuccess(task, timing.result)
+                  return SecondarySearchSuccess(task, SrkUnknown(1, againstEquiv = true), timing.result)
                 case Some(verifyRes) =>
                   if (verifyRes.isVerified) {
                     // case 2a: verified: add the verified program to the list
                     meta = meta.copy(equivalent_programs = meta.equivalent_programs ++ Vector(resultFile.getName))
                     state.writeMetaOfInstr(instr, meta)
-                    return SecondarySearchSuccess(task, timing.result)
+                    return SecondarySearchSuccess(task, SrkEquivalent(), timing.result)
                   } else if (verifyRes.isUnknown) {
                     // case 2b: unknown: keep the program, but don't add it to the set of eqiv programs
-                    return SecondarySearchSuccess(task, timing.result)
+                    return SecondarySearchSuccess(task, SrkUnknown(1, againstEquiv = true), timing.result)
                   } else {
                     assert(verifyRes.isCounterExample)
                     // case 2c: counterexample
-                    addCounterexample(verifyRes)
-                    return SecondarySearchSuccess(task, timing.result)
+                    val (correct, incorrect) = addCounterexample(verifyRes)
+                    return SecondarySearchSuccess(task, SrkCounterExample(correct, incorrect), timing.result)
                   }
               }
             }

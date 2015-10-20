@@ -39,7 +39,14 @@ object InitialSearch {
 
     try {
       val meta = state.getMetaOfInstr(instr)
-      val base = state.lockedInformation(() => state.getInstructionFile(InstructionFile.Success))
+      val testcases = new File(s"$tmpDir/testcases.tc")
+      val base = state.lockedInformation(() => {
+        // copy the tests to the local directory
+        IO.copyFile(state.getTestcasePath, testcases)
+
+        // get the base instructions
+        state.getInstructionFile(InstructionFile.Success)
+      })
       val baseConfig = new File(s"$tmpDir/base.conf")
       IO.writeFile(baseConfig, "--opc_whitelist \"{ " + base.mkString(" ") + " }\"\n")
       timing.timeOperation(TimingKind.Search)({
@@ -50,7 +57,7 @@ object InitialSearch {
           "--def_in", meta.def_in,
           "--live_out", meta.live_out,
           "--functions", s"$workdir/functions",
-          "--testcases", s"$workdir/testcases.tc",
+          "--testcases", testcases,
           "--machine_output", "search.json",
           "--call_weight", state.getNumPseudoInstr,
           "--timeout_iterations", budget,
