@@ -2,6 +2,7 @@ package denali.util
 
 import java.io.{BufferedWriter, FileWriter, File}
 import java.lang.management.ManagementFactory
+import java.security.MessageDigest
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -13,6 +14,15 @@ import ColoredOutput._
  * A utility to run commands and capture their output.
  */
 object IO {
+
+  /** Returns a hash of the contents of a given file. */
+  def contentHash(file: File): String = {
+    val contents = IO.readFile(file)
+    val md = MessageDigest.getInstance("SHA-256")
+    md.update(contents.getBytes("UTF-8"))
+    val digest = md.digest()
+    String.format("%064x", new java.math.BigInteger(1, digest))
+  }
 
   /** Return the current git hash. */
   def getGitHash: String = {

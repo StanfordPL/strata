@@ -57,5 +57,20 @@ case class StokeVerifyOutput(
                               counterexample: String,
                               error: String
                               ) {
-  def hasError = error != ""
+  // uses a hack to store '__timeout__' in error to indicate timeouts
+  // NOTE: exactly one of the isX methods will return true
+
+  /** Was there an error during verification?*/
+  def hasError = error != "" && error != "__timeout__"
+  /** Successfully verified? */
+  def isVerified = verified
+  /** Did the SMT solver say no, but not provide a (valid) counterexample? */
+  def isUnknown = !verified && !counter_examples_available && !isTimeout
+  /** Is there a counterexample. */
+  def isCounterExample = counter_examples_available
+  /** Was there a timeout? */
+  def isTimeout = error == "__timeout__"
+}
+object StokeVerifyOutput {
+  def makeTimeout = StokeVerifyOutput(verified = false, counter_examples_available = false, "", "__timeout__")
 }

@@ -184,6 +184,23 @@ class State(val globalOptions: GlobalOptions) {
   }
 
   /** Get a fresh name for a result. */
+  def getFreshDiscardedName(prefix: String, instruction: Instruction): File = {
+    val resDir = getInstructionDiscardedDir(instruction)
+    if (!resDir.exists()) {
+      resDir.mkdir()
+    }
+    var i = 0
+    while (true) {
+      val file = new File(f"$resDir/$prefix-$i%05d.s")
+      if (!file.exists()) {
+        return file
+      }
+      i += 1
+    }
+    assert(false)
+    null
+  }
+  /** Get a fresh name for a result. */
   def getFreshResultName(instruction: Instruction): File = {
     val resDir = getInstructionResultDir(instruction)
     if (!resDir.exists()) {
@@ -222,6 +239,9 @@ class State(val globalOptions: GlobalOptions) {
 
   def getInstructionResultDir(instruction: Instruction): File = {
     new File(s"${globalOptions.workdir}/instructions/$instruction/results")
+  }
+  def getInstructionDiscardedDir(instruction: Instruction): File = {
+    new File(s"${globalOptions.workdir}/instructions/$instruction/discarded")
   }
 
   /** Read the meta information for an instruction. */

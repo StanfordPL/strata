@@ -38,6 +38,51 @@ object SecondarySearch {
       })
     }
 
+    /**
+     * Take two programs and compare them formally.  Returns a verification result only if there was no error.
+     */
+    def formalVerify(meta: InstructionMeta, a: File, b: File): Option[StokeVerifyOutput] = {
+      val (_, res) = timing.timeOperation(TimingKind.Verification)({
+        val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "debug", "verify",
+          "--config", s"${IO.getProjectBase}/resources/conf-files/formal.conf",
+          "--target", a,
+          "--rewrite", b,
+          "--def_in", meta.def_in_formal,
+          "--live_out", meta.live_out_formal,
+          "--strata_path", state.getCircuitDir,
+          "--functions", s"$workdir/functions",
+          "--machine_output", "verify.json")
+        if (globalOptions.verbose) {
+          IO.runPrint(cmd, workingDirectory = tmpDir)
+        } else {
+          IO.runQuiet(cmd, workingDirectory = tmpDir)
+        }
+      })
+
+      if (res == 124) {
+        // a timeout happened
+        val verifyRes = StokeVerifyOutput.makeTimeout
+        state.appendLog(LogVerifyResult(instr, verifyRes, IO.contentHash(a), IO.contentHash(a)))
+        Some(verifyRes)
+      } else {
+        Stoke.readStokeVerifyOutput(new File(s"$tmpDir/verify.json")) match {
+          case None =>
+            state.appendLog(LogError(s"no result for stoke verify of $instr"))
+            IO.info("stoke verify failed to produce an output".red)
+            None
+          case Some(verifyRes) if verifyRes.hasError =>
+            val message = s"stoke verify errored with ${verifyRes.error} for $instr"
+            state.appendLog(LogError(message))
+            state.appendLog(LogVerifyResult(instr, verifyRes, IO.contentHash(a), IO.contentHash(a)))
+            IO.info(message.red)
+            None
+          case Some(verifyRes) =>
+            state.appendLog(LogVerifyResult(instr, verifyRes, IO.contentHash(a), IO.contentHash(a)))
+            Some(verifyRes)
+        }
+      }
+    }
+
     try {
       val meta = state.getMetaOfInstr(instr)
       val base = state.lockedInformation(() => state.getInstructionFile(InstructionFile.Success))
@@ -85,45 +130,12 @@ object SecondarySearch {
 
             // verify against first program
             for (previousRes <- state.getResultFiles(instr)) {
-              timing.timeOperation(TimingKind.Verification)({
-                val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "debug", "verify",
-                  "--config", s"${IO.getProjectBase}/resources/conf-files/formal.conf",
-                  "--target", resFile,
-                  "--rewrite", previousRes,
-                  "--def_in", meta.def_in_formal,
-                  "--live_out", meta.live_out_formal,
-                  "--strata_path", state.getCircuitDir,
-                  "--functions", s"$workdir/functions",
-                  "--machine_output", "verify.json")
-                if (globalOptions.verbose) {
-                  IO.runPrint(cmd, workingDirectory = tmpDir)
-                } else {
-                  IO.runQuiet(cmd, workingDirectory = tmpDir)
-                }
-              })
-
-              Stoke.readStokeVerifyOutput(new File(s"$tmpDir/verify.json")) match {
+              formalVerify(meta, resFile, previousRes) match {
                 case None =>
-                  state.appendLog(LogError(s"no result for stoke verify of $instr"))
-                  IO.info("stoke verify failed".red)
-                case Some(verifyRes) if verifyRes.hasError =>
-                  val message = s"stoke verify errored with ${verifyRes.error} for $instr"
-                  state.appendLog(LogError(message))
-                  if (!verifyRes.error.contains("Instruction not supported")) {
-                    if (!verifyRes.error.contains("unsupported")) {
-                      IO.info(message.red)
-                    }
-                  }
                 case Some(verifyRes) =>
-                  if (verifyRes.counter_examples_available) {
-                    IO.info(s"counter example avialable for $instr: $newResultFileName".red)
-                  }
-                  state.appendLog(LogVerifyResult(instr, verifyRes, newResultFileName.toString, previousRes.toString))
+
               }
             }
-
-            // copy result file
-            IO.copyFile(resFile, newResultFileName)
 
             SecondarySearchSuccess(task, timing.result)
           } else {
