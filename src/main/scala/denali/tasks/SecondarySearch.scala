@@ -87,12 +87,12 @@ object SecondarySearch {
     }
 
     /** Add a counterexample to the list of tests, and then re-test all programs. */
-    def addCounterexample(resultFile: File, verifyRes: StokeVerifyOutput): Unit = {
+    def addCounterexample(verifyRes: StokeVerifyOutput): Unit = {
       var equiv = meta.equivalent_programs
       // add counterexample to tests
       println(verifyRes)
       // run tests on all programs
-      for (candidate <- state.getResultFiles(instr) ++ Vector(resultFile)) {
+      for (candidate <- state.getResultFiles(instr)) {
         stokeVerify(state.getTargetOfInstr(instr), candidate, useFormal = false) match {
           case None =>
             // this should not happen, but remove this program
@@ -158,7 +158,7 @@ object SecondarySearch {
             // case 1: we have not found any equivalent programs
             if (meta.equivalent_programs.isEmpty) {
               // try all previously found programs
-              for (previousRes <- state.getResultFiles(instr)) {
+              for (previousRes <- state.getResultFiles(instr) if previousRes != resultFile) {
                 stokeVerify(resultFile, previousRes, useFormal = true) match {
                   case None => // just ignore this error and try the next one
                   case Some(verifyRes) =>
@@ -173,7 +173,7 @@ object SecondarySearch {
 
                     // case 1b: we found a counterexample
                     else if (verifyRes.isCounterExample) {
-                      addCounterexample(resultFile, verifyRes)
+                      addCounterexample(verifyRes)
                       return SecondarySearchSuccess(task, timing.result)
                     }
                 }
@@ -189,20 +189,19 @@ object SecondarySearch {
                 case None =>
                   // an error happened
                   IO.moveFile(resultFile, state.getFreshDiscardedName("error", instr))
-                case Some(testResult) =>
-                  if (testResult.isVerified) {
+                case Some(verifyRes) =>
+                  if (verifyRes.isVerified) {
                     // case 2a: verified: add the verified program to the list
                     meta = meta.copy(equivalent_programs = meta.equivalent_programs ++ Vector(resultFile.getName))
                     state.writeMetaOfInstr(instr, meta)
                     return SecondarySearchSuccess(task, timing.result)
-                  } else if (testResult.isUnknown) {
+                  } else if (verifyRes.isUnknown) {
                     // case 2b: unknown: keep the program, but don't add it to the set of eqiv programs
                     return SecondarySearchSuccess(task, timing.result)
                   } else {
-                    assert(testResult.isCounterExample)
+                    assert(verifyRes.isCounterExample)
                     // case 2c: counterexample
-                    // add counterexample to tests
-                    // re-test all programs
+                    addCounterexample(verifyRes)
                   }
               }
             }
