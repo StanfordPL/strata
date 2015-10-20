@@ -179,8 +179,8 @@ class State(val globalOptions: GlobalOptions) {
   }
 
   /** Get the path to the target assembly file for a goal instruction. */
-  def getTargetOfInstr(instruction: Instruction) = {
-    s"${globalOptions.workdir}/instructions/$instruction/$instruction.s"
+  def getTargetOfInstr(instruction: Instruction): File = {
+    new File(s"${globalOptions.workdir}/instructions/$instruction/$instruction.s")
   }
 
   /** Get a fresh name for a result. */

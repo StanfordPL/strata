@@ -43,6 +43,7 @@ object TimingKind extends Enumeration {
   type TimingKind = String
   val Search = "search"
   val Verification = "verification"
+  val Testing = "testing" // running testcases
   val Total = "total"
 }
 

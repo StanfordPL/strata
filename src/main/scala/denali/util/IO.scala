@@ -139,6 +139,11 @@ object IO {
     FileUtils.copyFile(a, b)
   }
 
+  /** Move a file. */
+  def moveFile(a: File, b: File): Unit = {
+    FileUtils.moveFile(a, b)
+  }
+
   /** Format a DateTime nicely. */
   def formatTime(time: DateTime): String = {
     DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss").print(time)

@@ -154,6 +154,7 @@ case class LogError(msg: String, time: DateTime = DateTime.now(), context: Threa
 }
 
 case class LogVerifyResult(instr: Instruction,
+                           formal: Boolean,
                            verifyResult: StokeVerifyOutput,
                            program1: String,
                            program2: String,
