@@ -266,7 +266,7 @@ object Statistics {
     val errorStr = if (extendedStats.errors > 0) extendedStats.errors.toString.red else "0"
     val basicBox = Box("Basic information",
       Vector("started at", "cpu time", "running threads", "number of errors"),
-      Vector(globalStartTime, formatTime(extendedStats.totalCpuTime), stats.nWorklist, errorStr))
+      Vector(globalStartTime, IO.formatNanos(extendedStats.totalCpuTime), stats.nWorklist, errorStr))
 
     val (out, breaks) = printBoxesHorizontally(Vector(progressBox, basicBox), width)
 

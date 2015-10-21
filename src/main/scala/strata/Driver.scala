@@ -143,12 +143,12 @@ class Driver(val globalOptions: GlobalOptions) {
           IO.info(s"IS timeout for ${task.instruction} after ${ist.task.budget} iters / ${IO.formatNanos(ist.timing.total)}")
         case _: InitialSearchError =>
         case _: SecondarySearchError =>
-        case _: SecondarySearchSuccess | _: SecondarySearchTimeout =>
+        case _: SecondarySearchSuccess =>
           val meta = state.getMetaOfInstr(task.instruction)
           val n = meta.secondary_searches.map(s => s.n_found).sum + 1 // +1 for initial search
           IO.info(s"SS success #$n for ${task.instruction}")
           // stop after we found enough
-          if (n >= 30 || taskRes.isInstanceOf[SecondarySearchTimeout]) {
+          if (n >= 30) {
             moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
