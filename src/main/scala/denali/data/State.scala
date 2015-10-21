@@ -286,6 +286,12 @@ class State(val globalOptions: GlobalOptions) {
       signal.delete()
     }
 
+    // remove old temp directories
+    for (tmp <- getTmpDir.listFiles) {
+      println(s"Removing tmp directory: ${tmp.getName}")
+      IO.deleteDirectory(tmp)
+    }
+
     IO.info("All clear now.")
   }
 }

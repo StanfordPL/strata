@@ -144,6 +144,11 @@ object IO {
     FileUtils.moveFile(a, b)
   }
 
+  /** Delete a directory. */
+  def deleteDirectory(folder: File) = {
+    FileUtils.deleteDirectory(folder)
+  }
+
   /** Format a DateTime nicely. */
   def formatTime(time: DateTime): String = {
     DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss").print(time)

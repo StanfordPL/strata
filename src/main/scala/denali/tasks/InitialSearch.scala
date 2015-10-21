@@ -4,7 +4,6 @@ import java.io.File
 
 import denali.data._
 import denali.util.{TimingKind, TimingBuilder, IO}
-import org.apache.commons.io.FileUtils
 import denali.util.ColoredOutput._
 
 import scala.sys.ShutdownHookThread
@@ -26,16 +25,6 @@ object InitialSearch {
     // set up tmp dir
     val tmpDir = new File(s"${state.getTmpDir}/${ThreadContext.self.fileNameSafe}")
     tmpDir.mkdir()
-    var hook: Option[ShutdownHookThread] = None
-    if (!globalOptions.keepTmpDirs) {
-      hook = Some(sys.addShutdownHook {
-        try {
-          FileUtils.deleteDirectory(tmpDir)
-        } catch {
-          case _: Throwable =>
-        }
-      })
-    }
 
     try {
       val meta = state.getMetaOfInstr(instr)
@@ -99,11 +88,7 @@ object InitialSearch {
     } finally {
       // tear down tmp dir
       if (!globalOptions.keepTmpDirs) {
-        FileUtils.deleteDirectory(tmpDir)
-        hook match {
-          case None =>
-          case Some(h) => h.remove()
-        }
+        IO.deleteDirectory(tmpDir)
       }
     }
   }

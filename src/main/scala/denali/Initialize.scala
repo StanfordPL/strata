@@ -1,11 +1,7 @@
 package denali
 
-import java.io.File
-
 import denali.data._
 import denali.util.{TimingBuilder, IO}
-import org.apache.commons.io.FileUtils
-import org.joda.time.DateTime
 
 /**
  * Initializing the configuration of a denali run.
@@ -19,7 +15,7 @@ object Initialize {
 
     // TODO: remove this debug code:
     if (workdir.exists()) {
-      FileUtils.deleteDirectory(workdir)
+      IO.deleteDirectory(workdir)
     }
 
     IO.info("starting initialization ...")

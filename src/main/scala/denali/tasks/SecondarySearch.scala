@@ -5,9 +5,6 @@ import java.io.{FileWriter, File}
 import denali.data._
 import denali.util.ColoredOutput._
 import denali.util.{Timing, TimingKind, TimingBuilder, IO}
-import org.apache.commons.io.FileUtils
-
-import scala.sys.ShutdownHookThread
 
 /**
  * Perform an secondary search for a given instruction.
@@ -237,7 +234,7 @@ object SecondarySearch {
     } finally {
       // tear down tmp dir
       if (!globalOptions.keepTmpDirs) {
-        FileUtils.deleteDirectory(tmpDir)
+        IO.deleteDirectory(tmpDir)
       }
     }
   }
