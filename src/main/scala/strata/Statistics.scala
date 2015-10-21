@@ -1,8 +1,8 @@
 package strata
 
 import strata.data._
-import strata.tasks.{SecondarySearchSuccess, SecondarySearchTimeout, InitialSearchTimeout}
-import strata.util.{ColoredOutput, IO}
+import strata.tasks._
+import strata.util.{TimingKind, ColoredOutput, IO}
 import ColoredOutput._
 import org.joda.time.DateTime
 import org.joda.time.format.{PeriodFormatterBuilder, PeriodFormat}
@@ -16,84 +16,6 @@ import scala.concurrent.{Future, ExecutionContext}
 object Statistics {
 
   val CLEAR_CONSOLE: String = "\u001b[H\u001b[2J"
-
-  /** Some adhoc statistics. */
-  def tmp(globalOptions: GlobalOptions): Unit = {
-    val state = State(globalOptions)
-
-    def cmd(instruction: Instruction, p1: String, p2: String) = {
-      val meta = state.getMetaOfInstr(instruction)
-      Vector(s"~/dev/strata/stoke/bin/stoke", "debug", "verify",
-        "--config", s"~/dev/strata/resources/conf-files/formal.conf",
-        "--target", p1,
-        "--rewrite", p2,
-        "--def_in", meta.def_in_formal,
-        "--live_out", meta.live_out_formal,
-        "--strata_path", "~/dev/output-strata/circuits",
-        "--functions", s"~/dev/output-strata/functions")
-    }
-
-    val messages = state.getLogMessages
-    val verifyMessage = messages.collect {
-      case l: LogVerifyResult if !l.verifyResult.hasError => l
-    }
-    val errors = messages.collect {
-      case l: LogVerifyResult if l.verifyResult.hasError => l
-    }
-
-    println(s"Total messages: ${messages.length}")
-    println("Verification results")
-    println(s"  verified:       ${verifyMessage.count(m => m.verifyResult.verified)}")
-    println(s"  unknown:        ${verifyMessage.count(m => !m.verifyResult.verified && !m.verifyResult.counter_examples_available)}")
-    println(s"  counterexample: ${verifyMessage.count(m => !m.verifyResult.verified && m.verifyResult.counter_examples_available)}")
-    println(s"  error:          ${errors.length}")
-    println(s"  error:          ${
-      messages.collect({
-        case l: LogError => l
-      }).length
-    }")
-
-    val counterExamples = verifyMessage.collect {
-      case l: LogVerifyResult if l.verifyResult.counter_examples_available =>
-        l
-    }
-    val instrs = counterExamples.groupBy(_.instr.toString)
-    for ((k, i) <- instrs) {
-      println(s"$k - ${i.length}")
-      //println(i.map(x => x.program1.substring(x.program1.lastIndexOf("-")+1) + " vs " + x.program2.substring(x.program1.lastIndexOf("-")+1)).mkString("\n"))
-    }
-
-    val verifyByInstr = verifyMessage.groupBy(_.instr.toString)
-    println("-----")
-    for ((i, ms) <- verifyByInstr) {
-      val total = ms.length
-      val counter = ms.count(x => x.verifyResult.counter_examples_available && !x.verifyResult.verified)
-      if (counter * 1.0 / total > 0.5) {
-        println(s"$i: counter examples: $counter / $total")
-      }
-    }
-    println("-----")
-    for ((i, ms) <- verifyByInstr) {
-      val total = ms.length
-      val unknown = ms.count(x => !x.verifyResult.counter_examples_available && !x.verifyResult.verified)
-      if (unknown * 1.0 / total > 0.5) {
-        println(s"$i: unknown: $unknown / $total")
-      }
-    }
-    println("-----")
-    for ((i, ms) <- verifyByInstr) {
-      val total = ms.length
-      val verified = ms.count(x => x.verifyResult.verified)
-      if (verified * 1.0 / total < 0.1) {
-        println(s"$i: verified: $verified / $total")
-      }
-    }
-
-    val ban = Vector("popq_r64", "shll_r32_one", "pushw_r16", "movzbl_r32_r8")
-    for (v <- counterExamples.filter(p => !ban.contains(p.instr.toString)).take(50)) {
-      println(IO.cmd2String(cmd(v.instr, v.program1, v.program2)))
-    }
-  }
 
   /** Show statistics and update them periodically. */
   def run(globalOptions: GlobalOptions): Unit = {
@@ -113,18 +35,26 @@ object Statistics {
     while (true) {
       if (messageFuture.isCompleted) {
         messageFuture.onSuccess({
-          case m => {
+          case m =>
             extendedStats = m
             messageFuture = Future {
-              // do computation again in 4.5 seconds
-              Thread.sleep(4500)
+              Thread.sleep(10000)
               getExtendedStats(state.getLogMessages)
             }
-          }
         })
       }
       printStats(getStats(state), extendedStats)
-      Thread.sleep(1000)
+      Thread.sleep(2000)
+    }
+  }
+
+  def perc(p: Long, total: Long): String = {
+    if (total == 0) {
+      assert(p == 0)
+      "0"
+    } else {
+      val percentage = p.toDouble / total.toDouble * 100.0
+      (" " * (total.toString.length - p.toString.length)) + f"$p ($percentage%6.2f %%)"
     }
   }
 
@@ -138,16 +68,49 @@ object Statistics {
         case LogTaskEnd(t, Some(res: InitialSearchTimeout), _, _, _) => true
         case _ => false
       })
-      val successfulSecondary = messages.count({
-        case LogTaskEnd(t, Some(res: SecondarySearchSuccess), _, _, _) => true
-        case _ => false
+      val secondary = messages.collect({
+        case LogTaskEnd(t, Some(SecondarySearchSuccess(_, kind, _)), _, _, _) => kind
+      })
+      val timings = messages.collect({
+        case LogTaskEnd(t, Some(res), _, _, _) => res.timing
+      }).flatMap(x => x.data.map(identity)).groupBy(x => x._1).map(x => (x._1, x._2.map(x => x._2).sum))
+      val totalTime = timings.values.sum
+      val validations = messages.collect({
+        case LogVerifyResult(_, true, verifyResult, _, _, _, _) => verifyResult
       })
       ExtendedStats(
         globalStartTime = IO.formatTime(messages.head.time),
         errors = errors,
-        searchEvents = Vector(
-          ("failed initial searches", failedInitial),
-          ("successful secondary searches", successfulSecondary)
+        searchOverview = Vector(
+          ("equivalent", perc(secondary.count({
+            case _: SrkEquivalent => true
+            case _ => false
+          }), secondary.length)),
+          ("unknown", perc(secondary.count({
+            case _: SrkUnknown => true
+            case _ => false
+          }), secondary.length)),
+          ("counterexample", perc(secondary.count({
+            case _: SrkCounterExample => true
+            case _ => false
+          }), secondary.length)),
+          ("total", perc(secondary.length, secondary.length))
+        ),
+        validatorInvocations = Vector(
+          ("equivalent", perc(validations.count(p => p.isVerified), validations.length)),
+          ("unknown", perc(validations.count(p => p.isUnknown), validations.length)),
+          ("counterexample", perc(validations.count(p => p.isCounterExample), validations.length)),
+          ("timeout", perc(validations.count(p => p.isTimeout), validations.length)),
+          ("total", perc(validations.length, validations.length))
+        ),
+        timing = Vector(
+          ("search", perc(timings.getOrElse(TimingKind.Search, 0), totalTime)),
+          ("validation", perc(timings.getOrElse(TimingKind.Verification, 0), totalTime)),
+          ("testcases", perc(timings.getOrElse(TimingKind.Testing, 0), totalTime)),
+          ("total", perc(totalTime, totalTime))
+        ),
+        otherInfo = Vector(
+          ("failed initial searches", failedInitial)
         )
       )
     }
@@ -185,8 +148,21 @@ object Statistics {
   case class ExtendedStats(
                             globalStartTime: String = "n/a",
                             errors: Int = 0,
-                            searchEvents: Seq[(Any, Any)] = Nil
-                            )
+                            searchOverview: Seq[(Any, Any)] = Nil,
+                            validatorInvocations: Seq[(Any, Any)] = Nil,
+                            timing: Seq[(Any, Any)] = Nil,
+                            otherInfo: Seq[(Any, Any)] = Nil
+                            ) {
+    def hasData = searchOverview.nonEmpty
+
+    def searchOverviewBox = Box.mk("Successful search overview", searchOverview)
+
+    def validatorInvocationsBox = Box.mk("Validator invocations", validatorInvocations)
+
+    def timingBox = Box.mk("Timing", timing)
+
+    def otherInfoBox = Box.mk("Additional information", otherInfo)
+  }
 
   case class Box(title: String, labelsAny: Seq[Any], dataAny: Seq[Any]) {
 
@@ -215,6 +191,12 @@ object Statistics {
       res.append(data(i))
       res.append(" " * (width - ColoredOutput.uncoloredLength(res.toString())))
       res.toString()
+    }
+  }
+
+  object Box {
+    def mk(name: String, data: Seq[(Any, Any)]) = {
+      Box(name, data.map(_._1), data.map(_._2))
     }
   }
 
@@ -300,15 +282,19 @@ object Statistics {
     println(horizontalLine(beginEnd ++ breaks, beginEnd).gray)
     print(out)
 
-    val lastBreaks = if (extendedStats.searchEvents.nonEmpty) {
-      val eventBox = Box("Search events",
-        extendedStats.searchEvents.map(_._1),
-        extendedStats.searchEvents.map(_._2))
-      val (out2, breaks2) = printBoxesHorizontally(Vector(eventBox), width)
+    val lastBreaks = if (extendedStats.hasData) {
+      val (out2, breaks2) = printBoxesHorizontally(
+        Vector(extendedStats.searchOverviewBox, extendedStats.timingBox), width)
 
       println(horizontalLine(beginEnd ++ breaks2, beginEnd ++ breaks).gray)
       print(out2)
-      breaks2
+
+      val (out3, breaks3) = printBoxesHorizontally(
+        Vector(extendedStats.validatorInvocationsBox, extendedStats.otherInfoBox), width)
+
+      println(horizontalLine(beginEnd ++ breaks3, beginEnd ++ breaks2).gray)
+      print(out3)
+      breaks3
     } else {
       breaks
     }
@@ -352,5 +338,84 @@ object Statistics {
 
   def getConsoleWidth: Int = {
     80
+  }
+
+
+  /** Some adhoc statistics. */
+  def tmp(globalOptions: GlobalOptions): Unit = {
+    val state = State(globalOptions)
+
+    def cmd(instruction: Instruction, p1: String, p2: String) = {
+      val meta = state.getMetaOfInstr(instruction)
+      Vector(s"~/dev/strata/stoke/bin/stoke", "debug", "verify",
+        "--config", s"~/dev/strata/resources/conf-files/formal.conf",
+        "--target", p1,
+        "--rewrite", p2,
+        "--def_in", meta.def_in_formal,
+        "--live_out", meta.live_out_formal,
+        "--strata_path", "~/dev/output-strata/circuits",
+        "--functions", s"~/dev/output-strata/functions")
+    }
+
+    val messages = state.getLogMessages
+    val verifyMessage = messages.collect {
+      case l: LogVerifyResult if !l.verifyResult.hasError => l
+    }
+    val errors = messages.collect {
+      case l: LogVerifyResult if l.verifyResult.hasError => l
+    }
+
+    println(s"Total messages: ${messages.length}")
+    println("Verification results")
+    println(s"  verified:       ${verifyMessage.count(m => m.verifyResult.verified)}")
+    println(s"  unknown:        ${verifyMessage.count(m => !m.verifyResult.verified && !m.verifyResult.counter_examples_available)}")
+    println(s"  counterexample: ${verifyMessage.count(m => !m.verifyResult.verified && m.verifyResult.counter_examples_available)}")
+    println(s"  error:          ${errors.length}")
+    println(s"  error:          ${
+      messages.collect({
+        case l: LogError => l
+      }).length
+    }")
+
+    val counterExamples = verifyMessage.collect {
+      case l: LogVerifyResult if l.verifyResult.counter_examples_available =>
+        l
+    }
+    val instrs = counterExamples.groupBy(_.instr.toString)
+    for ((k, i) <- instrs) {
+      println(s"$k - ${i.length}")
+      //println(i.map(x => x.program1.substring(x.program1.lastIndexOf("-")+1) + " vs " + x.program2.substring(x.program1.lastIndexOf("-")+1)).mkString("\n"))
+    }
+
+    val verifyByInstr = verifyMessage.groupBy(_.instr.toString)
+    println("-----")
+    for ((i, ms) <- verifyByInstr) {
+      val total = ms.length
+      val counter = ms.count(x => x.verifyResult.counter_examples_available && !x.verifyResult.verified)
+      if (counter * 1.0 / total > 0.5) {
+        println(s"$i: counter examples: $counter / $total")
+      }
+    }
+    println("-----")
+    for ((i, ms) <- verifyByInstr) {
+      val total = ms.length
+      val unknown = ms.count(x => !x.verifyResult.counter_examples_available && !x.verifyResult.verified)
+      if (unknown * 1.0 / total > 0.5) {
+        println(s"$i: unknown: $unknown / $total")
+      }
+    }
+    println("-----")
+    for ((i, ms) <- verifyByInstr) {
+      val total = ms.length
+      val verified = ms.count(x => x.verifyResult.verified)
+      if (verified * 1.0 / total < 0.1) {
+        println(s"$i: verified: $verified / $total")
+      }
+    }
+
+    val ban = Vector("popq_r64", "shll_r32_one", "pushw_r16", "movzbl_r32_r8")
+    for (v <- counterExamples.filter(p => !ban.contains(p.instr.toString)).take(50)) {
+      println(IO.cmd2String(cmd(v.instr, v.program1, v.program2)))
+    }
   }
 }

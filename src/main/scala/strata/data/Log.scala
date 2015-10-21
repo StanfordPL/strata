@@ -7,7 +7,7 @@ import java.util.{Calendar, Date}
 
 import com.sun.xml.internal.messaging.saaj.util.Base64
 import strata.GlobalOptions
-import strata.tasks.{InitialSearchSuccess, InitialSearchTask, TaskResult, Task}
+import strata.tasks._
 import strata.util.{TimingInfo, IO}
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -36,7 +36,8 @@ object Log {
     implicit val formats = Serialization.formats(FullTypeHints(List(
       classOf[Task],
       classOf[TaskResult],
-      classOf[LogMessage]
+      classOf[LogMessage],
+      classOf[SecondarySuccessKind]
     ))) ++ Vector(DateTimeSerializer)
     write(logMessage)
   }
@@ -47,6 +48,7 @@ object Log {
         new CustomSerializer[Task](serializerImpl),
         new CustomSerializer[TaskResult](serializerImpl),
         new CustomSerializer[LogMessage](serializerImpl),
+        new CustomSerializer[SecondarySuccessKind](serializerImpl),
         DateTimeSerializer
       )
     parse(s).extract[LogMessage]

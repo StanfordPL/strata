@@ -9,6 +9,7 @@ import strata.util.TimingInfo
 sealed trait TaskResult {
   def task: Task
   def instruction = task.instruction
+  def timing: TimingInfo
 }
 
 sealed trait InitialSearchResult extends TaskResult
