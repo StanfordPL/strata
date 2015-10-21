@@ -121,6 +121,17 @@ class Driver(val globalOptions: GlobalOptions) {
   private def handleTaskResult(taskRes: TaskResult): Int = {
     val task = taskRes.task
     val instr = taskRes.instruction
+    def moveProgramToCircuitDir(meta: InstructionMeta, n: Int): Unit = {
+      // copy a file to the circuits directory
+      if (meta.equivalent_programs.isEmpty) {
+        val msg = s"Found $n programs, but none of them proved equivalent"
+        state.appendLog(LogError(msg))
+        IO.info(msg.red)
+        IO.copyFile(state.getResultFiles(instr).head, new File(s"${state.getCircuitDir}/$instr.s"))
+      } else {
+        IO.copyFile(meta.getEquivProgram(instr, state), new File(s"${state.getCircuitDir}/$instr.s"))
+      }
+    }
     state.lockedInformation(() => {
       state.removeInstructionToFile(instr, InstructionFile.Worklist)
       taskRes match {
@@ -132,29 +143,21 @@ class Driver(val globalOptions: GlobalOptions) {
           IO.info(s"initial search timeout for ${task.instruction}")
         case _: InitialSearchError =>
         case _: SecondarySearchError =>
-        case _: SecondarySearchSuccess =>
+        case _: SecondarySearchSuccess | _: SecondarySearchTimeout =>
           val meta = state.getMetaOfInstr(task.instruction)
           val n = meta.secondary_searches.map(s => s.n_found).sum + 1 // +1 for initial search
-          IO.info(s"secondary search success #$n for ${task.instruction}")
+          val isTimeout = taskRes.isInstanceOf[SecondarySearchTimeout]
+          if (isTimeout) {
+            IO.info(s"secondary search timeout for ${task.instruction}")
+          } else {
+            IO.info(s"secondary search success #$n for ${task.instruction}")
+          }
           // stop after we found enough
-          if (n >= 30) {
-            // copy a file to the circuits directory
-            if (meta.equivalent_programs.isEmpty) {
-              val msg = s"Found $n programs, but none of them proved equivalent"
-              state.appendLog(LogError(msg))
-              IO.info(msg.red)
-              IO.copyFile(state.getResultFiles(instr).head, new File(s"${state.getCircuitDir}/$instr.s"))
-            } else {
-              IO.copyFile(meta.getEquivProgram(instr, state), new File(s"${state.getCircuitDir}/$instr.s"))
-            }
+          if (n >= 30 || isTimeout) {
+            moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
           }
-        case _: SecondarySearchTimeout =>
-          // no more instructions found
-          state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
-          state.addInstructionToFile(instr, InstructionFile.Success)
-          IO.info(s"secondary search timeout for ${task.instruction}")
       }
       state.getPseudoTime
     })
