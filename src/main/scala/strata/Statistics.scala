@@ -174,7 +174,10 @@ object Statistics {
     }
 
     val width = {
-      maxLabel + 2 + data.map(x => ColoredOutput.uncoloredLength(x)).max
+      Seq(
+        maxLabel + 2 + data.map(x => ColoredOutput.uncoloredLength(x)).max,
+        title.length
+      ).max
     }
 
     val lines = labels.length
