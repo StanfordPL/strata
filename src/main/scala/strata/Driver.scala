@@ -12,7 +12,7 @@ import org.joda.time.DateTime
 import scala.util.Random
 
 /**
- * Driver for a full run of denali.  Takes care of deciding what to run next.
+ * Driver for a full run of strata.  Takes care of deciding what to run next.
  */
 class Driver(val globalOptions: GlobalOptions) {
 

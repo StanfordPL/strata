@@ -128,7 +128,7 @@ trait LogEnd extends LogMessage
 case class LogEntryPoint(arguments: Seq[String], gitHash: String = IO.getGitHash,
                          time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogMessage {
   override def toString = {
-    super.toString + s": entry point: denali ${arguments.mkString(" ")}"
+    super.toString + s": entry point: strata ${arguments.mkString(" ")}"
   }
 }
 

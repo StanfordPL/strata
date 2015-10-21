@@ -5,7 +5,7 @@ import java.io.File
 /**
  * Class to do file-based locking.
  *
- * All coordination happens through files in denali, as to make it easy to run a single experiment on multiple
+ * All coordination happens through files in strata, as to make it easy to run a single experiment on multiple
  * machines. The convention is to use a file '.dir.lock' to indicate locking of a directory, and to use a file
  * '.name.ext.lock' to lock the file 'name.ext'.  The lock file contains the process and thread ID.
  */

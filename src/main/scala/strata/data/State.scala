@@ -19,7 +19,7 @@ object InstructionFile extends Enumeration {
 import InstructionFile._
 
 /**
- * Code to interact with the state of a denali run (stored on disk).
+ * Code to interact with the state of a strata run (stored on disk).
  */
 class State(val globalOptions: GlobalOptions) {
 

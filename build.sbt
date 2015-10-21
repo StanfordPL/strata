@@ -1,5 +1,5 @@
 
-name := "denali"
+name := "strata"
 
 version := "1.0"
 

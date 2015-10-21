@@ -23,14 +23,14 @@ object Statistics {
 
     def cmd(instruction: Instruction, p1: String, p2: String) = {
       val meta = state.getMetaOfInstr(instruction)
-      Vector(s"~/dev/denali/stoke/bin/stoke", "debug", "verify",
-        "--config", s"~/dev/denali/resources/conf-files/formal.conf",
+      Vector(s"~/dev/strata/stoke/bin/stoke", "debug", "verify",
+        "--config", s"~/dev/strata/resources/conf-files/formal.conf",
         "--target", p1,
         "--rewrite", p2,
         "--def_in", meta.def_in_formal,
         "--live_out", meta.live_out_formal,
-        "--strata_path", "~/dev/output-denali/circuits",
-        "--functions", s"~/dev/output-denali/functions")
+        "--strata_path", "~/dev/output-strata/circuits",
+        "--functions", s"~/dev/output-strata/functions")
     }
 
     val messages = state.getLogMessages

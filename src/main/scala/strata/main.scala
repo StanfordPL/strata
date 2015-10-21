@@ -12,7 +12,7 @@ import scala.io.Source
 /**
  * Main entry point.
  */
-object Denali {
+object Strata {
   def main(args: Array[String]) {
 
 //    Log.test()
@@ -48,8 +48,8 @@ object Denali {
     }
 
     val commands: List[(String, String, (Array[String], String) => Unit)] = List(
-      ("init", "Initialize the configuration for denali", (localArgs: Array[String], helpStr: String) => {
-        val parser = new scopt.OptionParser[InitOptions]("denali") {
+      ("init", "Initialize the configuration for strata", (localArgs: Array[String], helpStr: String) => {
+        val parser = new scopt.OptionParser[InitOptions]("strata") {
           head(shortDescription)
           note(helpStr)
 
@@ -75,9 +75,9 @@ object Denali {
         }
       }),
 
-      ("run", "A full run of denali",
+      ("run", "A full run of strata",
         (localArgs: Array[String], helpStr: String) => {
-          val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
             head(shortDescription)
             note(helpStr)
 
@@ -92,9 +92,9 @@ object Denali {
           }
         }),
 
-      ("continue", "Continue an already running run of denali",
+      ("continue", "Continue an already running run of strata",
         (localArgs: Array[String], helpStr: String) => {
-          val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
             head(shortDescription)
             note(helpStr)
 
@@ -111,7 +111,7 @@ object Denali {
 
       ("stats", "Gather statistics for the working directory (which may still be running)",
         (localArgs: Array[String], helpStr: String) => {
-          val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
             head(shortDescription)
             note(helpStr)
 
@@ -128,7 +128,7 @@ object Denali {
 
       ("tmp", "Various ad-hoc things",
         (localArgs: Array[String], helpStr: String) => {
-          val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
             head(shortDescription)
             note(helpStr)
 
@@ -145,7 +145,7 @@ object Denali {
 
       ("cleanup", "Clean up the working directory after a crash (removing stray lock files, etc.)",
         (localArgs: Array[String], helpStr: String) => {
-          val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
             head(shortDescription)
             note(helpStr)
 
@@ -163,7 +163,7 @@ object Denali {
 
       ("shutdown", "Indicate that all threads should shut down and safely exit.  May take some time.",
         (localArgs: Array[String], helpStr: String) => {
-          val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
             head(shortDescription)
             note(helpStr)
 
@@ -181,7 +181,7 @@ object Denali {
 
       ("step", "Take one more step towards finding the right specification", (localArgs: Array[String], helpStr: String) => {
         var instr: Option[Instruction] = None
-        val parser = new scopt.OptionParser[GlobalOptions]("denali") {
+        val parser = new scopt.OptionParser[GlobalOptions]("strata") {
           head(shortDescription)
           note(helpStr)
 
@@ -237,7 +237,7 @@ object Denali {
   }
 
   def showHelp(shortDescription: String, commands: List[(String, String, (Array[String], String) => Unit)]): Unit = {
-    println("usage: denali [-h/--help] <command> [options]")
+    println("usage: strata [-h/--help] <command> [options]")
     println()
     println(shortDescription)
     println()
@@ -251,14 +251,14 @@ object Denali {
       println()
     }
     println()
-    println("Use 'denali <command> --help' to see the available options for a given command.")
+    println("Use 'strata <command> --help' to see the available options for a given command.")
   }
 }
 
 /**
  * Command line argument class.
  */
-case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home")}/dev/output-denali",
+case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home")}/dev/output-strata",
                          verbose: Boolean = false, keepTmpDirs: Boolean = false) {
   val workdir = new File(workdirPath)
 }

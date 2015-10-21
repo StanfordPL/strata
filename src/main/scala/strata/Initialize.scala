@@ -4,7 +4,7 @@ import strata.data._
 import strata.util.{TimingBuilder, IO}
 
 /**
- * Initializing the configuration of a denali run.
+ * Initializing the configuration of a strata run.
  */
 object Initialize {
   def run(args: Array[String], options: InitOptions, skipIfExists: Boolean = false): Unit = {

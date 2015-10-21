@@ -4,7 +4,7 @@ import strata.util.TimingInfo
 
 
 /**
- * The result of a task in denali
+ * The result of a task in strata
  */
 sealed trait TaskResult {
   def task: Task

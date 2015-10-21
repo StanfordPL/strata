@@ -1,6 +1,6 @@
-# Denali
+# Strata
 
-denali is a project to automatically infer a formal specification of most instructions in the x86_64 instruction set.
+strata is a project to automatically infer a formal specification of most instructions in the x86_64 instruction set.
 
 ## License
 

@@ -1,6 +1,6 @@
 package strata.data
 
-import strata.Denali._
+import strata.Strata._
 
 import scala.collection.mutable.ListBuffer
 
