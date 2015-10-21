@@ -1,7 +1,7 @@
-package denali.tasks
+package strata.tasks
 
-import denali.GlobalOptions
-import denali.data.{ThreadContext, Instruction}
+import strata.GlobalOptions
+import strata.data.{ThreadContext, Instruction}
 
 /**
  * A trait for steps the driver can take

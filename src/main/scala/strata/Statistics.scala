@@ -1,8 +1,8 @@
-package denali
+package strata
 
-import denali.data._
-import denali.tasks.{SecondarySearchSuccess, SecondarySearchTimeout, InitialSearchTimeout}
-import denali.util.{ColoredOutput, IO}
+import strata.data._
+import strata.tasks.{SecondarySearchSuccess, SecondarySearchTimeout, InitialSearchTimeout}
+import strata.util.{ColoredOutput, IO}
 import ColoredOutput._
 import org.joda.time.DateTime
 import org.joda.time.format.{PeriodFormatterBuilder, PeriodFormat}

@@ -1,8 +1,8 @@
-package denali.data
+package strata.data
 
 import java.io.File
 
-import denali.util.IO
+import strata.util.IO
 import org.json4s._
 import org.json4s.native.JsonMethods._
 

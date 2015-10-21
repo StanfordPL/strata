@@ -1,4 +1,4 @@
-package denali.util
+package strata.util
 
 import java.io.{BufferedWriter, FileWriter, File}
 import java.lang.management.ManagementFactory

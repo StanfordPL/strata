@@ -1,10 +1,10 @@
-package denali.tasks
+package strata.tasks
 
 import java.io.File
 
-import denali.data._
-import denali.util.{TimingKind, TimingBuilder, IO}
-import denali.util.ColoredOutput._
+import strata.data._
+import strata.util.{TimingKind, TimingBuilder, IO}
+import strata.util.ColoredOutput._
 
 import scala.sys.ShutdownHookThread
 

@@ -1,11 +1,11 @@
-package denali
+package strata
 
 import java.io.{FileWriter, File}
 import java.util.Date
 
-import denali.data._
-import denali.tasks.InitialSearch
-import denali.util.IO
+import strata.data._
+import strata.tasks.InitialSearch
+import strata.util.IO
 
 import scala.io.Source
 

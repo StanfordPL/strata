@@ -1,13 +1,13 @@
-package denali.data
+package strata.data
 
 import java.io.{FileWriter, File}
 import java.util.Calendar
-import denali.GlobalOptions
+import strata.GlobalOptions
 import org.json4s.native.Serialization
 import org.json4s.native.Serialization.write
 import scala.collection.mutable.ListBuffer
 import scala.io.{BufferedSource, Source}
-import denali.util.{IO, Locking}
+import strata.util.{IO, Locking}
 import org.json4s._
 import org.json4s.native.JsonMethods._
 

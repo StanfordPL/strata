@@ -1,4 +1,4 @@
-package denali.data
+package strata.data
 
 import java.io.File
 

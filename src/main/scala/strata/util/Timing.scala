@@ -1,4 +1,4 @@
-package denali.util
+package strata.util
 
 /**
  * A class to collect timing information

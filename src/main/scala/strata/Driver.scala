@@ -1,12 +1,12 @@
-package denali
+package strata
 
 import java.io.File
 import java.util.concurrent._
 
-import denali.data._
-import denali.tasks._
-import denali.util.IO
-import denali.util.ColoredOutput._
+import strata.data._
+import strata.tasks._
+import strata.util.IO
+import strata.util.ColoredOutput._
 import org.joda.time.DateTime
 
 import scala.util.Random

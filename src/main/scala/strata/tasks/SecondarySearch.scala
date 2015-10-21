@@ -1,10 +1,10 @@
-package denali.tasks
+package strata.tasks
 
 import java.io.{FileWriter, File}
 
-import denali.data._
-import denali.util.ColoredOutput._
-import denali.util.{Timing, TimingKind, TimingBuilder, IO}
+import strata.data._
+import strata.util.ColoredOutput._
+import strata.util.{Timing, TimingKind, TimingBuilder, IO}
 
 /**
  * Perform an secondary search for a given instruction.

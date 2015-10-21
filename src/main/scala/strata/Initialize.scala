@@ -1,7 +1,7 @@
-package denali
+package strata
 
-import denali.data._
-import denali.util.{TimingBuilder, IO}
+import strata.data._
+import strata.util.{TimingBuilder, IO}
 
 /**
  * Initializing the configuration of a denali run.

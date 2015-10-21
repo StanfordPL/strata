@@ -1,4 +1,4 @@
-package denali.util
+package strata.util
 
 import scala.language.implicitConversions
 
