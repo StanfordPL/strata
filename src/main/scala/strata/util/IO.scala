@@ -170,6 +170,6 @@ object IO {
       .appendSuffix("s")
       .toFormatter
 
-    formatter.print(cpuTime.toPeriod)
+    formatter.print(cpuTime.toPeriod).trim
   }
 }

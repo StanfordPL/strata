@@ -36,7 +36,10 @@ case class TimingBuilder() {
 
 /** A wrapper for more convenient access. */
 case class TimingInfo(data: Map[String, Long]) {
-
+  def total: Long = data.getOrElse(TimingKind.Total, 0)
+  def search: Long = data.getOrElse(TimingKind.Search, 0)
+  def verification: Long = data.getOrElse(TimingKind.Verification, 0)
+  def testing: Long = data.getOrElse(TimingKind.Testing, 0)
 }
 
 object TimingKind extends Enumeration {

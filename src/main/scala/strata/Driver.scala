@@ -138,15 +138,15 @@ class Driver(val globalOptions: GlobalOptions) {
         case _: InitialSearchSuccess =>
           state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
           state.addInstructionToFile(instr, InstructionFile.PartialSuccess)
-          IO.info(s"initial search success for ${task.instruction}")
-        case _: InitialSearchTimeout =>
-          IO.info(s"initial search timeout for ${task.instruction}")
+          IO.info(s"IS success for ${task.instruction}")
+        case ist: InitialSearchTimeout =>
+          IO.info(s"IS timeout for ${task.instruction} after ${ist.task.budget} iters / ${IO.formatNanos(ist.timing.total)}")
         case _: InitialSearchError =>
         case _: SecondarySearchError =>
         case _: SecondarySearchSuccess | _: SecondarySearchTimeout =>
           val meta = state.getMetaOfInstr(task.instruction)
           val n = meta.secondary_searches.map(s => s.n_found).sum + 1 // +1 for initial search
-          IO.info(s"secondary search success #$n for ${task.instruction}")
+          IO.info(s"SS success #$n for ${task.instruction}")
           // stop after we found enough
           if (n >= 30 || taskRes.isInstanceOf[SecondarySearchTimeout]) {
             moveProgramToCircuitDir(meta, n)
@@ -156,13 +156,13 @@ class Driver(val globalOptions: GlobalOptions) {
         case _: SecondarySearchTimeout =>
           val meta = state.getMetaOfInstr(task.instruction)
           val n = meta.secondary_searches.map(s => s.n_found).sum + 1 // +1 for initial search
+          IO.info(s"SS timeout for ${task.instruction} after ${IO.formatNanos(taskRes.timing.total)}")
           // stop if we tried 5 times and didn't succeed
           if (meta.secondary_searches.length >= 5) {
             moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
           }
-          IO.info(s"secondary search timeout for ${task.instruction} in ${IO.formatNanos(taskRes.timing.data(TimingKind.Total))}")
       }
       state.getPseudoTime
     })
