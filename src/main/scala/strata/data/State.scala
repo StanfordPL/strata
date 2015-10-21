@@ -149,22 +149,6 @@ class State(val globalOptions: GlobalOptions) {
     new File(s"$getTmpDir/stats.log-copy.bin")
   }
 
-  def appendLogOld(msg: String): Unit = {
-    if (!exists) IO.error("state has not been initialized yet")
-
-    val file = getReadableLogFile
-    Locking.lockFile(file)
-    if (!file.exists()) {
-      file.createNewFile()
-    }
-    val writer = new FileWriter(file, true)
-    val time = Calendar.getInstance().getTime
-    val messsage = msg.replace("\n", "\\n")
-    writer.append(s"[ $time / ${ThreadContext.self}} ] $messsage\n")
-    writer.close()
-    Locking.unlockFile(file)
-  }
-
   /** Get the log file. */
   private def getLogFile: File = {
     new File(s"${globalOptions.workdir}/${State.PATH_LOG}")
@@ -172,11 +156,6 @@ class State(val globalOptions: GlobalOptions) {
   /** Get the log file. */
   private def getReadableLogFile: File = {
     new File(s"${globalOptions.workdir}/${State.PATH_READABLE_LOG}")
-  }
-
-  /** Add an entry to the global log file of something unexpected that happened. */
-  def appendLogUnexpected(msg: String): Unit = {
-    appendLogOld(s"UNEXPECTED: $msg")
   }
 
   /** Temporary directory for things currently running */

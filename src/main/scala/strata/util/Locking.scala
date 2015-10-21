@@ -12,12 +12,12 @@ import java.io.File
 object Locking {
 
   /** Lock a given file.  Blocks until the lock is available. */
-  def lockFile(file: File): Unit = {
+  private def lockFile(file: File): Unit = {
     lockImpl(getLockNameForFile(file))
   }
 
   /** Unlock a file. */
-  def unlockFile(file: File): Unit = {
+  private def unlockFile(file: File): Unit = {
     unlockImpl(getLockNameForFile(file))
   }
 

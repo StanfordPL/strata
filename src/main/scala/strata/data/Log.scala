@@ -162,8 +162,8 @@ case class LogVerifyResult(instr: Instruction,
                            program2: String,
                            time: DateTime = DateTime.now(),
                            context: ThreadContext = ThreadContext.self) extends LogMessage {
-  override def toString = {
-    assert(!verifyResult.hasError)
+  override def toString: String = {
+    if (verifyResult.hasError) return super.toString + s": error: for $instr: ${verifyResult.error}"
     (verifyResult.verified, verifyResult.counter_examples_available) match {
       case (true, true) => assert(false); ""
       case (true, false) => super.toString + s": verification for $instr: verified"
