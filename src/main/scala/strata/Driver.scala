@@ -139,8 +139,14 @@ class Driver(val globalOptions: GlobalOptions) {
           // stop after we found enough
           if (n >= 30) {
             // copy a file to the circuits directory
-            // TODO pick a good program, rather than just any program
-            IO.copyFile(state.getResultFiles(instr).head, new File(s"${state.getCircuitDir}/$instr.s"))
+            if (meta.equivalent_programs.isEmpty) {
+              val msg = s"Found $n programs, but none of them proved equivalent"
+              state.appendLog(LogError(msg))
+              IO.info(msg.red)
+              IO.copyFile(state.getResultFiles(instr).head, new File(s"${state.getCircuitDir}/$instr.s"))
+            } else {
+              IO.copyFile(meta.getEquivProgram(instr, state), new File(s"${state.getCircuitDir}/$instr.s"))
+            }
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
           }
