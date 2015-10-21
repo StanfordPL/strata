@@ -157,7 +157,7 @@ object IO {
   /** Format a during in nano second nicely. */
   def formatNanos(n: Long): String = {
     import com.github.nscala_time.time.Imports._
-    var cpuTime = new Duration(n.toDouble / (1000.0 * 1000.0))
+    var cpuTime = new Duration((n.toDouble / (1000.0 * 1000.0)).toLong)
 
     val formatter = new PeriodFormatterBuilder()
       .appendDays()
