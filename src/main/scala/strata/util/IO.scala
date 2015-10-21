@@ -5,7 +5,7 @@ import java.lang.management.ManagementFactory
 import java.security.MessageDigest
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
+import org.joda.time.format.{PeriodFormatterBuilder, DateTimeFormat}
 
 import scala.sys.process._
 import ColoredOutput._
@@ -152,5 +152,24 @@ object IO {
   /** Format a DateTime nicely. */
   def formatTime(time: DateTime): String = {
     DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss").print(time)
+  }
+
+  /** Format a during in nano second nicely. */
+  def formatNanos(n: Long): String = {
+    import com.github.nscala_time.time.Imports._
+    var cpuTime = new Duration(n.toDouble / (1000.0 * 1000.0))
+
+    val formatter = new PeriodFormatterBuilder()
+      .appendDays()
+      .appendSuffix("d ")
+      .appendHours()
+      .appendSuffix("h ")
+      .appendMinutes()
+      .appendSuffix("m ")
+      .appendSeconds()
+      .appendSuffix("s")
+      .toFormatter
+
+    formatter.print(cpuTime.toPeriod)
   }
 }

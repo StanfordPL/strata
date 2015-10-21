@@ -48,33 +48,15 @@ object Statistics {
     }
   }
 
-  def perc(p: Long, total: Long, formatter: (Long => String) = _.toString): String = {
+  def perc(p: Long, total: Long, formatter: (Long => String) = _.toString, minLength: Int = 0): String = {
     if (total == 0) {
       assert(p == 0)
       "0"
     } else {
       val percentage = p.toDouble / total.toDouble * 100.0
       val pFormatted = formatter(p)
-      (" " * (formatter(total).length - pFormatted.length)) + f"$pFormatted ($percentage%6.2f %%)"
+      (" " * Math.max(minLength, formatter(total).length - pFormatted.length)) + f"$pFormatted ($percentage%6.2f %%)"
     }
-  }
-
-  def formatTime(nanos: Long): String = {
-    import com.github.nscala_time.time.Imports._
-    var cpuTime = new Duration(nanos / (1000 * 1000))
-
-    val formatter = new PeriodFormatterBuilder()
-      .appendDays()
-      .appendSuffix("d ")
-      .appendHours()
-      .appendSuffix("h ")
-      .appendMinutes()
-      .appendSuffix("m ")
-      .appendSeconds()
-      .appendSuffix("s")
-      .toFormatter
-
-    formatter.print(cpuTime.toPeriod)
   }
 
   def getExtendedStats(messages: Seq[LogMessage]): ExtendedStats = {
@@ -125,10 +107,10 @@ object Statistics {
           ("total", perc(validations.length, validations.length))
         ),
         timing = Vector(
-          ("search", perc(timings.getOrElse(TimingKind.Search, 0), totalTime, formatTime)),
-          ("validation", perc(timings.getOrElse(TimingKind.Verification, 0), totalTime, formatTime)),
-          ("testcases", perc(timings.getOrElse(TimingKind.Testing, 0), totalTime, formatTime)),
-          ("total", perc(totalTime, totalTime, formatTime))
+          ("search", perc(timings.getOrElse(TimingKind.Search, 0), totalTime, IO.formatNanos, 13)),
+          ("validation", perc(timings.getOrElse(TimingKind.Verification, 0), totalTime, IO.formatNanos, 13)),
+          ("testcases", perc(timings.getOrElse(TimingKind.Testing, 0), totalTime, IO.formatNanos, 13)),
+          ("total", perc(totalTime, totalTime, IO.formatNanos, 13))
         ),
         otherInfo = Vector(
           ("failed initial searches", failedInitial)

@@ -5,7 +5,7 @@ import java.util.concurrent._
 
 import strata.data._
 import strata.tasks._
-import strata.util.IO
+import strata.util.{TimingKind, IO}
 import strata.util.ColoredOutput._
 import org.joda.time.DateTime
 
@@ -146,18 +146,23 @@ class Driver(val globalOptions: GlobalOptions) {
         case _: SecondarySearchSuccess | _: SecondarySearchTimeout =>
           val meta = state.getMetaOfInstr(task.instruction)
           val n = meta.secondary_searches.map(s => s.n_found).sum + 1 // +1 for initial search
-          val isTimeout = taskRes.isInstanceOf[SecondarySearchTimeout]
-          if (isTimeout) {
-            IO.info(s"secondary search timeout for ${task.instruction}")
-          } else {
-            IO.info(s"secondary search success #$n for ${task.instruction}")
-          }
+          IO.info(s"secondary search success #$n for ${task.instruction}")
           // stop after we found enough
-          if (n >= 30 || isTimeout) {
+          if (n >= 30 || taskRes.isInstanceOf[SecondarySearchTimeout]) {
             moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
           }
+        case _: SecondarySearchTimeout =>
+          val meta = state.getMetaOfInstr(task.instruction)
+          val n = meta.secondary_searches.map(s => s.n_found).sum + 1 // +1 for initial search
+          // stop if we tried 5 times and didn't succeed
+          if (meta.secondary_searches.length >= 5) {
+            moveProgramToCircuitDir(meta, n)
+            state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
+            state.addInstructionToFile(instr, InstructionFile.Success)
+          }
+          IO.info(s"secondary search timeout for ${task.instruction} in ${IO.formatNanos(taskRes.timing.data(TimingKind.Total))}")
       }
       state.getPseudoTime
     })
@@ -177,7 +182,7 @@ class Driver(val globalOptions: GlobalOptions) {
 
   /** Compute the budget for the secondary search. */
   def secondarySearchBudget(instr: Instruction): Long = {
-    10000000
+    50000000
   }
 
   /** Select what next step should be done, and puts the task into the worklist. */
