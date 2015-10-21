@@ -1,4 +1,4 @@
-# Strata
+![strata](resources/logo/strata.png)
 
 strata is a project to automatically infer a formal specification of most instructions in the x86_64 instruction set.
 
