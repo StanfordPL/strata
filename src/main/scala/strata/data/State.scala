@@ -132,10 +132,21 @@ class State(val globalOptions: GlobalOptions) {
   }
 
   def getLogMessages: Seq[LogMessage] = {
+    val tmpFile = getTmpLogFile
     Locking.lockedFile(getLogFile)(() => {
-      val s = IO.readFile(getLogFile).split("\n")
-      s map (line => Log.deserializeMessage(line))
+      IO.copyFile(getLogFile, tmpFile)
     })
+    val buf = scala.io.Source.fromFile(tmpFile)
+    val result = (for (line <- buf.getLines()) yield {
+      Log.deserializeMessage(line)
+    }).toList
+    buf.close()
+    tmpFile.delete()
+    result
+  }
+
+  def getTmpLogFile: File = {
+    new File(s"$getTmpDir/stats.log-copy.bin")
   }
 
   def appendLogOld(msg: String): Unit = {
@@ -288,8 +299,16 @@ class State(val globalOptions: GlobalOptions) {
 
     // remove old temp directories
     for (tmp <- getTmpDir.listFiles) {
-      println(s"Removing tmp directory: ${tmp.getName}")
-      IO.deleteDirectory(tmp)
+      if (tmp.isDirectory) {
+        println(s"Removing tmp directory: ${tmp.getName}")
+        IO.deleteDirectory(tmp)
+      }
+    }
+
+    // remove tmp stats file
+    if (getTmpLogFile.exists()) {
+      println("Deleting temporary log copy from statistics")
+      getTmpLogFile.delete()
     }
 
     IO.info("All clear now.")
