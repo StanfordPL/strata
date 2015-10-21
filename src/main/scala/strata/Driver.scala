@@ -109,8 +109,9 @@ class Driver(val globalOptions: GlobalOptions) {
     } catch {
       case t: Throwable =>
         state.appendLog(LogTaskEnd(task, None, -1, DateTime.now, task.runnerContext))
-        state.appendLog(LogError(s"exception in task: ${t.getMessage}\n${t.getCause.getStackTrace.mkString("\n")}"))
-        IO.info(s"ERROR: failure: ${t.getMessage}\n${t.getCause.getStackTrace.mkString("\n")}".red)
+        val cause = if (t.getCause != null) t.getCause else t
+        state.appendLog(LogError(s"exception in task: ${t.getMessage}\n${cause.getStackTrace.mkString("\n")}"))
+        IO.info(s"ERROR: failure: ${t.getMessage}\n${cause.getStackTrace.mkString("\n")}".red)
         state.lockedInformation(() => {
           state.removeInstructionToFile(task.instruction, InstructionFile.Worklist)
         })
