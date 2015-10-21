@@ -218,7 +218,7 @@ object SecondarySearch {
                     meta = meta.copy(equivalent_programs = meta.equivalent_programs ++ Vector(resultFile.getName))
                     state.writeMetaOfInstr(instr, meta)
                     return SecondarySearchSuccess(task, SrkEquivalent(), timing.result)
-                  } else if (verifyRes.isUnknown) {
+                  } else if (verifyRes.isUnknown || verifyRes.isTimeout) {
                     // case 2b: unknown: keep the program, but don't add it to the set of eqiv programs
                     return SecondarySearchSuccess(task, SrkUnknown(1, againstEquiv = true), timing.result)
                   } else {
