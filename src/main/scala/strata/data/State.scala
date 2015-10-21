@@ -300,14 +300,14 @@ class State(val globalOptions: GlobalOptions) {
     // remove old temp directories
     for (tmp <- getTmpDir.listFiles) {
       if (tmp.isDirectory) {
-        println(s"Removing tmp directory: ${tmp.getName}")
+        IO.info(s"Removing tmp directory: ${tmp.getName}")
         IO.deleteDirectory(tmp)
       }
     }
 
     // remove tmp stats file
     if (getTmpLogFile.exists()) {
-      println("Deleting temporary log copy from statistics")
+      IO.info("Deleting temporary log copy from statistics")
       getTmpLogFile.delete()
     }
 

@@ -48,14 +48,33 @@ object Statistics {
     }
   }
 
-  def perc(p: Long, total: Long): String = {
+  def perc(p: Long, total: Long, formatter: (Long => String) = _.toString): String = {
     if (total == 0) {
       assert(p == 0)
       "0"
     } else {
       val percentage = p.toDouble / total.toDouble * 100.0
-      (" " * (total.toString.length - p.toString.length)) + f"$p ($percentage%6.2f %%)"
+      val pFormatted = formatter(p)
+      (" " * (formatter(total).length - pFormatted.length)) + f"$pFormatted ($percentage%6.2f %%)"
     }
+  }
+
+  def formatTime(nanos: Long): String = {
+    import com.github.nscala_time.time.Imports._
+    var cpuTime = new Duration(nanos / (1000 * 1000))
+
+    val formatter = new PeriodFormatterBuilder()
+      .appendDays()
+      .appendSuffix("d ")
+      .appendHours()
+      .appendSuffix("h ")
+      .appendMinutes()
+      .appendSuffix("m ")
+      .appendSeconds()
+      .appendSuffix("s")
+      .toFormatter
+
+    formatter.print(cpuTime.toPeriod)
   }
 
   def getExtendedStats(messages: Seq[LogMessage]): ExtendedStats = {
@@ -74,13 +93,15 @@ object Statistics {
       val timings = messages.collect({
         case LogTaskEnd(t, Some(res), _, _, _) => res.timing
       }).flatMap(x => x.data.map(identity)).groupBy(x => x._1).map(x => (x._1, x._2.map(x => x._2).sum))
-      val totalTime = timings.values.sum
+      val totalTime = timings.filter(p => p._1 != TimingKind.Total).values.sum
+      val totalCpuTime = timings.filter(p => p._1 == TimingKind.Total).values.sum
       val validations = messages.collect({
         case LogVerifyResult(_, true, verifyResult, _, _, _, _) => verifyResult
       })
       ExtendedStats(
         globalStartTime = IO.formatTime(messages.head.time),
         errors = errors,
+        totalCpuTime = totalCpuTime,
         searchOverview = Vector(
           ("equivalent", perc(secondary.count({
             case _: SrkEquivalent => true
@@ -104,10 +125,10 @@ object Statistics {
           ("total", perc(validations.length, validations.length))
         ),
         timing = Vector(
-          ("search", perc(timings.getOrElse(TimingKind.Search, 0), totalTime)),
-          ("validation", perc(timings.getOrElse(TimingKind.Verification, 0), totalTime)),
-          ("testcases", perc(timings.getOrElse(TimingKind.Testing, 0), totalTime)),
-          ("total", perc(totalTime, totalTime))
+          ("search", perc(timings.getOrElse(TimingKind.Search, 0), totalTime, formatTime)),
+          ("validation", perc(timings.getOrElse(TimingKind.Verification, 0), totalTime, formatTime)),
+          ("testcases", perc(timings.getOrElse(TimingKind.Testing, 0), totalTime, formatTime)),
+          ("total", perc(totalTime, totalTime, formatTime))
         ),
         otherInfo = Vector(
           ("failed initial searches", failedInitial)
@@ -148,6 +169,7 @@ object Statistics {
   case class ExtendedStats(
                             globalStartTime: String = "n/a",
                             errors: Int = 0,
+                            totalCpuTime: Long = 0,
                             searchOverview: Seq[(Any, Any)] = Nil,
                             validatorInvocations: Seq[(Any, Any)] = Nil,
                             timing: Seq[(Any, Any)] = Nil,
@@ -159,7 +181,7 @@ object Statistics {
 
     def validatorInvocationsBox = Box.mk("Validator invocations", validatorInvocations)
 
-    def timingBox = Box.mk("Timing", timing)
+    def timingBox = Box.mk("Cpu time distribution", timing)
 
     def otherInfoBox = Box.mk("Additional information", otherInfo)
   }
@@ -259,26 +281,10 @@ object Statistics {
 
     val globalStartTime = extendedStats.globalStartTime
 
-    // compute cpu time
-    val startMap = collection.mutable.Map[ThreadContext, DateTime]()
-    import com.github.nscala_time.time.Imports._
-    var cpuTime = new Duration(0)
-
-    val formatter = new PeriodFormatterBuilder()
-      .appendDays()
-      .appendSuffix("d ")
-      .appendHours()
-      .appendSuffix("h ")
-      .appendMinutes()
-      .appendSuffix("m ")
-      .appendSeconds()
-      .appendSuffix("s ")
-      .toFormatter
-
     val errorStr = if (extendedStats.errors > 0) extendedStats.errors.toString.red else "0"
     val basicBox = Box("Basic information",
       Vector("started at", "cpu time", "running threads", "number of errors"),
-      Vector(globalStartTime, formatter.print(cpuTime.toPeriod), stats.nWorklist, errorStr))
+      Vector(globalStartTime, formatTime(extendedStats.totalCpuTime), stats.nWorklist, errorStr))
 
     val (out, breaks) = printBoxesHorizontally(Vector(progressBox, basicBox), width)
 
