@@ -55,7 +55,7 @@ object Statistics {
     } else {
       val percentage = p.toDouble / total.toDouble * 100.0
       val pFormatted = formatter(p)
-      (" " * Math.max(minLength, formatter(total).length - pFormatted.length)) + f"$pFormatted ($percentage%6.2f %%)"
+      (" " * (Math.max(minLength, formatter(total).length) - pFormatted.length)) + f"$pFormatted ($percentage%6.2f %%)"
     }
   }
 
