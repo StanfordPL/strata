@@ -15,7 +15,8 @@
       <sourceFolder url="file://$MODULE_DIR$/../../target/scala-2.11/resource_managed/main" type="java-resource" />
       <sourceFolder url="file://$MODULE_DIR$/../../src/test/resources" type="java-test-resource" />
       <sourceFolder url="file://$MODULE_DIR$/../../target/scala-2.11/resource_managed/test" type="java-test-resource" />
-      <excludeFolder url="file://$MODULE_DIR$/../../target" />
+      <excludeFolder url="file://$MODULE_DIR$/../../target/resolution-cache" />
+      <excludeFolder url="file://$MODULE_DIR$/../../target/streams" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
@@ -36,5 +37,6 @@
     <orderEntry type="library" name="SBT: joda-time:joda-time:2.8.2:jar" level="project" />
     <orderEntry type="library" name="SBT: org.joda:joda-convert:1.7:jar" level="project" />
     <orderEntry type="library" name="SBT: org.json4s:json4s-ext_2.11:3.3.0.RC6:jar" level="project" />
+    <orderEntry type="library" name="SBT: com.github.tototoshi:scala-csv_2.11:1.2.2:jar" level="project" />
   </component>
 </module>

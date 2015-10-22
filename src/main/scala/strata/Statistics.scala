@@ -1,5 +1,8 @@
 package strata
 
+import java.io.File
+
+import com.github.tototoshi.csv.CSVWriter
 import strata.data._
 import strata.tasks._
 import strata.util.{TimingKind, ColoredOutput, IO}
@@ -16,6 +19,29 @@ import scala.concurrent.{Future, ExecutionContext}
 object Statistics {
 
   val CLEAR_CONSOLE: String = "\u001b[H\u001b[2J"
+
+  /** Some adhoc statistics. */
+  def tmp(globalOptions: GlobalOptions): Unit = {
+    val state = State(globalOptions)
+    val messages = state.getLogMessages
+  }
+
+  /** Collect data for further analysis. */
+  def collectData(globalOptions: GlobalOptions): Unit = {
+    val state = State(globalOptions)
+    val messages = state.getLogMessages
+
+    // graph initial searches
+    val initialGraph = new File("../data/initial-search.csv")
+    val writer = CSVWriter.open(initialGraph)
+    for (message <- messages) {
+      message match {
+        case LogTaskEnd(_, Some(InitialSearchTimeout(task, timing)), pt, time, _) =>
+          writer.writeRow(Vector(time.toDate.getTime, task.pseudoTime, task.budget))
+      }
+    }
+    writer.close()
+  }
 
   /** Show statistics and update them periodically. */
   def run(globalOptions: GlobalOptions): Unit = {
@@ -329,84 +355,5 @@ object Statistics {
 
   def getConsoleWidth: Int = {
     80
-  }
-
-
-  /** Some adhoc statistics. */
-  def tmp(globalOptions: GlobalOptions): Unit = {
-    val state = State(globalOptions)
-
-    def cmd(instruction: Instruction, p1: String, p2: String) = {
-      val meta = state.getMetaOfInstr(instruction)
-      Vector(s"~/dev/strata/stoke/bin/stoke", "debug", "verify",
-        "--config", s"~/dev/strata/resources/conf-files/formal.conf",
-        "--target", p1,
-        "--rewrite", p2,
-        "--def_in", meta.def_in_formal,
-        "--live_out", meta.live_out_formal,
-        "--strata_path", "~/dev/output-strata/circuits",
-        "--functions", s"~/dev/output-strata/functions")
-    }
-
-    val messages = state.getLogMessages
-    val verifyMessage = messages.collect {
-      case l: LogVerifyResult if !l.verifyResult.hasError => l
-    }
-    val errors = messages.collect {
-      case l: LogVerifyResult if l.verifyResult.hasError => l
-    }
-
-    println(s"Total messages: ${messages.length}")
-    println("Verification results")
-    println(s"  verified:       ${verifyMessage.count(m => m.verifyResult.verified)}")
-    println(s"  unknown:        ${verifyMessage.count(m => !m.verifyResult.verified && !m.verifyResult.counter_examples_available)}")
-    println(s"  counterexample: ${verifyMessage.count(m => !m.verifyResult.verified && m.verifyResult.counter_examples_available)}")
-    println(s"  error:          ${errors.length}")
-    println(s"  error:          ${
-      messages.collect({
-        case l: LogError => l
-      }).length
-    }")
-
-    val counterExamples = verifyMessage.collect {
-      case l: LogVerifyResult if l.verifyResult.counter_examples_available =>
-        l
-    }
-    val instrs = counterExamples.groupBy(_.instr.toString)
-    for ((k, i) <- instrs) {
-      println(s"$k - ${i.length}")
-      //println(i.map(x => x.program1.substring(x.program1.lastIndexOf("-")+1) + " vs " + x.program2.substring(x.program1.lastIndexOf("-")+1)).mkString("\n"))
-    }
-
-    val verifyByInstr = verifyMessage.groupBy(_.instr.toString)
-    println("-----")
-    for ((i, ms) <- verifyByInstr) {
-      val total = ms.length
-      val counter = ms.count(x => x.verifyResult.counter_examples_available && !x.verifyResult.verified)
-      if (counter * 1.0 / total > 0.5) {
-        println(s"$i: counter examples: $counter / $total")
-      }
-    }
-    println("-----")
-    for ((i, ms) <- verifyByInstr) {
-      val total = ms.length
-      val unknown = ms.count(x => !x.verifyResult.counter_examples_available && !x.verifyResult.verified)
-      if (unknown * 1.0 / total > 0.5) {
-        println(s"$i: unknown: $unknown / $total")
-      }
-    }
-    println("-----")
-    for ((i, ms) <- verifyByInstr) {
-      val total = ms.length
-      val verified = ms.count(x => x.verifyResult.verified)
-      if (verified * 1.0 / total < 0.1) {
-        println(s"$i: verified: $verified / $total")
-      }
-    }
-
-    val ban = Vector("popq_r64", "shll_r32_one", "pushw_r16", "movzbl_r32_r8")
-    for (v <- counterExamples.filter(p => !ban.contains(p.instr.toString)).take(50)) {
-      println(IO.cmd2String(cmd(v.instr, v.program1, v.program2)))
-    }
   }
 }

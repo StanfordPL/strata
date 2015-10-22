@@ -132,11 +132,28 @@ object Strata {
             head(shortDescription)
             note(helpStr)
 
-            addGlobalOptions(this, "stats", normalUpdateGlobal)
+            addGlobalOptions(this, "tmp", normalUpdateGlobal)
           }
           parser.parse(localArgs, GlobalOptions()) match {
             case Some(c) =>
               Statistics.tmp(c)
+            case None =>
+              // arguments are bad, error message will have been displayed
+              sys.exit(1)
+          }
+        }),
+
+      ("data", "Collect data for a later analysis (e.g., to produce graphs)",
+        (localArgs: Array[String], helpStr: String) => {
+          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
+            head(shortDescription)
+            note(helpStr)
+
+            addGlobalOptions(this, "data", normalUpdateGlobal)
+          }
+          parser.parse(localArgs, GlobalOptions()) match {
+            case Some(c) =>
+              Statistics.collectData(c)
             case None =>
               // arguments are bad, error message will have been displayed
               sys.exit(1)
