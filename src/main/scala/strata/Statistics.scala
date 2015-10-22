@@ -32,15 +32,17 @@ object Statistics {
     val messages = state.getLogMessages
 
     // graph initial searches
-    val initialGraph = new File("../data/initial-search.csv")
+    val initialGraph = new File("../data-strata/initial-search.csv")
     val writer = CSVWriter.open(initialGraph)
     for (message <- messages) {
       message match {
         case LogTaskEnd(_, Some(InitialSearchTimeout(task, timing)), pt, time, _) =>
           writer.writeRow(Vector(time.toDate.getTime, task.pseudoTime, task.budget))
+        case _ =>
       }
     }
     writer.close()
+    println(s"Processed ${messages.length} messages")
   }
 
   /** Show statistics and update them periodically. */
