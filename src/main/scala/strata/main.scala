@@ -196,6 +196,25 @@ object Strata {
           }
         }),
 
+      ("check", "Check the circuits found by strata against the circuits used in STOKE.",
+        (localArgs: Array[String], helpStr: String) => {
+          val parser = new scopt.OptionParser[CheckOptions]("strata") {
+            head(shortDescription)
+            note(helpStr)
+            help("help") text s"Usage information for the check command"
+            opt[File]("circuitPath") valueName ("<dir>") action {
+              (x, c) => c.copy(x)
+            } text (s"The directory where outputs and intermediate progress are stored. Default: ${GlobalOptions().workdir}")
+          }
+          parser.parse(localArgs, CheckOptions()) match {
+            case Some(c) =>
+              Check(c).run()
+            case None =>
+              // arguments are bad, error message will have been displayed
+              sys.exit(1)
+          }
+        }),
+
       ("step", "Take one more step towards finding the right specification", (localArgs: Array[String], helpStr: String) => {
         var instr: Option[Instruction] = None
         val parser = new scopt.OptionParser[GlobalOptions]("strata") {
@@ -281,3 +300,5 @@ case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home
 }
 
 case class InitOptions(globalOptions: GlobalOptions)
+
+case class CheckOptions(circuitPath: File = new File(s"${System.getProperty("user.home")}/dev/circuits"))
