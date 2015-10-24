@@ -20,7 +20,9 @@ case class Check(options: CheckOptions) {
     "vcvtsi2ssl_xmm_xmm_r32",
     "vcvtsi2sdl_xmm_xmm_r32",
     "vsqrtsd_xmm_xmm_xmm",
-    "vaddsd_xmm_xmm_xmm"
+    "vaddsd_xmm_xmm_xmm",
+    "vrcpss_xmm_xmm_xmm",
+    "vsubsd_xmm_xmm_xmm"
   )
 
   val ignore = Vector(
@@ -39,12 +41,14 @@ case class Check(options: CheckOptions) {
 
     val (strataInstrs, graph) = dependencyGraph
 
-    val debug = false
+    val debug = options.verbose
 
     var correct = 0
     var incorrect = 0
     var stoke_unsupported = 0
     var timeout = 0
+    var stoke_wrong = 0
+    var total = 0
     for (instruction <- graph.topologicalSort) {
       val node = graph.get(instruction)
       if (node.diPredecessors.size >= 0) {
@@ -53,9 +57,11 @@ case class Check(options: CheckOptions) {
           "--circuit_dir", options.circuitPath,
           "--opcode", instruction)
         val (out, status) = IO.runQuiet(cmd)
+        total += 1
 
-        // only a few good outcomes
-        if (status == 124) {
+        if (stokeIsWrong.contains(instruction.opcode)) {
+          stoke_wrong += 1
+        } else if (status == 124) {
           println(s"$instruction: timeout")
           timeout += 1
         } else if (status == 2) {
@@ -90,8 +96,9 @@ case class Check(options: CheckOptions) {
     }
 
     println()
-    println(s"Total:                ${correct + incorrect + timeout + stoke_unsupported}")
+    println(s"Total:                $total")
     println(s"STOKE == strata:      $correct")
+    println(s"STOKE is wrong:       $stoke_wrong")
     println(s"STOKE != strata:      $incorrect")
     println(s"Timeout:              $timeout")
     println(s"Unsupported by STOKE: $stoke_unsupported")

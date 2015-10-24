@@ -205,6 +205,9 @@ object Strata {
             opt[File]("circuitPath") valueName ("<dir>") action {
               (x, c) => c.copy(x)
             } text (s"The directory where outputs and intermediate progress are stored. Default: ${GlobalOptions().workdir}")
+            opt[Unit]('v', "verbose") action {
+              (x, c) => c.copy(verbose = true)
+            } text (s"Verbose output.  Default: ${CheckOptions().verbose}")
           }
           parser.parse(localArgs, CheckOptions()) match {
             case Some(c) =>
@@ -301,4 +304,4 @@ case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home
 
 case class InitOptions(globalOptions: GlobalOptions)
 
-case class CheckOptions(circuitPath: File = new File(s"${System.getProperty("user.home")}/dev/circuits"))
+case class CheckOptions(circuitPath: File = new File(s"${System.getProperty("user.home")}/dev/circuits"), verbose: Boolean = false)
