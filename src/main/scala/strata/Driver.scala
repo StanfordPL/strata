@@ -176,9 +176,9 @@ class Driver(val globalOptions: GlobalOptions) {
     val default = 200000
     var res: Double = default
     for (initalSearch <- meta.initial_searches) {
-      res += 1.0 / Math.pow(1.5, pnow - initalSearch.start_ptime) * initalSearch.iterations
+      res += Math.pow(1.5, - (pnow - initalSearch.start_ptime).toDouble / 10.0) * initalSearch.iterations
     }
-    Math.min(res.toLong, 10000000)
+    Math.min(res.toLong, 100000000)
   }
 
   /** Compute the budget for the secondary search. */
