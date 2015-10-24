@@ -39,7 +39,7 @@ case class Check(options: CheckOptions) {
 
     val (strataInstrs, graph) = dependencyGraph
 
-    val debug = true
+    val debug = false
 
     var correct = 0
     var incorrect = 0
