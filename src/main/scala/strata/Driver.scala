@@ -151,7 +151,9 @@ class Driver(val globalOptions: GlobalOptions) {
             min = heuristic
             best = candidate
           }
+          resCircuit.delete()
         }
+        IO.copyFile(best, resCircuit)
       }
     }
     state.lockedInformation(() => {
