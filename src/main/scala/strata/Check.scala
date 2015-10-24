@@ -14,12 +14,32 @@ import scalax.collection.GraphPredef._
  */
 case class Check(options: CheckOptions) {
 
+  val stokeIsWrong = Vector(
+    "vaddss_xmm_xmm_xmm",
+    "vcvtss2sd_xmm_xmm_xmm",
+    "vcvtsi2ssl_xmm_xmm_r32",
+    "vcvtsi2sdl_xmm_xmm_r32",
+    "vsqrtsd_xmm_xmm_xmm",
+    "vaddsd_xmm_xmm_xmm"
+  )
+
+  val ignore = Vector(
+    // spreadsheet bug
+    "vcvtdq2pd_xmm_xmm",
+    // simpler formula should be available
+    "xorb_rh_r8",
+    // add to base set
+    "vcvtss2sil_r32_xmm",
+    // minss/maxss problem
+    "movq_r64_xmm"
+  )
+  // vcvtdq2pd_ymm_ymm, vminsd_xmm_xmm_xmm, vdivsd_xmm_xmm_xmm
   /** Run the check. */
   def run(): Unit = {
 
     val (strataInstrs, graph) = dependencyGraph
 
-    val debug = false
+    val debug = true
 
     var correct = 0
     var incorrect = 0
