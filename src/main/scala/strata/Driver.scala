@@ -124,13 +124,34 @@ class Driver(val globalOptions: GlobalOptions) {
     val instr = taskRes.instruction
     def moveProgramToCircuitDir(meta: InstructionMeta, n: Int): Unit = {
       // copy a file to the circuits directory
+      val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
       if (meta.equivalent_programs.isEmpty) {
         val msg = s"Found $n programs, but none of them proved equivalent"
         state.appendLog(LogError(msg))
         IO.info(msg.red)
-        IO.copyFile(state.getResultFiles(instr).head, new File(s"${state.getCircuitDir}/$instr.s"))
+        IO.copyFile(state.getResultFiles(instr).head, resCircuit)
       } else {
-        IO.copyFile(meta.getEquivProgram(instr, state), new File(s"${state.getCircuitDir}/$instr.s"))
+        // determine which program is the best according to our heuristics
+        var min = (Int.MaxValue, Int.MaxValue, Int.MaxValue)
+        var best = meta.getEquivProgram(instr, state)
+        for (candidate <- meta.getEquivPrograms(instr, state)) {
+          IO.copyFile(candidate, resCircuit)
+          val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/specgen", "evaluate",
+            "--circuit_dir", state.getCircuitDir,
+            "--opcode", instr)
+          val (out, status) = IO.runQuiet(cmd)
+          if (status != 0) {
+            throw new RuntimeException(s"specgen_evaluate failed: $out")
+          }
+          val outParsed = out.trim.split(",").map(_.toInt)
+          assert(outParsed.length == 3)
+          val heuristic = (outParsed(0), outParsed(1), outParsed(2))
+          import scala.math.Ordering.Implicits._
+          if (heuristic < min) {
+            min = heuristic
+            best = candidate
+          }
+        }
       }
     }
     state.lockedInformation(() => {

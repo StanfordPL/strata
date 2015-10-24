@@ -17,6 +17,13 @@ case class InstructionMeta(def_in: String,
   def getEquivProgram(instruction: Instruction, state: State): File = {
     new File(s"${state.getInstructionResultDir(instruction)}/${equivalent_programs.head}")
   }
+
+  /** Get all of the equivalent programs. */
+  def getEquivPrograms(instruction: Instruction, state: State): Seq[File] = {
+    for (p <- equivalent_programs) yield {
+      new File(s"${state.getInstructionResultDir(instruction)}/$p")
+    }
+  }
 }
 
 case class InitialSearchMeta(success: Boolean,
