@@ -5,13 +5,11 @@ import java.io.File
 import com.github.tototoshi.csv.CSVWriter
 import strata.data._
 import strata.tasks._
-import strata.util.{TimingKind, ColoredOutput, IO}
-import ColoredOutput._
-import org.joda.time.DateTime
-import org.joda.time.format.{PeriodFormatterBuilder, PeriodFormat}
+import strata.util.ColoredOutput._
+import strata.util.{ColoredOutput, IO, TimingKind}
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * A class to collect various statistics of the current run.

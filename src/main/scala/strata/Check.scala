@@ -8,6 +8,8 @@ import strata.util.IO
 import scalax.collection.GraphEdge.DiEdge
 import scalax.collection.mutable.Graph
 import scalax.collection.GraphPredef._
+import scalax.collection.io.dot._
+import scalax.collection.io.dot.implicits._
 
 /**
  * Check strata circuits against hand-written circuits in STOKE.
@@ -23,12 +25,12 @@ case class Check(options: CheckOptions) {
     "vaddsd_xmm_xmm_xmm",
     "vrcpss_xmm_xmm_xmm",
     "vcvtsd2ss_xmm_xmm_xmm",
-  "vsubss_xmm_xmm_xmm",
-  "vsubss_xmm_xmm_xmm",
-  "vcvtsi2sdq_xmm_xmm_r64",
-  "vdivss_xmm_xmm_xmm",
-  "vsqrtss_xmm_xmm_xmm",
-  "vrsqrtss_xmm_xmm_xmm",
+    "vsubss_xmm_xmm_xmm",
+    "vsubss_xmm_xmm_xmm",
+    "vcvtsi2sdq_xmm_xmm_r64",
+    "vdivss_xmm_xmm_xmm",
+    "vsqrtss_xmm_xmm_xmm",
+    "vrsqrtss_xmm_xmm_xmm",
     "vsubsd_xmm_xmm_xmm"
   )
 
@@ -40,7 +42,13 @@ case class Check(options: CheckOptions) {
   /** Run the check. */
   def run(): Unit = {
 
-    val (strataInstrs, graph) = dependencyGraph
+    val (strataInstrs, graph) = dependencyGraph(options.circuitPath)
+
+//    val root = DotRootGraph(
+//      directed = true,
+//      id = Some("strata dependencies"))
+//    println(graph.toDot(root, x => Some((root, DotEdgeStmt(x.edge.source.toString, x.edge.target.toString)))))
+//    return
 
     val debug = options.verbose
 
@@ -107,16 +115,16 @@ case class Check(options: CheckOptions) {
   }
 
   /** Compute the dependency graph of all the circuits. */
-  private def dependencyGraph: (Seq[Instruction], Graph[Instruction, DiEdge]) = {
+  def dependencyGraph(circuitPath: File): (Seq[Instruction], Graph[Instruction, DiEdge]) = {
     val graph = Graph[Instruction, DiEdge]()
 
     // get all instructions
-    val instructions = for (circuitFile <- options.circuitPath.listFiles) yield {
+    val instructions = for (circuitFile <- circuitPath.listFiles) yield {
       Instruction(circuitFile.getName.substring(0, circuitFile.getName.length - 2))
     }
 
     // loop over all circuits
-    for (circuitFile <- options.circuitPath.listFiles) {
+    for (circuitFile <- circuitPath.listFiles) {
       val program = Program.fromFile(circuitFile)
       val circuit = Instruction(circuitFile.getName.substring(0, circuitFile.getName.length - 2))
 

@@ -23,6 +23,8 @@ libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.2.2"
 
 libraryDependencies += "com.assembla.scala-incubator" %% "graph-core" % "1.9.4"
 
+libraryDependencies += "com.assembla.scala-incubator" %% "graph-dot" % "1.10.0"
+
 
 
 resolvers += Resolver.sonatypeRepo("public")

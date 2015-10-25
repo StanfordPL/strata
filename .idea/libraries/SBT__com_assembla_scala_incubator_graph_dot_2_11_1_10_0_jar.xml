@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="SBT: com.assembla.scala-incubator:graph-dot_2.11:1.10.0:jar">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/com.assembla.scala-incubator/graph-dot_2.11/jars/graph-dot_2.11-1.10.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
