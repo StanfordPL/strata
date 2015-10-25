@@ -22,16 +22,17 @@ case class Check(options: CheckOptions) {
     "vsqrtsd_xmm_xmm_xmm",
     "vaddsd_xmm_xmm_xmm",
     "vrcpss_xmm_xmm_xmm",
+    "vcvtsd2ss_xmm_xmm_xmm",
+  "vsubss_xmm_xmm_xmm",
+  "vsubss_xmm_xmm_xmm",
+  "vcvtsi2sdq_xmm_xmm_r64",
+  "vdivss_xmm_xmm_xmm",
+  "vsqrtss_xmm_xmm_xmm",
+  "vrsqrtss_xmm_xmm_xmm",
     "vsubsd_xmm_xmm_xmm"
   )
 
   val ignore = Vector(
-    // spreadsheet bug
-    "vcvtdq2pd_xmm_xmm",
-    // simpler formula should be available
-    "xorb_rh_r8",
-    // add to base set
-    "vcvtss2sil_r32_xmm",
     // minss/maxss problem
     "movq_r64_xmm"
   )
