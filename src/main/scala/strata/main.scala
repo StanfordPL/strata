@@ -5,7 +5,7 @@ import java.util.Date
 
 import strata.data._
 import strata.tasks.InitialSearch
-import strata.util.IO
+import strata.util.{Distribution, IO}
 
 import scala.io.Source
 

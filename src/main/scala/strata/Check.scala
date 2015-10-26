@@ -3,7 +3,7 @@ package strata
 import java.io.File
 
 import strata.data.{Program, Instruction}
-import strata.util.IO
+import strata.util.{Distribution, IO}
 
 import scala.util.control.Breaks
 import scalax.collection.GraphEdge.DiEdge
@@ -78,6 +78,9 @@ case class Check(options: CheckOptions) {
         cur = difficultyMap(cur)._2
       }
     }
+    println()
+    val difficultyDist = Distribution(difficultyMap.values.map(_._1).toList)
+    println(difficultyDist.info("path lengths for all instructions"))
 
     val debug = options.verbose
 
