@@ -50,6 +50,31 @@ case class Check(options: CheckOptions) {
 //    println(graph.toDot(root, x => Some((root, DotEdgeStmt(x.edge.source.toString, x.edge.target.toString)))))
 //    return
 
+    // length of paths
+    // first, add one node that conceptually represents all base instructions
+    val base = Instruction("xorb_r8_r8")
+    for (instruction <- graph.topologicalSort) {
+      val node = graph.get(instruction)
+      if (node.inDegree == 0) {
+        graph += (base ~> instruction)
+      }
+    }
+    val baseNode = graph.get(base)
+    val max = (for (instruction <- graph.topologicalSort) yield {
+      val node = graph.get(instruction)
+      if (node.outDegree == 0) {
+        baseNode.shortestPathTo(node) match {
+          case None => sys.exit(1)
+          case Some(path) =>
+            println(s"$instruction: " + (" " * (25-instruction.toString.length)) + s"${path.length}")
+            Some(path.length)
+        }
+      } else {
+        None
+      }
+    }).flatten.max
+    println(s"Maximum path length is $max (i.e. there is an instruction that required learning ${max-1} instructions first).")
+
     val debug = options.verbose
 
     var correct = 0
@@ -58,7 +83,7 @@ case class Check(options: CheckOptions) {
     var timeout = 0
     var stoke_wrong = 0
     var total = 0
-    for (instruction <- graph.topologicalSort) {
+    for (instruction <- graph.topologicalSort if strataInstrs.contains(instruction)) {
       val node = graph.get(instruction)
       if (node.diPredecessors.size >= 0) {
         val cmd = Vector("timeout", "15s",
