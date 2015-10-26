@@ -79,7 +79,7 @@ case class Check(options: CheckOptions) {
       }
     }
     println()
-    val difficultyDist = Distribution(difficultyMap.values.map(_._1).toList)
+    val difficultyDist = Distribution(difficultyMap.values.map(_._1.toLong).toSeq)
     println(difficultyDist.info("path lengths for all instructions"))
 
     val debug = options.verbose

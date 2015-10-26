@@ -6,7 +6,7 @@ import com.github.tototoshi.csv.CSVWriter
 import strata.data._
 import strata.tasks._
 import strata.util.ColoredOutput._
-import strata.util.{ColoredOutput, IO, TimingKind}
+import strata.util.{Distribution, ColoredOutput, IO, TimingKind}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
@@ -40,6 +40,13 @@ object Statistics {
       }
     }
     writer.close()
+
+    // initial search budgets
+    val budgets = messages.collect {
+      case LogTaskEnd(InitialSearchTask(_, _, budget, _), _, _, _, _) => budget
+    }
+    println(Distribution(budgets).info("initial search budget"))
+
     println(s"Processed ${messages.length} messages")
   }
 

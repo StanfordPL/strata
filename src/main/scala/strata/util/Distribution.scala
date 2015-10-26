@@ -5,12 +5,12 @@ import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 /**
  * Helper to visualize distributions.
  */
-case class Distribution(data: Seq[Int]) {
+case class Distribution(data: Seq[Long]) {
 
   def histogram(nBins: Int): String = {
     val (min, max) = (data.min, data.max)
     val realNBins = if (max - min + 1 < nBins) {
-      max - min + 1
+      (max - min + 1).toInt
     } else {
       nBins
     }
@@ -66,7 +66,7 @@ case class Distribution(data: Seq[Int]) {
       s"Maximum:        ${data.max}\n"
   }
 
-  private def median(arr: Seq[Int]) = {
+  private def median(arr: Seq[Long]) = {
     arr.sorted.apply((arr.size - 1) / 2)
   }
 
