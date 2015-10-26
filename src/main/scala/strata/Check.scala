@@ -5,6 +5,7 @@ import java.io.File
 import strata.data.{Program, Instruction}
 import strata.util.IO
 
+import scala.util.control.Breaks
 import scalax.collection.GraphEdge.DiEdge
 import scalax.collection.mutable.Graph
 import scalax.collection.GraphPredef._
@@ -31,7 +32,8 @@ case class Check(options: CheckOptions) {
     "vdivss_xmm_xmm_xmm",
     "vsqrtss_xmm_xmm_xmm",
     "vrsqrtss_xmm_xmm_xmm",
-    "vsubsd_xmm_xmm_xmm"
+    "vsubsd_xmm_xmm_xmm",
+    "vcvtsi2ssq_xmm_xmm_r64"
   )
 
   val ignore = Vector(
@@ -44,36 +46,38 @@ case class Check(options: CheckOptions) {
 
     val (strataInstrs, graph) = dependencyGraph(options.circuitPath)
 
-//    val root = DotRootGraph(
-//      directed = true,
-//      id = Some("strata dependencies"))
-//    println(graph.toDot(root, x => Some((root, DotEdgeStmt(x.edge.source.toString, x.edge.target.toString)))))
-//    return
+    //    val root = DotRootGraph(
+    //      directed = true,
+    //      id = Some("strata dependencies"))
+    //    println(graph.toDot(root, x => Some((root, DotEdgeStmt(x.edge.source.toString, x.edge.target.toString)))))
+    //    return
 
-    // length of paths
-    // first, add one node that conceptually represents all base instructions
-    val base = Instruction("xorb_r8_r8")
+    // how many instructions did we need to learn in sequence.
+    implicit def orderingForPair1: Ordering[(Int, Instruction)] = Ordering.by(e => e._1)
+    implicit def orderingForPair2: Ordering[(Instruction, Int)] = Ordering.by(e => e._2)
+    val difficultyMap = collection.mutable.Map[Instruction, (Int, Instruction)]()
     for (instruction <- graph.topologicalSort) {
       val node = graph.get(instruction)
       if (node.inDegree == 0) {
-        graph += (base ~> instruction)
+        // instructions that we can learn directly get a score of 0
+        difficultyMap(instruction) = (0, instruction)
+      } else {
+        // otherwise, take max over predecessors
+        difficultyMap(instruction) = node.diPredecessors.map(x => (difficultyMap(x.value)._1 + 1, x.value)).max
       }
     }
-    val baseNode = graph.get(base)
-    val max = (for (instruction <- graph.topologicalSort) yield {
-      val node = graph.get(instruction)
-      if (node.outDegree == 0) {
-        baseNode.shortestPathTo(node) match {
-          case None => sys.exit(1)
-          case Some(path) =>
-            println(s"$instruction: " + (" " * (25-instruction.toString.length)) + s"${path.length}")
-            Some(path.length)
-        }
-      } else {
-        None
+    val max = difficultyMap.values.max
+    println(s"Maximum path length is ${max._1} (i.e. there is an instruction that required learning ${max._1 - 1} instructions first).")
+    println("Path:")
+    var cur = max._2
+    Breaks.breakable {
+      while (true) {
+        println(cur)
+        if (difficultyMap(cur)._1 == 0)
+          Breaks.break()
+        cur = difficultyMap(cur)._2
       }
-    }).flatten.max
-    println(s"Maximum path length is $max (i.e. there is an instruction that required learning ${max-1} instructions first).")
+    }
 
     val debug = options.verbose
 
