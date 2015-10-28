@@ -157,9 +157,9 @@ class Driver(val globalOptions: GlobalOptions) {
       }
     }
     state.lockedInformation(() => {
-      state.removeInstructionToFile(instr, InstructionFile.Worklist)
       taskRes match {
         case _: InitialSearchSuccess =>
+          state.removeInstructionToFile(instr, InstructionFile.Worklist)
           state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
           state.addInstructionToFile(instr, InstructionFile.PartialSuccess)
           IO.info(s"IS success for ${task.instruction}")
@@ -174,6 +174,7 @@ class Driver(val globalOptions: GlobalOptions) {
           // stop after we found enough
           if (n >= 30) {
             moveProgramToCircuitDir(meta, n)
+            state.removeInstructionToFile(instr, InstructionFile.Worklist)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
           }
@@ -184,6 +185,7 @@ class Driver(val globalOptions: GlobalOptions) {
           // stop if we tried 5 times and didn't succeed
           if (meta.secondary_searches.length >= 5) {
             moveProgramToCircuitDir(meta, n)
+            state.removeInstructionToFile(instr, InstructionFile.Worklist)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
           }
