@@ -325,8 +325,8 @@ def move_byte():
   move_to_gp = """  .text
   .globl move_[small_reg]_to_byte_[i]_of_[big_reg]
   .type [name], @function
-#! maybe-read { %[big_reg_min] }
-#! maybe-write { %[small_reg] }
+#! maybe-read { %[small_reg] %[big_reg_min] }
+#! maybe-write { %[big_reg_min] }
 #! must-undef { %r14 %r15 }
 .[name]:
   # ----------------------------------------------------------------------------
@@ -395,8 +395,8 @@ def move_byte():
   move_to_sse_lower = """  .text
   .globl move_[small_reg]_to_byte_[i]_of_[big_reg]
   .type [name], @function
-#! maybe-read { %[big_reg_min] }
-#! maybe-write { %[small_reg] }
+#! maybe-read { %[small_reg] %[big_reg_min] }
+#! maybe-write { %[big_reg_min] }
 #! must-undef { %r14 %r15 %ymm14 %ymm15 }
 .[name]:
   # ----------------------------------------------------------------------------
@@ -434,8 +434,8 @@ def move_byte():
   move_to_sse_upper = """  .text
   .globl move_[small_reg]_to_byte_[i]_of_[big_reg]
   .type [name], @function
-#! maybe-read { %[big_reg_min] }
-#! maybe-write { %[small_reg] }
+#! maybe-read { %[small_reg] %[big_reg_min] }
+#! maybe-write { %[big_reg_min] }
 #! must-undef { %r14 %r15 %ymm14 %ymm15 }
 .[name]:
   # ----------------------------------------------------------------------------
@@ -487,11 +487,11 @@ def move_byte():
               min = "ymm" if i > 15 else "xmm"
             else:
               min = "gp8"
-              if i > 1:
+              if i >= 1:
                 min = "gp16"
-              if i > 2:
+              if i >= 2:
                 min = "gp32"
-              if i > 4:
+              if i >= 4:
                 min = "gp64"
             content = template.replace("[small_reg]", src) \
               .replace("[i]", str(i)) \
@@ -499,8 +499,8 @@ def move_byte():
               .replace("[i-16]", str(i - 16)) \
               .replace("[i-16hex]", hex(i - 16)) \
               .replace("[8i]", hex(i * 8)) \
-              .replace("[big_reg_min]", list_regs(min, 0)[dest_i]) \
-              .replace("[big_reg_b]", list_regs("gp8", 0)[dest_i]) \
+              .replace("[big_reg_min]", list_regs(min, 1)[dest_i]) \
+              .replace("[big_reg_b]", list_regs("gp8", 1)[dest_i]) \
               .replace("[big_reg]", dest)
             name = produce_name(content, {"[small_reg]": src, "[big_reg]": dest, "[i]": str(i)})
             code = produce_code(content, name, {})

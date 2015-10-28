@@ -1,7 +1,7 @@
   .text
   .globl move_128_032_[xmm_0]_[xmm_1]_[xmm_2]_[xmm_3]_[xmm_4]
   .type [name], @function
-#! maybe-read { %[xmm_0] }
+#! maybe-read { %[xmm_0] %[xmm_1] %[xmm_2] %[xmm_3] %[xmm_4] }
 #! maybe-write { %[xmm_1] %[xmm_2] %[xmm_3] %[xmm_4] }
 #! must-undef { }
 .[name]:
