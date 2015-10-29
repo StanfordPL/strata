@@ -192,7 +192,7 @@ object SecondarySearch {
                       // case 1a: we found an equivalent program in x
                       if (verifyRes.isVerified) {
                         // add to the equivalence class
-                        val eq = remaining ++ tail ++ Vector(EquivalenceClass(x.programs ++ Vector(newProgram)))
+                        val eq = xs ++ tail ++ Vector(EquivalenceClass(x.programs ++ Vector(newProgram)))
                         state.writeMetaOfInstr(instr, meta)
                         val res = SecondarySearchSuccess(task, SrkEquivalent(), timing.result)
                         (res, eq)
@@ -209,11 +209,11 @@ object SecondarySearch {
                       // case 1c: unknown
                       else {
                         // keep going
-                        loop(xs, Vector(x) ++ remaining)
+                        loop(xs, Vector(x) ++ tail)
                       }
                     case None =>
                       // case 1c: unknown
-                      loop(xs, Vector(x) ++ remaining)
+                      loop(xs, Vector(x) ++ tail)
                   }
               }
             }

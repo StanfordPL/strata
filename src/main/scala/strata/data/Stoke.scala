@@ -59,6 +59,7 @@ case class Score(uif: Int, mult: Int, nodes: Int) extends Ordered[Score] {
       data.size - that.data.size
     }
   private def data = Vector(uif, mult, nodes)
+  override def toString = s"($uif, $mult, $nodes)"
 }
 
 case class StokeSearchOutput(

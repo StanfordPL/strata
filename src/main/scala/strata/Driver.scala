@@ -137,6 +137,7 @@ class Driver(val globalOptions: GlobalOptions) {
         val best = eqClasses.head.getRepresentativeProgram.getFile(instr, state)
         IO.copyFile(best, resCircuit)
       }
+      state.appendLog(LogEquivalenceClasses(instr, meta.getEquivalenceClasses()))
     }
     state.lockedInformation(() => {
       taskRes match {

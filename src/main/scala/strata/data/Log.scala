@@ -25,7 +25,7 @@ import scala.sys.process._
  */
 object Log {
 
-  case object DateTimeSerializer extends CustomSerializer[DateTime](format => ({
+  case object DateTimeSerializer extends CustomSerializer[DateTime](format => ( {
     case JString(s) => new DateTime(s)
     case JNull => null
   }, {
@@ -55,7 +55,7 @@ object Log {
   }
 
   def serializerImpl[A]: (Formats) => (PartialFunction[json4s.JValue, A], PartialFunction[Any, JsonAST.JString]) = {
-    format => ({
+    format => ( {
       case JObject(JField("jsonClass", JString(className)) :: l) =>
         implicit val formats = format
         Extraction.extract(JObject(l), Reflector.scalaTypeOf(className).get).asInstanceOf[A]
@@ -65,18 +65,22 @@ object Log {
   }
 
   def test() = {
-//    val task = InitialSearchTask(GlobalOptions(), Instruction("xorb_r8_r8"), 100)
-//    val res = InitialSearchSuccess(task, TimingInfo(Map("a" -> 2)))
-//    serializeMessage(LogTaskEnd(task, Some(res)))
+    //    val task = InitialSearchTask(GlobalOptions(), Instruction("xorb_r8_r8"), 100)
+    //    val res = InitialSearchSuccess(task, TimingInfo(Map("a" -> 2)))
+    //    serializeMessage(LogTaskEnd(task, Some(res)))
   }
 }
 
 trait Top
+
 case class A(i: Int) extends Top
+
 case class B(globalOptions: GlobalOptions, instruction: Instruction, budget: Long) extends Top
 
 trait Top2
+
 case class A2(i: Int) extends Top2
+
 case class B2(s: String) extends Top2
 
 /**
@@ -170,5 +174,13 @@ case class LogVerifyResult(instr: Instruction,
       case (false, false) => super.toString + s": verification for $instr: unknown"
       case (false, true) => super.toString + s": verification for $instr: counterexample"
     }
+  }
+}
+
+case class LogEquivalenceClasses(instruction: Instruction, eq: Seq[EquivalenceClass], time: DateTime = DateTime.now(),
+                                 context: ThreadContext = ThreadContext.self) extends LogMessage {
+  override def toString = {
+    s"equivalence class size and score for $instruction: " +
+      eq.map(x => s"${x.size} ${x.getRepresentativeProgram.score}").mkString(", ")
   }
 }
