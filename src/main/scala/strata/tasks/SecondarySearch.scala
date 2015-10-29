@@ -92,7 +92,6 @@ object SecondarySearch {
 
     /** Add a counterexample to the list of tests, and then re-test all programs. */
     def addCounterexample(verifyRes: StokeVerifyOutput): (Int, Int) = {
-      var equiv = meta.equivalent_programs
       // add counterexample to tests
       state.lockedInformation(() => {
         addTestcase(state.getTestcasePath, verifyRes.counterexample)
@@ -105,7 +104,6 @@ object SecondarySearch {
           case None =>
             // this should not happen, but remove this program
             IO.moveFile(candidate, state.getFreshDiscardedName("error", instr))
-            equiv = equiv.filter(p => p != candidate.getName)
             incorrect += 1
           case Some(testResult) =>
             if (testResult.isVerified) {
@@ -114,13 +112,10 @@ object SecondarySearch {
             } else {
               // this program is definitely wrong, let's remove it
               IO.moveFile(candidate, state.getFreshDiscardedName("counterexample", instr))
-              equiv = equiv.filter(p => p != candidate.getName)
               incorrect +=1
             }
         }
       }
-      meta = meta.copy(equivalent_programs = equiv)
-      state.writeMetaOfInstr(instr, meta)
       (correct, incorrect)
     }
 
@@ -176,59 +171,59 @@ object SecondarySearch {
             // move result to result folder
             IO.copyFile(new File(s"$tmpDir/result.s"), resultFile)
 
-            // case 1: we have not found any equivalent programs
-            if (meta.equivalent_programs.isEmpty) {
-              // try all previously found programs
-              val resultFiles = state.getResultFiles(instr)
-              for (previousRes <- resultFiles if previousRes != resultFile) {
-                stokeVerify(resultFile, previousRes, useFormal = true) match {
-                  case None => // just ignore this error and try the next one
-                  case Some(verifyRes) =>
+            // we should have found at least one program
+            val beforeEqClasses = meta.getEquivalenceClasses()
+            assert(beforeEqClasses.nonEmpty)
 
-                    // case 1a: we found an equivalent program
-                    if (verifyRes.isVerified) {
-                      // add both programs to the list of known equivalent programs
-                      meta = meta.copy(equivalent_programs = Vector(previousRes.getName, resultFile.getName))
-                      state.writeMetaOfInstr(instr, meta)
-                      return SecondarySearchSuccess(task, SrkEquivalent(), timing.result)
-                    }
+            // go through all equivalence classes, and attempt to prove it against a representative program
+            val newProgram = EvaluatedProgram(resultFile.getName, Stoke.determineHeuristicScore(state, instr, resultFile))
+            def loop(remaining: Seq[EquivalenceClass], tail: Seq[EquivalenceClass]): (SecondarySearchResult, Seq[EquivalenceClass]) = {
+              remaining match {
+                case Nil =>
+                  // case 0: was not the same as any equivalence class: create a new equivalence class
+                  val res = SecondarySearchSuccess(task, SrkUnknown(tail.size), timing.result)
+                  (res, Vector(newProgram.asEquivalenceClass) ++ tail)
+                case x :: xs =>
+                  // case 1: compare formally against this equivalence class
+                  val file = x.getRepresentativeProgram.getFile(instr, state)
+                  stokeVerify(resultFile, file, useFormal = true) match {
+                    case Some(verifyRes) =>
 
-                    // case 1b: we found a counterexample
-                    else if (verifyRes.isCounterExample) {
-                      val (correct, incorrect) = addCounterexample(verifyRes)
-                      return SecondarySearchSuccess(task, SrkCounterExample(correct, incorrect), timing.result)
-                    }
-                }
-              }
-              // case 1c: we only got unknown answers
-              return SecondarySearchSuccess(task, SrkUnknown(resultFiles.length, againstEquiv = false), timing.result)
-            }
+                      // case 1a: we found an equivalent program in x
+                      if (verifyRes.isVerified) {
+                        // add to the equivalence class
+                        val eq = remaining ++ tail ++ Vector(EquivalenceClass(x.programs ++ Vector(newProgram)))
+                        state.writeMetaOfInstr(instr, meta)
+                        val res = SecondarySearchSuccess(task, SrkEquivalent(), timing.result)
+                        (res, eq)
+                      }
 
-            // case 2: we already have a set of equivalent programs
-            else {
-              // take one of them and verify formally
-              stokeVerify(resultFile, meta.getEquivProgram(instr, state), useFormal = true) match {
-                case None =>
-                  // an error happened
-                  IO.moveFile(resultFile, state.getFreshDiscardedName("error", instr))
-                  return SecondarySearchSuccess(task, SrkUnknown(1, againstEquiv = true), timing.result)
-                case Some(verifyRes) =>
-                  if (verifyRes.isVerified) {
-                    // case 2a: verified: add the verified program to the list
-                    meta = meta.copy(equivalent_programs = meta.equivalent_programs ++ Vector(resultFile.getName))
-                    state.writeMetaOfInstr(instr, meta)
-                    return SecondarySearchSuccess(task, SrkEquivalent(), timing.result)
-                  } else if (verifyRes.isUnknown || verifyRes.isTimeout) {
-                    // case 2b: unknown: keep the program, but don't add it to the set of eqiv programs
-                    return SecondarySearchSuccess(task, SrkUnknown(1, againstEquiv = true), timing.result)
-                  } else {
-                    assert(verifyRes.isCounterExample)
-                    // case 2c: counterexample
-                    val (correct, incorrect) = addCounterexample(verifyRes)
-                    return SecondarySearchSuccess(task, SrkCounterExample(correct, incorrect), timing.result)
+                      // case 1b: we found a counterexample
+                      else if (verifyRes.isCounterExample) {
+                        val (correct, incorrect) = addCounterexample(verifyRes)
+                        val res = SecondarySearchSuccess(task, SrkCounterExample(correct, incorrect), timing.result)
+                        val eq = beforeEqClasses.flatMap(eq => eq.filterExisting(instr, state))
+                        (res, eq)
+                      }
+
+                      // case 1c: unknown
+                      else {
+                        // keep going
+                        loop(xs, Vector(x) ++ remaining)
+                      }
+                    case None =>
+                      // case 1c: unknown
+                      loop(xs, Vector(x) ++ remaining)
                   }
               }
             }
+
+            val (res, newEq) = loop(beforeEqClasses, Nil)
+
+            meta = meta.copy(equivalence_classes = newEq)
+            state.writeMetaOfInstr(instr, meta)
+
+            res
           }
       }
     } finally {

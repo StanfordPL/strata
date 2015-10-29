@@ -3,11 +3,11 @@ package strata
 import java.io.File
 import java.util.concurrent._
 
+import org.joda.time.DateTime
 import strata.data._
 import strata.tasks._
-import strata.util.{TimingKind, IO}
 import strata.util.ColoredOutput._
-import org.joda.time.DateTime
+import strata.util.IO
 
 import scala.util.Random
 
@@ -123,36 +123,36 @@ class Driver(val globalOptions: GlobalOptions) {
     val task = taskRes.task
     val instr = taskRes.instruction
     def moveProgramToCircuitDir(meta: InstructionMeta, n: Int): Unit = {
+      val minEqClassSize = 2
+      val eqClasses = meta.getEquivalenceClasses(instr, state, minEqClassSize)
       // copy a file to the circuits directory
       val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
-      if (meta.equivalent_programs.isEmpty) {
-        val msg = s"Found $n programs, but none of them proved equivalent"
+      if (eqClasses.isEmpty) {
+        val msg = s"Found $n programs for $instr, but no equivalence class has size at least $minEqClassSize"
         state.appendLog(LogError(msg))
         IO.info(msg.red)
         IO.copyFile(state.getResultFiles(instr).head, resCircuit)
       } else {
         // determine which program is the best according to our heuristics
-        var min = (Int.MaxValue, Int.MaxValue, Int.MaxValue)
-        var best = meta.getEquivProgram(instr, state)
-        for (candidate <- meta.getEquivPrograms(instr, state)) {
-          IO.copyFile(candidate, resCircuit)
-          val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/specgen", "evaluate",
-            "--circuit_dir", state.getCircuitDir,
-            "--opcode", instr)
-          val (out, status) = IO.runQuiet(cmd)
-          if (status != 0) {
-            throw new RuntimeException(s"specgen_evaluate failed: $out")
-          }
-          val outParsed = out.trim.split(",").map(_.toInt)
-          assert(outParsed.length == 3)
-          val heuristic = (outParsed(0), outParsed(1), outParsed(2))
-          import scala.math.Ordering.Implicits._
-          if (heuristic < min) {
-            min = heuristic
-            best = candidate
-          }
-          resCircuit.delete()
-        }
+        val scored = (for (eqClass <- eqClasses) yield {
+          (for (candidate <- eqClass) yield {
+            IO.copyFile(candidate, resCircuit)
+            val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/specgen", "evaluate",
+              "--circuit_dir", state.getCircuitDir,
+              "--opcode", instr)
+            val (out, status) = IO.runQuiet(cmd)
+            if (status != 0) {
+              throw new RuntimeException(s"specgen_evaluate failed: $out")
+            }
+            val outParsed = out.trim.split(",").map(_.toInt)
+            assert(outParsed.length == 3)
+            val score = (outParsed(0), outParsed(1), outParsed(2))
+            resCircuit.delete()
+            (candidate, score)
+          }).sortBy(x => x._2)
+        }).sortBy(x => x.head._2)
+
+        val best = scored.head.head._1
         IO.copyFile(best, resCircuit)
       }
     }
@@ -169,7 +169,7 @@ class Driver(val globalOptions: GlobalOptions) {
         case _: SecondarySearchError =>
         case _: SecondarySearchSuccess =>
           val meta = state.getMetaOfInstr(task.instruction)
-          val n = meta.secondary_searches.map(s => s.n_found).sum + 1 // +1 for initial search
+          val n = state.getResultFiles(instr).length // number of programs found
           IO.info(s"SS success #$n for ${task.instruction}")
           // stop after we found enough
           if (n >= 30) {

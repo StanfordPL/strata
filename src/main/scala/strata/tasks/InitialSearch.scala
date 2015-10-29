@@ -68,11 +68,16 @@ object InitialSearch {
           if (res.success && res.verified) {
             // copy result file
             val resFile = new File(s"$tmpDir/result.s")
-            IO.copyFile(resFile, state.getFreshResultName(instr))
+            val finalResFile = state.getFreshResultName(instr)
+            IO.copyFile(resFile, finalResFile)
 
             // update meta
             val more = InitialSearchMeta(success = true, budget, res.statistics.total_iterations, base.length)
-            val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more))
+            // get score
+            val score = Stoke.determineHeuristicScore(state, instr, finalResFile)
+            // the new program is in it's own equivalence class for now
+            val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more),
+              equivalence_classes = Vector(EvaluatedProgram(finalResFile.getName, score).asEquivalenceClass))
             state.writeMetaOfInstr(instr, newMeta)
 
             InitialSearchSuccess(task, timing.result)

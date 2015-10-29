@@ -3,7 +3,7 @@ package strata.data
 import java.io.File
 
 /**
- * Meta information about a goal instruction
+ * Meta information about a goal instruction.
  */
 case class InstructionMeta(def_in: String,
                            live_out: String,
@@ -11,19 +11,45 @@ case class InstructionMeta(def_in: String,
                            live_out_formal: String,
                            initial_searches: Seq[InitialSearchMeta],
                            secondary_searches: Seq[SecondarySearchMeta],
-                           equivalent_programs: Seq[String]
+                           equivalence_classes: Seq[EquivalenceClass]
                             ) {
-  /** Get one of the equivalent programs. */
-  def getEquivProgram(instruction: Instruction, state: State): File = {
-    new File(s"${state.getInstructionResultDir(instruction)}/${equivalent_programs.head}")
-  }
-
-  /** Get all of the equivalent programs. */
-  def getEquivPrograms(instruction: Instruction, state: State): Seq[File] = {
-    for (p <- equivalent_programs) yield {
-      new File(s"${state.getInstructionResultDir(instruction)}/$p")
+  /** Get all equivalence classes (of at least size n). */
+  def getEquivalenceClasses(minSize: Int = 0): Seq[EquivalenceClass] = {
+    for (eqClass <- equivalence_classes.sorted if eqClass.size >= minSize) yield {
+      eqClass
     }
   }
+}
+
+case class EvaluatedProgram(program: String, score: Score) extends Ordered[EvaluatedProgram] {
+  def getFile(instr: Instruction, state: State) = {
+    new File(s"${state.getInstructionResultDir(instr)}/$program")
+  }
+
+  def compare(that: EvaluatedProgram) = score.compare(that.score)
+  override def toString = program
+
+  def asEquivalenceClass = EquivalenceClass(Vector(this))
+}
+
+case class EquivalenceClass(programs: Seq[EvaluatedProgram]) extends Ordered[EquivalenceClass] {
+  /** Return an equivalence class without any programs whose file doesn't exist any longer. */
+  def filterExisting(instr: Instruction, state: State): Option[EquivalenceClass] = {
+    val updatedPrograms = programs.filter(p => p.getFile(instr, state).exists)
+    if (updatedPrograms.isEmpty) None
+    else Some(EquivalenceClass(updatedPrograms))
+  }
+
+  def compare(that: EquivalenceClass) = getRepresentativeProgram.compare(that.getRepresentativeProgram)
+
+  /** Get a representative program (the one with the lowest score. */
+  def getRepresentativeProgram = sortedPrograms.head
+
+  /** Programs sorted according to their score. */
+  def sortedPrograms = programs.sorted
+
+  /** Number of programs in this class. */
+  def size = programs.length
 }
 
 case class InitialSearchMeta(success: Boolean,

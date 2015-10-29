@@ -30,6 +30,35 @@ object Stoke {
       case _: Throwable => None
     }
   }
+
+  /** Compute the heuristic (how many uninterpreted functions/multiplications/nodes does the corresponding circuit use?). */
+  def determineHeuristicScore(state: State, instr: Instruction, program: File): Score = {
+    val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
+    IO.copyFile(program, resCircuit)
+    val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/specgen", "evaluate",
+      "--circuit_dir", state.getCircuitDir,
+      "--opcode", instr)
+    val (out, status) = IO.runQuiet(cmd)
+    if (status != 0) {
+      throw new RuntimeException(s"specgen_evaluate failed: $out")
+    }
+    val outParsed = out.trim.split(",").map(_.toInt)
+    assert(outParsed.length == 3)
+    resCircuit.delete()
+    Score(outParsed(0), outParsed(1), outParsed(2))
+  }
+}
+
+case class Score(uif: Int, mult: Int, nodes: Int) extends Ordered[Score] {
+  // lexographical ordering
+  def compare(that: Score): Int = {
+    for((x,y) <- data zip that.data) {
+        val c = x compare y
+        if(c != 0) return c
+      }
+      data.size - that.data.size
+    }
+  private def data = Vector(uif, mult, nodes)
 }
 
 case class StokeSearchOutput(

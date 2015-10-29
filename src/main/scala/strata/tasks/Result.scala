@@ -38,9 +38,8 @@ sealed trait SecondarySuccessKind
 case class SrkEquivalent() extends SecondarySuccessKind {
   override def toString = s"New program is correct"
 }
-case class SrkUnknown(testedAgainst: Int, againstEquiv: Boolean) extends SecondarySuccessKind {
-  override def toString = s"SMT solver returned unknown while testing against $testedAgainst programs " +
-    s"(that are ${if (againstEquiv) "equivalent" else "also unknown"}})"
+case class SrkUnknown(testedAgainst: Int) extends SecondarySuccessKind {
+  override def toString = s"SMT solver returned unknown while testing against $testedAgainst equivalence classes"
 }
 case class SrkCounterExample(nCorrect: Int, nIncorrect: Int) extends SecondarySuccessKind {
   override def toString = s"Found counterexample that removed $nIncorrect programs and kept $nCorrect"
