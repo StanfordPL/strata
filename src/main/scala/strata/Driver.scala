@@ -141,9 +141,16 @@ class Driver(val globalOptions: GlobalOptions) {
     state.lockedInformation(() => {
       taskRes match {
         case _: InitialSearchSuccess =>
-          state.removeInstructionToFile(instr, InstructionFile.Worklist)
-          state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
-          state.addInstructionToFile(instr, InstructionFile.PartialSuccess)
+          // special case nop's, because we never learn more than 1 program for them anyway
+          if (Vector("nop", "nopw_r16", "nopl_r32").contains(instr.opcode)) {
+            state.removeInstructionToFile(instr, InstructionFile.Worklist)
+            state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
+            state.addInstructionToFile(instr, InstructionFile.Success)
+          } else {
+            state.removeInstructionToFile(instr, InstructionFile.Worklist)
+            state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
+            state.addInstructionToFile(instr, InstructionFile.PartialSuccess)
+          }
           IO.info(s"IS success for ${task.instruction}")
         case ist: InitialSearchTimeout =>
           IO.info(s"IS timeout for ${task.instruction} after ${ist.task.budget} iters / ${IO.formatNanos(ist.timing.total)}")
