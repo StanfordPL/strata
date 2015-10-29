@@ -15,9 +15,7 @@ case class InstructionMeta(def_in: String,
                             ) {
   /** Get all equivalence classes (of at least size n). */
   def getEquivalenceClasses(minSize: Int = 0): Seq[EquivalenceClass] = {
-    for (eqClass <- equivalence_classes.sorted if eqClass.size >= minSize) yield {
-      eqClass
-    }
+    equivalence_classes.filter(eqClass => eqClass.size >= minSize).sorted
   }
 }
 
@@ -50,6 +48,10 @@ case class EquivalenceClass(programs: Seq[EvaluatedProgram]) extends Ordered[Equ
 
   /** Number of programs in this class. */
   def size = programs.length
+
+  override def toString = {
+    s"EqClass(${sortedPrograms.mkString(", ")})"
+  }
 }
 
 case class InitialSearchMeta(success: Boolean,

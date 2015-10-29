@@ -24,6 +24,8 @@ object SecondarySearch {
     val tmpDir = new File(s"${state.getTmpDir}/${ThreadContext.self.fileNameSafe}")
     tmpDir.mkdir()
 
+    val testcases = new File(s"$tmpDir/testcases.tc")
+
     /** Takes a testcase file and appends a new testcase. */
     def addTestcase(tcFile: File, testcase: String): Unit = {
       val buf = scala.io.Source.fromFile(tcFile)
@@ -53,6 +55,7 @@ object SecondarySearch {
           "--config", s"${IO.getProjectBase}/resources/conf-files/formal.conf",
           "--target", a,
           "--rewrite", b,
+          "--testcases", testcases,
           "--strategy", if (useFormal) "bounded" else "hold_out",
           "--def_in", meta.def_in_formal,
           "--live_out", meta.live_out_formal,
@@ -95,6 +98,9 @@ object SecondarySearch {
       // add counterexample to tests
       state.lockedInformation(() => {
         addTestcase(state.getTestcasePath, verifyRes.counterexample)
+        // get an up-to-date copy of the testcases
+        testcases.delete()
+        IO.copyFile(state.getTestcasePath, testcases)
       })
       var correct = 0
       var incorrect = 0
@@ -105,7 +111,9 @@ object SecondarySearch {
             // this should not happen, but remove this program
             IO.moveFile(candidate, state.getFreshDiscardedName("error", instr))
             incorrect += 1
+            println("none")
           case Some(testResult) =>
+            println(testResult)
             if (testResult.isVerified) {
               // keep the program
               correct += 1
@@ -120,7 +128,6 @@ object SecondarySearch {
     }
 
     try {
-      val testcases = new File(s"$tmpDir/testcases.tc")
       val base = state.lockedInformation(() => {
         // copy the tests to the local directory
         IO.copyFile(state.getTestcasePath, testcases)
