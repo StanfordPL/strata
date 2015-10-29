@@ -58,12 +58,16 @@ case class Distribution(data: Seq[Long]) {
   }
 
   def info(title: String): String = {
-    s"Distribution of $title\n" +
-      histogram(15) + "\n" +
-      s"Total elements: ${data.length}\n" +
-      s"Minimum:        ${data.min}\n" +
-      s"Median:         ${median(data)}\n" +
-      s"Maximum:        ${data.max}\n"
+    if (data.isEmpty) {
+      s"Distribution of $title is empty"
+    } else {
+      s"Distribution of $title\n" +
+        histogram(15) + "\n" +
+        s"Total elements: ${data.length}\n" +
+        s"Minimum:        ${data.min}\n" +
+        s"Median:         ${median(data)}\n" +
+        s"Maximum:        ${data.max}\n"
+    }
   }
 
   private def median(arr: Seq[Long]) = {

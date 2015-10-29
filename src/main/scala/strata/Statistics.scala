@@ -47,11 +47,25 @@ object Statistics {
     }
     println(Distribution(budgets).info("initial search budget"))
 
+    // equivalence class statistics
+    val eqs = messages.collect {
+      case LogEquivalenceClasses(instr, eq, _, _) =>
+        eq
+    }
+    val firstEq = eqs.map(x => x.sorted.head)
+    val secondEq = eqs.flatMap(x => if (x.length <= 1) None else Some(x.sorted.seq(1)))
+    println(Distribution(firstEq.map(x => x.size.toLong)).info("size of first equivalence class"))
+    println(Distribution(secondEq.map(x => x.size.toLong)).info("size of second equivalence class"))
+
+    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.uif.toLong)).info("best program's # of UIF"))
+    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.mult.toLong)).info("best program's # of multiplications/divisions"))
+    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.nodes.toLong)).info("best program's # of nodes"))
+
     println(s"Processed ${messages.length} messages")
   }
 
   /** Show statistics and update them periodically. */
-  def run(globalOptions: GlobalOptions): Unit = {
+  def run(globalOptions: GlobalOptions, singleRun: Boolean): Unit = {
     val state = State(globalOptions)
 
     sys.addShutdownHook {
@@ -70,13 +84,18 @@ object Statistics {
         messageFuture.onSuccess({
           case m =>
             extendedStats = m
-            messageFuture = Future {
-              Thread.sleep(10000)
-              getExtendedStats(state.getLogMessages)
+            if (!singleRun) {
+              messageFuture = Future {
+                Thread.sleep(10000)
+                getExtendedStats(state.getLogMessages)
+              }
             }
         })
       }
       printStats(getStats(state), extendedStats)
+      if (extendedStats.hasData && singleRun) {
+        return
+      }
       Thread.sleep(2000)
     }
   }

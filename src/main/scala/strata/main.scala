@@ -109,17 +109,34 @@ object Strata {
           }
         }),
 
-      ("stats", "Gather statistics for the working directory (which may still be running)",
+      ("status", "Gather statistics for the working directory (which may still be running)",
         (localArgs: Array[String], helpStr: String) => {
           val parser = new scopt.OptionParser[GlobalOptions]("strata") {
             head(shortDescription)
             note(helpStr)
 
-            addGlobalOptions(this, "stats", normalUpdateGlobal)
+            addGlobalOptions(this, "status", normalUpdateGlobal)
           }
           parser.parse(localArgs, GlobalOptions()) match {
             case Some(c) =>
-              Statistics.run(c)
+              Statistics.run(c, singleRun = true)
+            case None =>
+              // arguments are bad, error message will have been displayed
+              sys.exit(1)
+          }
+        }),
+
+      ("status-continue", "Gather statistics for the working directory (which may still be running) continuously",
+        (localArgs: Array[String], helpStr: String) => {
+          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
+            head(shortDescription)
+            note(helpStr)
+
+            addGlobalOptions(this, "status-continue", normalUpdateGlobal)
+          }
+          parser.parse(localArgs, GlobalOptions()) match {
+            case Some(c) =>
+              Statistics.run(c, singleRun = false)
             case None =>
               // arguments are bad, error message will have been displayed
               sys.exit(1)
