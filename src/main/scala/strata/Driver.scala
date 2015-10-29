@@ -144,11 +144,9 @@ class Driver(val globalOptions: GlobalOptions) {
         case _: InitialSearchSuccess =>
           // special case nop's, because we never learn more than 1 program for them anyway
           if (Vector("nop", "nopw_r16", "nopl_r32").contains(instr.opcode)) {
-            state.removeInstructionToFile(instr, InstructionFile.Worklist)
             state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
             state.addInstructionToFile(instr, InstructionFile.Success)
           } else {
-            state.removeInstructionToFile(instr, InstructionFile.Worklist)
             state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
             state.addInstructionToFile(instr, InstructionFile.PartialSuccess)
           }
@@ -164,7 +162,6 @@ class Driver(val globalOptions: GlobalOptions) {
           // stop after we found enough
           if (n >= 30) {
             moveProgramToCircuitDir(meta, n)
-            state.removeInstructionToFile(instr, InstructionFile.Worklist)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
           }
@@ -175,11 +172,11 @@ class Driver(val globalOptions: GlobalOptions) {
           // stop if we tried 5 times and didn't succeed
           if (meta.secondary_searches.length >= 5) {
             moveProgramToCircuitDir(meta, n)
-            state.removeInstructionToFile(instr, InstructionFile.Worklist)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
           }
       }
+      state.removeInstructionToFile(instr, InstructionFile.Worklist)
       state.getPseudoTime
     })
   }
