@@ -111,9 +111,7 @@ object SecondarySearch {
             // this should not happen, but remove this program
             IO.moveFile(candidate, state.getFreshDiscardedName("error", instr))
             incorrect += 1
-            println("none")
           case Some(testResult) =>
-            println(testResult)
             if (testResult.isVerified) {
               // keep the program
               correct += 1
