@@ -206,8 +206,15 @@ object SecondarySearch {
                       // case 1b: we found a counterexample
                       else if (verifyRes.isCounterExample) {
                         val (correct, incorrect) = addCounterexample(verifyRes)
+                        if (correct == 0) {
+                          throw new RuntimeException(s"everything was wrong: $correct, $incorrect")
+                        }
                         val res = SecondarySearchSuccess(task, SrkCounterExample(correct, incorrect), timing.result)
                         val eq = beforeEqClasses.flatMap(eq => eq.filterExisting(instr, state))
+                        if (correct != eq.map(x => x.size).sum) {
+                          throw new RuntimeException(
+                            s"didn't keep the necessary programs: $correct, $incorrect, $beforeEqClasses, $eq")
+                        }
                         (res, eq)
                       }
 
