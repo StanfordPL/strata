@@ -124,7 +124,7 @@ class Driver(val globalOptions: GlobalOptions) {
     val instr = taskRes.instruction
     def moveProgramToCircuitDir(meta: InstructionMeta, n: Int): Unit = {
       val minEqClassSize = 2
-      val eqClasses = meta.getEquivalenceClasses(instr, state, minEqClassSize)
+      val eqClasses = meta.getEquivalenceClasses(minEqClassSize)
       // copy a file to the circuits directory
       val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
       if (eqClasses.isEmpty) {
@@ -134,25 +134,7 @@ class Driver(val globalOptions: GlobalOptions) {
         IO.copyFile(state.getResultFiles(instr).head, resCircuit)
       } else {
         // determine which program is the best according to our heuristics
-        val scored = (for (eqClass <- eqClasses) yield {
-          (for (candidate <- eqClass) yield {
-            IO.copyFile(candidate, resCircuit)
-            val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/specgen", "evaluate",
-              "--circuit_dir", state.getCircuitDir,
-              "--opcode", instr)
-            val (out, status) = IO.runQuiet(cmd)
-            if (status != 0) {
-              throw new RuntimeException(s"specgen_evaluate failed: $out")
-            }
-            val outParsed = out.trim.split(",").map(_.toInt)
-            assert(outParsed.length == 3)
-            val score = (outParsed(0), outParsed(1), outParsed(2))
-            resCircuit.delete()
-            (candidate, score)
-          }).sortBy(x => x._2)
-        }).sortBy(x => x.head._2)
-
-        val best = scored.head.head._1
+        val best = eqClasses.head.getRepresentativeProgram.getFile(instr, state)
         IO.copyFile(best, resCircuit)
       }
     }
