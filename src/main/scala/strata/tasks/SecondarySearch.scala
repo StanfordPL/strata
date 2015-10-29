@@ -50,7 +50,7 @@ object SecondarySearch {
      */
     def stokeVerify(a: File, b: File, useFormal: Boolean): Option[StokeVerifyOutput] = {
       val (_, res) = timing.timeOperation(if (useFormal) TimingKind.Verification else TimingKind.Testing)({
-        val cmd = Vector("timeout", "15s",
+        val cmd = Vector("timeout", "60s",
           s"${IO.getProjectBase}/stoke/bin/stoke", "debug", "verify",
           "--config", s"${IO.getProjectBase}/resources/conf-files/formal.conf",
           "--target", a,
@@ -210,7 +210,8 @@ object SecondarySearch {
                           throw new RuntimeException(s"everything was wrong: $correct, $incorrect")
                         }
                         val res = SecondarySearchSuccess(task, SrkCounterExample(correct, incorrect), timing.result)
-                        val eq = beforeEqClasses.flatMap(eq => eq.filterExisting(instr, state))
+                        val beforePlusNew = Vector(newProgram.asEquivalenceClass) ++ beforeEqClasses
+                        val eq = beforePlusNew.flatMap(eq => eq.filterExisting(instr, state))
                         if (correct != eq.map(x => x.size).sum) {
                           throw new RuntimeException(
                             s"didn't keep the necessary programs: $correct, $incorrect, $beforeEqClasses, $eq")
