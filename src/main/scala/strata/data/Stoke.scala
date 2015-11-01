@@ -113,6 +113,10 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
               // this should NOT happen
               val m = "STOKE search returned a program that does not work for all inputs: " + out
               state.appendLog(LogError(m))
+              // pretend the search failed
+              val p = StokeCode(0, "")
+              val stats = StokeSearchStatistics(0, 0, 0, 0)
+              return Some(StokeSearchOutput(success = false, interrupted = false, timeout = false, verified = false, stats, p, p))
             }
         }
       case _ =>
