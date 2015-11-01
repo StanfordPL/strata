@@ -25,6 +25,7 @@ object SecondarySearch {
     tmpDir.mkdir()
 
     val testcases = new File(s"$tmpDir/testcases.tc")
+    val verifier = Verifier(tmpDir, meta, instr, state, timing)
 
     /** Takes a testcase file and appends a new testcase. */
     def addTestcase(tcFile: File, testcase: String): Unit = {
@@ -45,54 +46,6 @@ object SecondarySearch {
       }
     }
 
-    /**
-     * Take two programs and compare them.  Returns a verification result only if there was no error.
-     */
-    def stokeVerify(a: File, b: File, useFormal: Boolean): Option[StokeVerifyOutput] = {
-      val (_, res) = timing.timeOperation(if (useFormal) TimingKind.Verification else TimingKind.Testing)({
-        val cmd = Vector("timeout", "60s",
-          s"${IO.getProjectBase}/stoke/bin/stoke", "debug", "verify",
-          "--config", s"${IO.getProjectBase}/resources/conf-files/formal.conf",
-          "--target", a,
-          "--rewrite", b,
-          "--testcases", testcases,
-          "--strategy", if (useFormal) "bounded" else "hold_out",
-          "--def_in", meta.def_in_formal,
-          "--live_out", meta.live_out_formal,
-          "--strata_path", state.getCircuitDir,
-          "--functions", s"$workdir/functions",
-          "--machine_output", "verify.json")
-        if (globalOptions.verbose) {
-          IO.runPrint(cmd, workingDirectory = tmpDir)
-        } else {
-          IO.runQuiet(cmd, workingDirectory = tmpDir)
-        }
-      })
-
-      if (res == 124) {
-        // a timeout happened
-        val verifyRes = StokeVerifyOutput.makeTimeout
-        state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, IO.contentHash(a), IO.contentHash(a)))
-        Some(verifyRes)
-      } else {
-        Stoke.readStokeVerifyOutput(new File(s"$tmpDir/verify.json")) match {
-          case None =>
-            state.appendLog(LogError(s"no result for stoke verify of $instr"))
-            IO.info(s"stoke verify failed to produce an output (useformal = $useFormal)".red)
-            None
-          case Some(verifyRes) if verifyRes.hasError =>
-            val message = s"stoke verify errored with ${verifyRes.error} for $instr (useformal = $useFormal)"
-            state.appendLog(LogError(message))
-            state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, IO.contentHash(a), IO.contentHash(a)))
-            IO.info(message.red)
-            None
-          case Some(verifyRes) =>
-            state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, IO.contentHash(a), IO.contentHash(a)))
-            Some(verifyRes)
-        }
-      }
-    }
-
     /** Add a counterexample to the list of tests, and then re-test all programs. */
     def addCounterexample(verifyRes: StokeVerifyOutput): (Int, Int) = {
       // add counterexample to tests
@@ -106,7 +59,7 @@ object SecondarySearch {
       var incorrect = 0
       // run tests on all programs
       for (candidate <- state.getResultFiles(instr)) {
-        stokeVerify(state.getTargetOfInstr(instr), candidate, useFormal = false) match {
+        verifier.stokeVerify(state.getTargetOfInstr(instr), candidate, useFormal = false) match {
           case None =>
             // this should not happen, but remove this program
             IO.moveFile(candidate, state.getFreshDiscardedName("error", instr))
@@ -191,7 +144,7 @@ object SecondarySearch {
                 case x :: xs =>
                   // case 1: compare formally against this equivalence class
                   val file = x.getRepresentativeProgram.getFile(instr, state)
-                  stokeVerify(resultFile, file, useFormal = true) match {
+                  verifier.stokeVerify(resultFile, file, useFormal = true) match {
                     case Some(verifyRes) =>
 
                       // case 1a: we found an equivalent program in x

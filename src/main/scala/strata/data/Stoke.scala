@@ -2,9 +2,10 @@ package strata.data
 
 import java.io.File
 
-import strata.util.IO
+import strata.util.{TimingBuilder, TimingKind, IO}
 import org.json4s._
 import org.json4s.native.JsonMethods._
+import strata.util.ColoredOutput._
 
 /**
  * Various utility functionality for dealing with STOKE.
@@ -46,6 +47,60 @@ object Stoke {
     assert(outParsed.length == 3)
     resCircuit.delete()
     Score(outParsed(0), outParsed(1), outParsed(2))
+  }
+
+
+}
+
+case class Verifier(tmpDir: File, meta: InstructionMeta, instr: Instruction, state: State, timing: TimingBuilder) {
+
+  /**
+   * Take two programs and compare them.  Returns a verification result only if there was no error.
+   */
+  def stokeVerify(a: File, b: File, useFormal: Boolean): Option[StokeVerifyOutput] = {
+    val testcases = new File(s"$tmpDir/testcases.tc")
+    val (_, res) = timing.timeOperation(if (useFormal) TimingKind.Verification else TimingKind.Testing)({
+      val cmd = Vector("timeout", "60s",
+        s"${IO.getProjectBase}/stoke/bin/stoke", "debug", "verify",
+        "--config", s"${IO.getProjectBase}/resources/conf-files/formal.conf",
+        "--target", a,
+        "--rewrite", b,
+        "--testcases", testcases,
+        "--strategy", if (useFormal) "bounded" else "hold_out",
+        "--def_in", meta.def_in_formal,
+        "--live_out", meta.live_out_formal,
+        "--strata_path", state.getCircuitDir,
+        "--functions", s"${state.globalOptions.workdir}/functions",
+        "--machine_output", "verify.json")
+      if (state.globalOptions.verbose) {
+        IO.runPrint(cmd, workingDirectory = tmpDir)
+      } else {
+        IO.runQuiet(cmd, workingDirectory = tmpDir)
+      }
+    })
+
+    if (res == 124) {
+      // a timeout happened
+      val verifyRes = StokeVerifyOutput.makeTimeout
+      state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, IO.contentHash(a), IO.contentHash(a)))
+      Some(verifyRes)
+    } else {
+      Stoke.readStokeVerifyOutput(new File(s"$tmpDir/verify.json")) match {
+        case None =>
+          state.appendLog(LogError(s"no result for stoke verify of $instr"))
+          IO.info(s"stoke verify failed to produce an output (useformal = $useFormal)".red)
+          None
+        case Some(verifyRes) if verifyRes.hasError =>
+          val message = s"stoke verify errored with ${verifyRes.error} for $instr (useformal = $useFormal)"
+          state.appendLog(LogError(message))
+          state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, IO.contentHash(a), IO.contentHash(a)))
+          IO.info(message.red)
+          None
+        case Some(verifyRes) =>
+          state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, IO.contentHash(a), IO.contentHash(a)))
+          Some(verifyRes)
+      }
+    }
   }
 }
 
