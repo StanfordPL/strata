@@ -53,7 +53,7 @@ case class Distribution(data: Seq[Long]) {
         lowerStr + " i " + upperStr
       }
 
-      boundStr + ": " + thingies + (" " * (width - thingies.length)) + s" ($n)"
+      boundStr + ": " + thingies + (" " * (width - thingies.length)) + s" ${Stats.percentage(n, data.length)}"
     }).mkString("\n")
   }
 
@@ -74,4 +74,17 @@ case class Distribution(data: Seq[Long]) {
     arr.sorted.apply((arr.size - 1) / 2)
   }
 
+}
+
+object Stats {
+  def percentage(p: Long, total: Long, formatter: (Long => String) = _.toString, minLength: Int = 0): String = {
+    if (total == 0) {
+      assert(p == 0)
+      "0"
+    } else {
+      val percentage = p.toDouble / total.toDouble * 100.0
+      val pFormatted = formatter(p)
+      (" " * (Math.max(minLength, formatter(total).length) - pFormatted.length)) + f"$pFormatted ($percentage%6.2f %%)"
+    }
+  }
 }

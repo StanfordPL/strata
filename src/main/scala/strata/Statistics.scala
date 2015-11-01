@@ -6,7 +6,7 @@ import com.github.tototoshi.csv.CSVWriter
 import strata.data._
 import strata.tasks._
 import strata.util.ColoredOutput._
-import strata.util.{Distribution, ColoredOutput, IO, TimingKind}
+import strata.util._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
@@ -45,7 +45,7 @@ object Statistics {
     val budgets = messages.collect {
       case LogTaskEnd(InitialSearchTask(_, _, budget, _), _, _, _, _) => budget
     }
-    println(Distribution(budgets).info("initial search budget"))
+    println(Distribution(budgets.map(x => Math.log(x).toLong)).info("initial search budget"))
 
     // equivalence class statistics
     val eqs = messages.collect {
@@ -56,6 +56,7 @@ object Statistics {
     val secondEq = eqs.flatMap(x => if (x.length <= 1) None else Some(x.sorted.seq(1)))
     println(Distribution(firstEq.map(x => x.size.toLong)).info("size of first equivalence class"))
     println(Distribution(secondEq.map(x => x.size.toLong)).info("size of second equivalence class"))
+    println(Distribution(eqs.map(x => x.map(y => y.size).sum.toLong)).info("all programs"))
 
     println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.uif.toLong)).info("best program's # of UIF"))
     println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.mult.toLong)).info("best program's # of multiplications/divisions"))
@@ -100,17 +101,6 @@ object Statistics {
     }
   }
 
-  def perc(p: Long, total: Long, formatter: (Long => String) = _.toString, minLength: Int = 0): String = {
-    if (total == 0) {
-      assert(p == 0)
-      "0"
-    } else {
-      val percentage = p.toDouble / total.toDouble * 100.0
-      val pFormatted = formatter(p)
-      (" " * (Math.max(minLength, formatter(total).length) - pFormatted.length)) + f"$pFormatted ($percentage%6.2f %%)"
-    }
-  }
-
   def getExtendedStats(messages: Seq[LogMessage]): ExtendedStats = {
     if (messages.isEmpty) ExtendedStats()
     else {
@@ -137,32 +127,32 @@ object Statistics {
         errors = errors,
         totalCpuTime = totalCpuTime,
         searchOverview = Vector(
-          ("equivalent", perc(secondary.count({
+          ("equivalent", Stats.percentage(secondary.count({
             case _: SrkEquivalent => true
             case _ => false
           }), secondary.length)),
-          ("unknown", perc(secondary.count({
+          ("unknown", Stats.percentage(secondary.count({
             case _: SrkUnknown => true
             case _ => false
           }), secondary.length)),
-          ("counterexample", perc(secondary.count({
+          ("counterexample", Stats.percentage(secondary.count({
             case _: SrkCounterExample => true
             case _ => false
           }), secondary.length)),
-          ("total", perc(secondary.length, secondary.length))
+          ("total", Stats.percentage(secondary.length, secondary.length))
         ),
         validatorInvocations = Vector(
-          ("equivalent", perc(validations.count(p => p.isVerified), validations.length)),
-          ("unknown", perc(validations.count(p => p.isUnknown), validations.length)),
-          ("counterexample", perc(validations.count(p => p.isCounterExample), validations.length)),
-          ("timeout", perc(validations.count(p => p.isTimeout), validations.length)),
-          ("total", perc(validations.length, validations.length))
+          ("equivalent", Stats.percentage(validations.count(p => p.isVerified), validations.length)),
+          ("unknown", Stats.percentage(validations.count(p => p.isUnknown), validations.length)),
+          ("counterexample", Stats.percentage(validations.count(p => p.isCounterExample), validations.length)),
+          ("timeout", Stats.percentage(validations.count(p => p.isTimeout), validations.length)),
+          ("total", Stats.percentage(validations.length, validations.length))
         ),
         timing = Vector(
-          ("search", perc(timings.getOrElse(TimingKind.Search, 0), totalTime, IO.formatNanos, 13)),
-          ("validation", perc(timings.getOrElse(TimingKind.Verification, 0), totalTime, IO.formatNanos, 13)),
-          ("testcases", perc(timings.getOrElse(TimingKind.Testing, 0), totalTime, IO.formatNanos, 13)),
-          ("total", perc(totalTime, totalTime, IO.formatNanos, 13))
+          ("search", Stats.percentage(timings.getOrElse(TimingKind.Search, 0), totalTime, IO.formatNanos, 13)),
+          ("validation", Stats.percentage(timings.getOrElse(TimingKind.Verification, 0), totalTime, IO.formatNanos, 13)),
+          ("testcases", Stats.percentage(timings.getOrElse(TimingKind.Testing, 0), totalTime, IO.formatNanos, 13)),
+          ("total", Stats.percentage(totalTime, totalTime, IO.formatNanos, 13))
         ),
         otherInfo = Vector(
           ("failed initial searches", failedInitial)
@@ -176,9 +166,9 @@ object Statistics {
     Console.flush()
   }
 
-  def getStats(state: State): Stats = {
+  def getStats(state: State): StatsData = {
     state.lockedInformation(() => {
-      Stats(
+      StatsData(
         state.getInstructionFile(InstructionFile.Base, includeWorklist = true).length,
         state.getInstructionFile(InstructionFile.Success, includeWorklist = true).length,
         state.getInstructionFile(InstructionFile.PartialSuccess, includeWorklist = true).length,
@@ -190,7 +180,7 @@ object Statistics {
     })
   }
 
-  case class Stats(
+  case class StatsData(
                     nBase: Int,
                     nSuccess: Int,
                     nPartialSuccess: Int,
@@ -259,7 +249,7 @@ object Statistics {
     }
   }
 
-  def printStats(stats: Stats, extendedStats: ExtendedStats): Unit = {
+  def printStats(stats: StatsData, extendedStats: ExtendedStats): Unit = {
     val width = getConsoleWidth
     def horizontalLine(dividerDown: Seq[Int] = Nil, dividerUp: Seq[Int] = Nil): String = {
       val res = new StringBuilder()
