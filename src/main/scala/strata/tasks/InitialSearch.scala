@@ -28,36 +28,9 @@ object InitialSearch {
 
     try {
       val meta = state.getMetaOfInstr(instr)
-      val testcases = new File(s"$tmpDir/testcases.tc")
-      val base = state.lockedInformation(() => {
-        // copy the tests to the local directory
-        IO.copyFile(state.getTestcasePath, testcases)
-
-        // get the base instructions
-        state.getInstructionFile(InstructionFile.Success)
-      })
-      val baseConfig = new File(s"$tmpDir/base.conf")
-      IO.writeFile(baseConfig, "--opc_whitelist \"{ " + base.mkString(" ") + " }\"\n")
-      timing.timeOperation(TimingKind.Search)({
-        val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "search",
-          "--config", s"${IO.getProjectBase}/resources/conf-files/search.conf",
-          "--config", baseConfig,
-          "--target", state.getTargetOfInstr(instr),
-          "--def_in", meta.def_in,
-          "--live_out", meta.live_out,
-          "--functions", s"$workdir/functions",
-          "--testcases", testcases,
-          "--machine_output", "search.json",
-          "--call_weight", state.getNumPseudoInstr,
-          "--timeout_iterations", budget,
-          "--cost", "correctness")
-        if (globalOptions.verbose) {
-          IO.runPrint(cmd, workingDirectory = tmpDir)
-        } else {
-          IO.runQuiet(cmd, workingDirectory = tmpDir)
-        }
-      })
-      val result = Stoke.readStokeSearchOutput(new File(s"$tmpDir/search.json"))
+      val search = Searcher(tmpDir, meta, instr, state, timing)
+      val nBase = search.initSearch()
+      val result = search.search(budget, useNonGoal = false)
       result match {
         case None =>
           state.appendLog(LogError(s"no result for initial search of $instr"))
@@ -72,7 +45,7 @@ object InitialSearch {
             IO.copyFile(resFile, finalResFile)
 
             // update meta
-            val more = InitialSearchMeta(success = true, budget, res.statistics.total_iterations, base.length)
+            val more = InitialSearchMeta(success = true, budget, res.statistics.total_iterations, nBase)
             // get score
             val score = Stoke.determineHeuristicScore(state, instr, finalResFile)
             val eqClass = EvaluatedProgram(finalResFile.getName, score).asEquivalenceClass
@@ -84,7 +57,7 @@ object InitialSearch {
             InitialSearchSuccess(task, timing.result)
           } else {
             // update meta
-            val more = InitialSearchMeta(success = false, budget, res.statistics.total_iterations, base.length)
+            val more = InitialSearchMeta(success = false, budget, res.statistics.total_iterations, nBase)
             val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more))
             state.writeMetaOfInstr(instr, newMeta)
 

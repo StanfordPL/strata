@@ -52,6 +52,63 @@ object Stoke {
 
 }
 
+/**
+ * A helper class to talk to the STOKE search
+ */
+case class Searcher(tmpDir: File, meta: InstructionMeta, instr: Instruction, state: State, timing: TimingBuilder) {
+
+  private val baseConfig = new File(s"$tmpDir/base.conf")
+
+  /** Copies the testcases and gets the current whitelist of instructions. */
+  def initSearch(): Int = {
+    val testcases = new File(s"$tmpDir/testcases.tc")
+    val base = state.lockedInformation(() => {
+      // copy the tests to the local directory
+      IO.copyFile(state.getTestcasePath, testcases)
+
+      // get the base instructions
+      state.getInstructionFile(InstructionFile.Success)
+    })
+
+    IO.writeFile(baseConfig, "--opc_whitelist \"{ " + base.mkString(" ") + " }\"\n")
+    base.length
+  }
+
+  /** Actually perform a search. */
+  def search(budget: Long, useNonGoal: Boolean): Option[StokeSearchOutput] = {
+    val testcases = new File(s"$tmpDir/testcases.tc")
+    timing.timeOperation(TimingKind.Search)({
+      val cost = if (useNonGoal) {
+        Vector("--non_goal", state.getInstructionResultDir(instr),
+          "--cost", "correctness + nongoal",
+          "--correctness", "(correctness + nongoal) == 0")
+      } else {
+        Vector("--cost", "correctness")
+      }
+      val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "search",
+        "--config", s"${IO.getProjectBase}/resources/conf-files/search.conf",
+        "--config", baseConfig,
+        "--target", state.getTargetOfInstr(instr),
+        "--def_in", meta.def_in,
+        "--live_out", meta.live_out,
+        "--functions", s"${state.globalOptions.workdir}/functions",
+        "--testcases", testcases,
+        "--machine_output", "search.json",
+        "--call_weight", state.getNumPseudoInstr,
+        "--timeout_iterations", budget) ++ cost
+      if (state.globalOptions.verbose) {
+        IO.runPrint(cmd, workingDirectory = tmpDir)
+      } else {
+        IO.runQuiet(cmd, workingDirectory = tmpDir)
+      }
+    })
+    Stoke.readStokeSearchOutput(new File(s"$tmpDir/search.json"))
+  }
+}
+
+/**
+ * A helper class to talk to the STOKE verifier
+ */
 case class Verifier(tmpDir: File, meta: InstructionMeta, instr: Instruction, state: State, timing: TimingBuilder) {
 
   /**

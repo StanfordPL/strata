@@ -79,37 +79,10 @@ object SecondarySearch {
     }
 
     try {
-      val base = state.lockedInformation(() => {
-        // copy the tests to the local directory
-        IO.copyFile(state.getTestcasePath, testcases)
-
-        // get the base instructions
-        state.getInstructionFile(InstructionFile.Success)
-      })
-      val baseConfig = new File(s"$tmpDir/base.conf")
-      IO.writeFile(baseConfig, "--opc_whitelist \"{ " + base.mkString(" ") + " }\"\n")
-      timing.timeOperation(TimingKind.Search)({
-        val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/stoke", "search",
-          "--config", s"${IO.getProjectBase}/resources/conf-files/search.conf",
-          "--config", baseConfig,
-          "--target", state.getTargetOfInstr(instr),
-          "--def_in", meta.def_in,
-          "--live_out", meta.live_out,
-          "--functions", s"$workdir/functions",
-          "--testcases", testcases,
-          "--machine_output", "search.json",
-          "--call_weight", state.getNumPseudoInstr,
-          "--timeout_iterations", budget,
-          "--non_goal", state.getInstructionResultDir(instr),
-          "--cost", "correctness + nongoal",
-          "--correctness", "(correctness + nongoal) == 0")
-        if (globalOptions.verbose) {
-          IO.runPrint(cmd, workingDirectory = tmpDir)
-        } else {
-          IO.runQuiet(cmd, workingDirectory = tmpDir)
-        }
-      })
-      Stoke.readStokeSearchOutput(new File(s"$tmpDir/search.json")) match {
+      val search = Searcher(tmpDir, meta, instr, state, timing)
+      val nBase = search.initSearch()
+      val result = search.search(budget, useNonGoal = false)
+      result match {
         case None =>
           state.appendLog(LogError(s"no result for secondary search of $instr"))
           IO.info("stoke failed".red)
@@ -117,7 +90,7 @@ object SecondarySearch {
         case Some(res) =>
           // update meta
           val more = SecondarySearchMeta(if (res.success && res.verified) 1 else 0,
-            budget, res.statistics.total_iterations, base.length)
+            budget, res.statistics.total_iterations, nBase)
           meta = meta.copy(secondary_searches = meta.secondary_searches ++ Vector(more))
           state.writeMetaOfInstr(instr, meta)
 
