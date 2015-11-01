@@ -41,6 +41,6 @@ case class SrkEquivalent() extends SecondarySuccessKind {
 case class SrkUnknown(testedAgainst: Int) extends SecondarySuccessKind {
   override def toString = s"SMT solver returned unknown while testing against $testedAgainst equivalence classes"
 }
-case class SrkCounterExample(nCorrect: Int, nIncorrect: Int) extends SecondarySuccessKind {
-  override def toString = s"Found counterexample that removed $nIncorrect programs and kept $nCorrect"
+case class SrkCounterExample(correct: Seq[String], incorrect: Seq[String]) extends SecondarySuccessKind {
+  override def toString = s"Found counterexample that removed ${incorrect.length} programs and kept ${correct.length}"
 }

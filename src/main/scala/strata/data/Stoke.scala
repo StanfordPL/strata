@@ -147,7 +147,7 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
     if (res == 124) {
       // a timeout happened
       val verifyRes = StokeVerifyOutput.makeTimeout
-      state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, IO.contentHash(a), IO.contentHash(a)))
+      state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, a.getName, b.getName))
       Some(verifyRes)
     } else {
       Stoke.readStokeVerifyOutput(new File(s"$tmpDir/verify.json")) match {
@@ -157,10 +157,10 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
         case Some(verifyRes) if verifyRes.hasError =>
           val message = s"stoke verify errored with ${verifyRes.error} for $instr (useformal = $useFormal)"
           state.appendLog(LogError(message))
-          state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, IO.contentHash(a), IO.contentHash(a)))
+          state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, a.getName, b.getName))
           None
         case Some(verifyRes) =>
-          state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, IO.contentHash(a), IO.contentHash(a)))
+          state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, a.getName, b.getName))
           Some(verifyRes)
       }
     }

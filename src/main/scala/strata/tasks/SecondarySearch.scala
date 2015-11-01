@@ -1,10 +1,9 @@
 package strata.tasks
 
-import java.io.{FileWriter, File}
+import java.io.{File, FileWriter}
 
 import strata.data._
-import strata.util.ColoredOutput._
-import strata.util.{Timing, TimingKind, TimingBuilder, IO}
+import strata.util.{IO, TimingBuilder}
 
 /**
  * Perform an secondary search for a given instruction.
@@ -47,7 +46,7 @@ object SecondarySearch {
     }
 
     /** Add a counterexample to the list of tests, and then re-test all programs. */
-    def addCounterexample(verifyRes: StokeVerifyOutput): (Int, Int) = {
+    def addCounterexample(verifyRes: StokeVerifyOutput): (Seq[String], Seq[String]) = {
       // add counterexample to tests
       state.lockedInformation(() => {
         addTestcase(state.getTestcasePath, verifyRes.counterexample)
@@ -55,23 +54,25 @@ object SecondarySearch {
         testcases.delete()
         IO.copyFile(state.getTestcasePath, testcases)
       })
-      var correct = 0
-      var incorrect = 0
+      val correct = collection.mutable.ListBuffer.empty[String]
+      val incorrect = collection.mutable.ListBuffer.empty[String]
       // run tests on all programs
       for (candidate <- state.getResultFiles(instr)) {
         stoke.verify(state.getTargetOfInstr(instr), candidate, useFormal = false) match {
           case None =>
             // this should not happen, but remove this program
-            IO.moveFile(candidate, state.getFreshDiscardedName("error", instr))
-            incorrect += 1
+            val file = state.getFreshDiscardedName("error", instr)
+            IO.moveFile(candidate, file)
+            incorrect += file.getName
           case Some(testResult) =>
             if (testResult.isVerified) {
               // keep the program
-              correct += 1
+              correct += candidate.getName
             } else {
               // this program is definitely wrong, let's remove it
-              IO.moveFile(candidate, state.getFreshDiscardedName("counterexample", instr))
-              incorrect +=1
+              val file = state.getFreshDiscardedName("counterexample", instr)
+              IO.moveFile(candidate, file)
+              incorrect += file.getName
             }
         }
       }
@@ -130,13 +131,13 @@ object SecondarySearch {
                       // case 1b: we found a counterexample
                       else if (verifyRes.isCounterExample) {
                         val (correct, incorrect) = addCounterexample(verifyRes)
-                        if (correct == 0) {
+                        if (correct.isEmpty) {
                           throw new RuntimeException(s"everything was wrong: $correct, $incorrect")
                         }
                         val res = SecondarySearchSuccess(task, SrkCounterExample(correct, incorrect), timing.result)
                         val beforePlusNew = Vector(newProgram.asEquivalenceClass) ++ beforeEqClasses.getClasses()
                         val eq = beforePlusNew.flatMap(eq => eq.filterExisting(instr, state))
-                        if (correct != eq.map(x => x.size).sum) {
+                        if (correct.length != eq.map(x => x.size).sum) {
                           throw new RuntimeException(
                             s"didn't keep the necessary programs: $correct, $incorrect, $beforeEqClasses, $eq")
                         }
