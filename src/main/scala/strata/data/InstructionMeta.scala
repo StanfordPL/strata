@@ -11,12 +11,8 @@ case class InstructionMeta(def_in: String,
                            live_out_formal: String,
                            initial_searches: Seq[InitialSearchMeta],
                            secondary_searches: Seq[SecondarySearchMeta],
-                           equivalence_classes: Seq[EquivalenceClass]
+                           equivalence_classes: EquivalenceClasses
                             ) {
-  /** Get all equivalence classes (of at least size n). */
-  def getEquivalenceClasses(minSize: Int = 0): Seq[EquivalenceClass] = {
-    equivalence_classes.filter(eqClass => eqClass.size >= minSize).sorted
-  }
 }
 
 case class EvaluatedProgram(program: String, score: Score) extends Ordered[EvaluatedProgram] {
@@ -52,6 +48,15 @@ case class EquivalenceClass(programs: Seq[EvaluatedProgram]) extends Ordered[Equ
   override def toString = {
     s"EqClass(${sortedPrograms.mkString(", ")})"
   }
+}
+
+case class EquivalenceClasses(unorderedClasses: Seq[EquivalenceClass]) {
+  def getClasses(minSize: Int = 0) = {
+    unorderedClasses.filter(eqClass => eqClass.size >= minSize).sorted
+  }
+
+  def nClasses = unorderedClasses.length
+  def nPrograms = unorderedClasses.map(x => x.size).sum
 }
 
 case class InitialSearchMeta(success: Boolean,

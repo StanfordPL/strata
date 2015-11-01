@@ -21,7 +21,10 @@ object Statistics {
   /** Some adhoc statistics. */
   def tmp(globalOptions: GlobalOptions): Unit = {
     val state = State(globalOptions)
-    val messages = state.getLogMessages
+    //val messages = state.getLogMessages
+
+    // go through all instructions that have programs and run the testcases against them
+
   }
 
   /** Collect data for further analysis. */
@@ -50,17 +53,34 @@ object Statistics {
     // equivalence class statistics
     val eqs = messages.collect {
       case LogEquivalenceClasses(instr, eq, _, _) =>
-        eq
+        (instr, eq)
     }
-    val firstEq = eqs.map(x => x.sorted.head)
-    val secondEq = eqs.flatMap(x => if (x.length <= 1) None else Some(x.sorted.seq(1)))
+    val firstEq = eqs.map(x => x._2.sorted.head)
+    val secondEq = eqs.flatMap(x => if (x._2.length <= 1) None else Some(x._2.sorted.seq(1)))
     println(Distribution(firstEq.map(x => x.size.toLong)).info("size of first equivalence class"))
     println(Distribution(secondEq.map(x => x.size.toLong)).info("size of second equivalence class"))
-    println(Distribution(eqs.map(x => x.map(y => y.size).sum.toLong)).info("all programs"))
+    println(Distribution(eqs.map(x => x._2.map(y => y.size).sum.toLong)).info("all programs"))
 
     println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.uif.toLong)).info("best program's # of UIF"))
     println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.mult.toLong)).info("best program's # of multiplications/divisions"))
     println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.nodes.toLong)).info("best program's # of nodes"))
+
+    for ((instr, eq) <- eqs) {
+      val sorted = eq.sorted
+      val first = sorted.head
+      if (first.size < 3) {
+        println(instr)
+        val firstProg = first.getRepresentativeProgram
+        println(s"${first.size} -> ${firstProg.score}")
+        println(IO.indented(Program.fromFile(firstProg.getFile(instr, state)).toString))
+        if (sorted.length > 1) {
+          val sndProg = sorted(1).getRepresentativeProgram
+          println(s"${sorted(1).size} -> ${sndProg.score}")
+          println(IO.indented(Program.fromFile(sndProg.getFile(instr, state)).toString))
+        }
+        println("--------")
+      }
+    }
 
     println(s"Processed ${messages.length} messages")
   }

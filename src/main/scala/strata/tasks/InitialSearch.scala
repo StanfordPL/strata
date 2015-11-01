@@ -75,9 +75,10 @@ object InitialSearch {
             val more = InitialSearchMeta(success = true, budget, res.statistics.total_iterations, base.length)
             // get score
             val score = Stoke.determineHeuristicScore(state, instr, finalResFile)
+            val eqClass = EvaluatedProgram(finalResFile.getName, score).asEquivalenceClass
             // the new program is in it's own equivalence class for now
             val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more),
-              equivalence_classes = Vector(EvaluatedProgram(finalResFile.getName, score).asEquivalenceClass))
+              equivalence_classes = EquivalenceClasses(Vector(eqClass)))
             state.writeMetaOfInstr(instr, newMeta)
 
             InitialSearchSuccess(task, timing.result)

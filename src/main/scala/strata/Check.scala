@@ -33,7 +33,9 @@ case class Check(options: CheckOptions) {
     "vsqrtss_xmm_xmm_xmm",
     "vrsqrtss_xmm_xmm_xmm",
     "vsubsd_xmm_xmm_xmm",
-    "vcvtsi2ssq_xmm_xmm_r64"
+    "vcvtsi2ssq_xmm_xmm_r64",
+    "vdivsd_xmm_xmm_xmm",
+    "vcvttpd2dq_xmm_xmm"
   )
 
   val ignore = Vector(
@@ -90,6 +92,8 @@ case class Check(options: CheckOptions) {
     var timeout = 0
     var stoke_wrong = 0
     var total = 0
+    var usesWrongCircuit = 0
+    val incorrectInstrs = collection.mutable.Set.empty[Instruction]
     for (instruction <- graph.topologicalSort if strataInstrs.contains(instruction)) {
       val node = graph.get(instruction)
       if (node.diPredecessors.size >= 0) {
@@ -99,8 +103,13 @@ case class Check(options: CheckOptions) {
           "--opcode", instruction)
         val (out, status) = IO.runQuiet(cmd)
         total += 1
+        val program = getProgram(instruction)
 
-        if (stokeIsWrong.contains(instruction.opcode)) {
+        // check if this uses an instruction that we already know to be wrong
+        if (program.instructions.toSet.intersect(incorrectInstrs).nonEmpty) {
+          usesWrongCircuit += 1
+          incorrectInstrs += instruction
+        } else if (stokeIsWrong.contains(instruction.opcode)) {
           stoke_wrong += 1
         } else if (status == 124) {
           println(s"$instruction: timeout")
@@ -119,12 +128,13 @@ case class Check(options: CheckOptions) {
             println(s"Opcode '$instruction' not equivalent:")
             println()
             println("Program:")
-            println("  " + getProgram(instruction).toString.replace("\n", "\n  "))
+            println("  " + program.toString.replace("\n", "\n  "))
             println()
             println(out.trim)
           } else {
             println(s"$instruction: not equivalent")
           }
+          incorrectInstrs += instruction
         } else if (status == 0) {
           // correct :)
           correct += 1
@@ -141,6 +151,7 @@ case class Check(options: CheckOptions) {
     println(s"STOKE == strata:      $correct")
     println(s"STOKE is wrong:       $stoke_wrong")
     println(s"STOKE != strata:      $incorrect")
+    println(s"not checked:          $usesWrongCircuit (uses incorrect instruction)")
     println(s"Timeout:              $timeout")
     println(s"Unsupported by STOKE: $stoke_unsupported")
 

@@ -46,7 +46,7 @@ object SecondarySearch {
     }
 
     /**
-     * Take two programs and compare them formally.  Returns a verification result only if there was no error.
+     * Take two programs and compare them.  Returns a verification result only if there was no error.
      */
     def stokeVerify(a: File, b: File, useFormal: Boolean): Option[StokeVerifyOutput] = {
       val (_, res) = timing.timeOperation(if (useFormal) TimingKind.Verification else TimingKind.Testing)({
@@ -177,8 +177,8 @@ object SecondarySearch {
             IO.copyFile(new File(s"$tmpDir/result.s"), resultFile)
 
             // we should have found at least one program
-            val beforeEqClasses = meta.getEquivalenceClasses()
-            assert(beforeEqClasses.nonEmpty)
+            val beforeEqClasses = meta.equivalence_classes
+            assert(beforeEqClasses.nClasses > 0)
 
             // go through all equivalence classes, and attempt to prove it against a representative program
             val newProgram = EvaluatedProgram(resultFile.getName, Stoke.determineHeuristicScore(state, instr, resultFile))
@@ -210,7 +210,7 @@ object SecondarySearch {
                           throw new RuntimeException(s"everything was wrong: $correct, $incorrect")
                         }
                         val res = SecondarySearchSuccess(task, SrkCounterExample(correct, incorrect), timing.result)
-                        val beforePlusNew = Vector(newProgram.asEquivalenceClass) ++ beforeEqClasses
+                        val beforePlusNew = Vector(newProgram.asEquivalenceClass) ++ beforeEqClasses.getClasses()
                         val eq = beforePlusNew.flatMap(eq => eq.filterExisting(instr, state))
                         if (correct != eq.map(x => x.size).sum) {
                           throw new RuntimeException(
@@ -231,9 +231,9 @@ object SecondarySearch {
               }
             }
 
-            val (res, newEq) = loop(beforeEqClasses, Nil)
+            val (res, newEq) = loop(beforeEqClasses.getClasses(), Nil)
 
-            meta = meta.copy(equivalence_classes = newEq)
+            meta = meta.copy(equivalence_classes = EquivalenceClasses(newEq))
             state.writeMetaOfInstr(instr, meta)
 
             res

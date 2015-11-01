@@ -6,6 +6,7 @@ import java.security.MessageDigest
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
 import org.joda.time.format.{PeriodFormatterBuilder, DateTimeFormat}
+import strata.data.Program
 
 import scala.sys.process._
 import ColoredOutput._
@@ -171,5 +172,11 @@ object IO {
       .toFormatter
 
     formatter.print(cpuTime.toPeriod).trim
+  }
+
+  /** Indent a string with a given prefix. */
+  def indented(s: String, level: Int = 1, prefix: String = "  "): String = {
+    val id = prefix * level
+    id + s.replace("\n", s"\n$id")
   }
 }
