@@ -115,7 +115,7 @@ object Statistics {
       }
       printStats(getStats(state), extendedStats)
       if (extendedStats.hasData && singleRun) {
-        return
+        sys.exit(0)
       }
       Thread.sleep(2000)
     }
