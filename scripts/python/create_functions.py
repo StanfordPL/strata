@@ -701,6 +701,23 @@ def all_mappings(variables, name):
     else:
       print "ERROR, unknown type of template 2.5"
       sys.exit(1)
+  elif len(types) == 1 and len(variables) == 3:
+    if "move_128_64" in name or "move_64_128" in name:
+      res = []
+      for reg in list_regs(types[0], 1)[0:3]:
+        m0 = {}
+        m0['xmm_0'] = reg
+        m0['xmm_1'] = 'xmm10'
+        m0['xmm_2'] = 'xmm11'
+        m1 = {}
+        m1['xmm_0'] = reg
+        m1['xmm_1'] = 'xmm12'
+        m1['xmm_2'] = 'xmm13'
+        res.append(m0)
+        res.append(m1)
+    else:
+      print "ERROR, unknown type of template 2.5"
+      sys.exit(1)
   else:
     print "ERROR, unknown type of template 3"
     sys.exit(1)
