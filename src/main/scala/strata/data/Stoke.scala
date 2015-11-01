@@ -2,7 +2,7 @@ package strata.data
 
 import java.io.File
 
-import strata.util.{TimingBuilder, TimingKind, IO}
+import strata.util.{Sorting, TimingBuilder, TimingKind, IO}
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import strata.util.ColoredOutput._
@@ -111,7 +111,8 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
           case Some(verifyOutput) =>
             if (!verifyOutput.isVerified) {
               // this should NOT happen
-              val m = "STOKE search returned a program that does not work for all inputs: " + out
+              val m = s"STOKE search returned a program that does not work for all" +
+                s"inputs for $instr (live_out/def_in are ${meta.live_out}/${meta.def_in}): $out"
               state.appendLog(LogError(m))
               // pretend the search failed
               val p = StokeCode(0, "")
@@ -173,14 +174,10 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
 
 case class Score(uif: Int, mult: Int, nodes: Int) extends Ordered[Score] {
   // lexographical ordering
-  def compare(that: Score): Int = {
-    for((x,y) <- data zip that.data) {
-        val c = x compare y
-        if(c != 0) return c
-      }
-      data.size - that.data.size
-    }
-  private def data = Vector(uif, mult, nodes)
+  def compare(that: Score): Int = Sorting.lexographicalCompare(data, that.data)
+
+  def data = Vector(uif, mult, nodes)
+
   override def toString = s"($uif, $mult, $nodes)"
 }
 
@@ -212,17 +209,22 @@ case class StokeVerifyOutput(
   // uses a hack to store '__timeout__' in error to indicate timeouts
   // NOTE: exactly one of the isX methods will return true
 
-  /** Was there an error during verification?*/
+  /** Was there an error during verification? */
   def hasError = error != "" && error != "__timeout__"
+
   /** Successfully verified? */
   def isVerified = verified
+
   /** Did the SMT solver say no, but not provide a (valid) counterexample? */
   def isUnknown = !verified && !counter_examples_available && !isTimeout
+
   /** Is there a counterexample. */
   def isCounterExample = counter_examples_available
+
   /** Was there a timeout? */
   def isTimeout = error == "__timeout__"
 }
+
 object StokeVerifyOutput {
   def makeTimeout = StokeVerifyOutput(verified = false, counter_examples_available = false, "", "__timeout__")
 }

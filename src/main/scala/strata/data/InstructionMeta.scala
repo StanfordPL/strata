@@ -2,6 +2,8 @@ package strata.data
 
 import java.io.File
 
+import strata.util.Sorting
+
 /**
  * Meta information about a goal instruction.
  */
@@ -34,7 +36,11 @@ case class EquivalenceClass(programs: Seq[EvaluatedProgram]) extends Ordered[Equ
     else Some(EquivalenceClass(updatedPrograms))
   }
 
-  def compare(that: EquivalenceClass) = getRepresentativeProgram.compare(that.getRepresentativeProgram)
+  def compare(that: EquivalenceClass) = {
+    val thisScore = getRepresentativeProgram.score.data
+    val thatScore = that.getRepresentativeProgram.score.data
+    Sorting.lexographicalCompare(thisScore ++ Vector(programs.length), thatScore ++ Vector(that.programs.length))
+  }
 
   /** Get a representative program (the one with the lowest score. */
   def getRepresentativeProgram = sortedPrograms.head

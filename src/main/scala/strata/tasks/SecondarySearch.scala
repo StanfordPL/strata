@@ -81,7 +81,7 @@ object SecondarySearch {
 
     try {
       val nBase = stoke.initSearch()
-      val result = stoke.search(budget, useNonGoal = false)
+      val result = stoke.search(budget, useNonGoal = true)
       result match {
         case None =>
           state.appendLog(LogError(s"no result for secondary search of $instr"))
