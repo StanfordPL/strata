@@ -177,10 +177,10 @@ case class LogVerifyResult(instr: Instruction,
   }
 }
 
-case class LogEquivalenceClasses(instruction: Instruction, eq: Seq[EquivalenceClass], time: DateTime = DateTime.now(),
+case class LogEquivalenceClasses(instruction: Instruction, eq: EquivalenceClasses, time: DateTime = DateTime.now(),
                                  context: ThreadContext = ThreadContext.self) extends LogMessage {
   override def toString = {
     s"equivalence class size and score for $instruction: " +
-      eq.map(x => s"${x.size} ${x.getRepresentativeProgram.score}").mkString(", ")
+      eq.getClasses().map(x => s"${x.size} / ${x.getRepresentativeProgram.score}").mkString(", ")
   }
 }

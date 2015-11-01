@@ -124,7 +124,7 @@ class Driver(val globalOptions: GlobalOptions) {
     val instr = taskRes.instruction
     def moveProgramToCircuitDir(meta: InstructionMeta, n: Int): Unit = {
       val minEqClassSize = 2
-      val eqClasses = meta.getEquivalenceClasses(minEqClassSize)
+      val eqClasses = meta.equivalence_classes.getClasses(minEqClassSize)
       // copy a file to the circuits directory
       val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
       if (eqClasses.isEmpty) {
@@ -137,7 +137,7 @@ class Driver(val globalOptions: GlobalOptions) {
         val best = eqClasses.head.getRepresentativeProgram.getFile(instr, state)
         IO.copyFile(best, resCircuit)
       }
-      state.appendLog(LogEquivalenceClasses(instr, meta.getEquivalenceClasses()))
+      state.appendLog(LogEquivalenceClasses(instr, meta.equivalence_classes))
     }
     state.lockedInformation(() => {
       taskRes match {
