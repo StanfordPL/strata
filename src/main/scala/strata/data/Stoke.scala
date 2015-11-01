@@ -48,16 +48,13 @@ object Stoke {
     resCircuit.delete()
     Score(outParsed(0), outParsed(1), outParsed(2))
   }
-
-
 }
 
-/**
- * A helper class to talk to the STOKE search
- */
-case class Searcher(tmpDir: File, meta: InstructionMeta, instr: Instruction, state: State, timing: TimingBuilder) {
+/** Helper class to run stoke commands. */
+case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state: State, timing: TimingBuilder) {
 
   private val baseConfig = new File(s"$tmpDir/base.conf")
+  private val testcases = new File(s"$tmpDir/testcases.tc")
 
   /** Copies the testcases and gets the current whitelist of instructions. */
   def initSearch(): Int = {
@@ -76,7 +73,6 @@ case class Searcher(tmpDir: File, meta: InstructionMeta, instr: Instruction, sta
 
   /** Actually perform a search. */
   def search(budget: Long, useNonGoal: Boolean): Option[StokeSearchOutput] = {
-    val testcases = new File(s"$tmpDir/testcases.tc")
     timing.timeOperation(TimingKind.Search)({
       val cost = if (useNonGoal) {
         Vector("--non_goal", state.getInstructionResultDir(instr),
@@ -104,18 +100,11 @@ case class Searcher(tmpDir: File, meta: InstructionMeta, instr: Instruction, sta
     })
     Stoke.readStokeSearchOutput(new File(s"$tmpDir/search.json"))
   }
-}
-
-/**
- * A helper class to talk to the STOKE verifier
- */
-case class Verifier(tmpDir: File, meta: InstructionMeta, instr: Instruction, state: State, timing: TimingBuilder) {
 
   /**
    * Take two programs and compare them.  Returns a verification result only if there was no error.
    */
-  def stokeVerify(a: File, b: File, useFormal: Boolean): Option[StokeVerifyOutput] = {
-    val testcases = new File(s"$tmpDir/testcases.tc")
+  def verify(a: File, b: File, useFormal: Boolean): Option[StokeVerifyOutput] = {
     val (_, res) = timing.timeOperation(if (useFormal) TimingKind.Verification else TimingKind.Testing)({
       val cmd = Vector("timeout", "60s",
         s"${IO.getProjectBase}/stoke/bin/stoke", "debug", "verify",

@@ -28,9 +28,9 @@ object InitialSearch {
 
     try {
       val meta = state.getMetaOfInstr(instr)
-      val search = Searcher(tmpDir, meta, instr, state, timing)
-      val nBase = search.initSearch()
-      val result = search.search(budget, useNonGoal = false)
+      val stoke = Stoke(tmpDir, meta, instr, state, timing)
+      val nBase = stoke.initSearch()
+      val result = stoke.search(budget, useNonGoal = false)
       result match {
         case None =>
           state.appendLog(LogError(s"no result for initial search of $instr"))

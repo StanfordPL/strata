@@ -25,7 +25,7 @@ object SecondarySearch {
     tmpDir.mkdir()
 
     val testcases = new File(s"$tmpDir/testcases.tc")
-    val verifier = Verifier(tmpDir, meta, instr, state, timing)
+    val stoke = Stoke(tmpDir, meta, instr, state, timing)
 
     /** Takes a testcase file and appends a new testcase. */
     def addTestcase(tcFile: File, testcase: String): Unit = {
@@ -59,7 +59,7 @@ object SecondarySearch {
       var incorrect = 0
       // run tests on all programs
       for (candidate <- state.getResultFiles(instr)) {
-        verifier.stokeVerify(state.getTargetOfInstr(instr), candidate, useFormal = false) match {
+        stoke.verify(state.getTargetOfInstr(instr), candidate, useFormal = false) match {
           case None =>
             // this should not happen, but remove this program
             IO.moveFile(candidate, state.getFreshDiscardedName("error", instr))
@@ -79,9 +79,8 @@ object SecondarySearch {
     }
 
     try {
-      val search = Searcher(tmpDir, meta, instr, state, timing)
-      val nBase = search.initSearch()
-      val result = search.search(budget, useNonGoal = false)
+      val nBase = stoke.initSearch()
+      val result = stoke.search(budget, useNonGoal = false)
       result match {
         case None =>
           state.appendLog(LogError(s"no result for secondary search of $instr"))
@@ -117,7 +116,7 @@ object SecondarySearch {
                 case x :: xs =>
                   // case 1: compare formally against this equivalence class
                   val file = x.getRepresentativeProgram.getFile(instr, state)
-                  verifier.stokeVerify(resultFile, file, useFormal = true) match {
+                  stoke.verify(resultFile, file, useFormal = true) match {
                     case Some(verifyRes) =>
 
                       // case 1a: we found an equivalent program in x
