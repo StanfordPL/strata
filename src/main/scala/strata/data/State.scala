@@ -1,22 +1,24 @@
 package strata.data
 
-import java.io.{FileWriter, File}
-import java.util.Calendar
-import strata.GlobalOptions
-import org.json4s.native.Serialization
-import org.json4s.native.Serialization.write
-import scala.collection.mutable.ListBuffer
-import scala.io.{BufferedSource, Source}
-import strata.util.{IO, Locking}
+import java.io.{File, FileWriter}
+
 import org.json4s._
 import org.json4s.native.JsonMethods._
+import org.json4s.native.Serialization
+import org.json4s.native.Serialization.write
+import strata.GlobalOptions
+import strata.util.ColoredOutput._
+import strata.util.{IO, Locking}
+
+import scala.collection.mutable.ListBuffer
+import scala.io.Source
 
 object InstructionFile extends Enumeration {
   type InstructionFile = Value
   val RemainingGoal, InitialGoal, Worklist, PartialSuccess, Success, Base = Value
 }
 
-import InstructionFile._
+import strata.data.InstructionFile._
 
 /**
  * Code to interact with the state of a strata run (stored on disk).
@@ -116,6 +118,10 @@ class State(val globalOptions: GlobalOptions) {
   /** Add an entry to the global log file. */
   def appendLog(logMessage: LogMessage): Unit = {
     if (!exists) IO.error("state has not been initialized yet")
+
+    if (logMessage.isInstanceOf[LogError]) {
+      IO.info(logMessage.toString.red)
+    }
 
     def writeMessage(file: File, message: String): Unit = {
       if (!file.exists()) {

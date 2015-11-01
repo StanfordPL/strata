@@ -34,7 +34,6 @@ object InitialSearch {
       result match {
         case None =>
           state.appendLog(LogError(s"no result for initial search of $instr"))
-          IO.info("stoke failed".red)
           InitialSearchError(task, timing.result)
         case Some(res) =>
           val meta = state.getMetaOfInstr(instr)

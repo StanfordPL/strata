@@ -73,7 +73,7 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
 
   /** Actually perform a search. */
   def search(budget: Long, useNonGoal: Boolean): Option[StokeSearchOutput] = {
-    timing.timeOperation(TimingKind.Search)({
+    val (out, _) = timing.timeOperation(TimingKind.Search)({
       val cost = if (useNonGoal) {
         Vector("--non_goal", state.getInstructionResultDir(instr),
           "--cost", "correctness + nongoal",
@@ -98,7 +98,26 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
         IO.runQuiet(cmd, workingDirectory = tmpDir)
       }
     })
-    Stoke.readStokeSearchOutput(new File(s"$tmpDir/search.json"))
+    val res = Stoke.readStokeSearchOutput(new File(s"$tmpDir/search.json"))
+    res match {
+      case Some(searchRes) if searchRes.success =>
+        // search finished successfully. run tests to make sure we didn't find a bogus program
+        // this shouldn't be necessary, but helps us catch bugs
+        val file = new File(s"$tmpDir/result.s")
+        assert(file.exists())
+        verify(file, state.getTargetOfInstr(instr), useFormal = false) match {
+          case None =>
+            assert(false)
+          case Some(verifyOutput) =>
+            if (!verifyOutput.isVerified) {
+              // this should NOT happen
+              val m = "STOKE search returned a program that does not work for all inputs: " + out
+              state.appendLog(LogError(m))
+            }
+        }
+      case _ =>
+    }
+    res
   }
 
   /**
@@ -133,14 +152,12 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
     } else {
       Stoke.readStokeVerifyOutput(new File(s"$tmpDir/verify.json")) match {
         case None =>
-          state.appendLog(LogError(s"no result for stoke verify of $instr"))
-          IO.info(s"stoke verify failed to produce an output (useformal = $useFormal)".red)
+          state.appendLog(LogError(s"no result for stoke verify of $instr (useformal = $useFormal)"))
           None
         case Some(verifyRes) if verifyRes.hasError =>
           val message = s"stoke verify errored with ${verifyRes.error} for $instr (useformal = $useFormal)"
           state.appendLog(LogError(message))
           state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, IO.contentHash(a), IO.contentHash(a)))
-          IO.info(message.red)
           None
         case Some(verifyRes) =>
           state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, IO.contentHash(a), IO.contentHash(a)))

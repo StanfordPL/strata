@@ -84,7 +84,6 @@ object SecondarySearch {
       result match {
         case None =>
           state.appendLog(LogError(s"no result for secondary search of $instr"))
-          IO.info("stoke failed".red)
           SecondarySearchError(task, timing.result)
         case Some(res) =>
           // update meta

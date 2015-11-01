@@ -111,7 +111,6 @@ class Driver(val globalOptions: GlobalOptions) {
         state.appendLog(LogTaskEnd(task, None, -1, DateTime.now, task.runnerContext))
         val cause = if (t.getCause != null) t.getCause else t
         state.appendLog(LogError(s"exception in task: ${t.getMessage}\n${cause.getStackTrace.mkString("\n")}"))
-        IO.info(s"ERROR: failure: ${t.getMessage}\n${cause.getStackTrace.mkString("\n")}".red)
         state.lockedInformation(() => {
           state.removeInstructionToFile(task.instruction, InstructionFile.Worklist)
         })
@@ -130,7 +129,6 @@ class Driver(val globalOptions: GlobalOptions) {
       if (eqClasses.isEmpty) {
         val msg = s"Found $n programs for $instr, but no equivalence class has size at least $minEqClassSize"
         state.appendLog(LogError(msg))
-        IO.info(msg.red)
         IO.copyFile(state.getResultFiles(instr).head, resCircuit)
       } else {
         // determine which program is the best according to our heuristics
