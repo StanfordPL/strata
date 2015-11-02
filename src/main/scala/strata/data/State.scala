@@ -254,7 +254,7 @@ class State(val globalOptions: GlobalOptions) {
   }
 
   /** Get the number of pseudo instructions. */
-  def getNumPseudoInstr: Int = {
+  lazy val getNumPseudoInstr: Int = {
     new File(s"${globalOptions.workdir}/${State.PATH_FUNCTIONS}").list().length
   }
 
