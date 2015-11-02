@@ -11,12 +11,12 @@
   # ----------------------------------------------------------------------------
   #
   # move low bits
-  movsd %[xmm_1], %[xmm_0]
+  movsd %[xmm_2], %[xmm_0]
   shufps $0x39, %[xmm_0], %[xmm_0]
   shufps $0x39, %[xmm_0], %[xmm_0]
   #
   # move high bits
-  movsd %[xmm_2], %[xmm_0]
+  movsd %[xmm_1], %[xmm_0]
   shufps $0x39, %[xmm_0], %[xmm_0]
   shufps $0x39, %[xmm_0], %[xmm_0]
   retq

@@ -11,11 +11,13 @@
   # ----------------------------------------------------------------------------
   #
   # move low bits
+  xorpd %[xmm_2], %[xmm_2]
   movsd %[xmm_0], %[xmm_2]
   shufps $0x39, %[xmm_0], %[xmm_0]
   shufps $0x39, %[xmm_0], %[xmm_0]
   #
   # move high bits
+  xorpd %[xmm_1], %[xmm_1]
   movsd %[xmm_0], %[xmm_1]
   shufps $0x39, %[xmm_0], %[xmm_0]
   shufps $0x39, %[xmm_0], %[xmm_0]
