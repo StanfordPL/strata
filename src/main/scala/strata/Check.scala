@@ -35,6 +35,8 @@ case class Check(options: CheckOptions) {
     "vsubsd_xmm_xmm_xmm",
     "vcvtsi2ssq_xmm_xmm_r64",
     "vdivsd_xmm_xmm_xmm",
+    "vmulsd_xmm_xmm_xmm",
+    "vmulss_xmm_xmm_xmm",
     "vcvttpd2dq_xmm_xmm"
   )
 
