@@ -14,14 +14,15 @@ import scala.util.Random
 /**
  * Driver for a full run of strata.  Takes care of deciding what to run next.
  */
-class Driver(val globalOptions: GlobalOptions) {
+class Driver(initOptions: InitOptions) {
 
+  val globalOptions = initOptions.globalOptions
   val state = State(globalOptions)
 
   def run(args: Array[String], continue: Boolean = false): Unit = {
     // initialize
     if (!continue) {
-      Initialize.run(args, InitOptions(globalOptions))
+      Initialize.run(args, initOptions)
     } else {
       if (!state.exists) IO.error("workdir does not exist, cannot continue")
       state.appendLog(LogEntryPoint(args))
@@ -254,5 +255,5 @@ class Driver(val globalOptions: GlobalOptions) {
  * Companion object
  */
 object Driver {
-  def apply(globalOptions: GlobalOptions) = new Driver(globalOptions)
+  def apply(options: InitOptions) = new Driver(options)
 }

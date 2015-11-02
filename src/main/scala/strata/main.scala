@@ -55,18 +55,13 @@ object Strata {
 
           addGlobalOptions(this, "init",
             (workdir: Option[File], verbose: Option[Boolean], keepTmpDirs: Option[Boolean], c: InitOptions) => {
-              if (workdir.isDefined) {
-                c.copy(globalOptions = c.globalOptions.copy(workdirPath = workdir.get.toString))
-              } else if (verbose.isDefined) {
-                c.copy(globalOptions = c.globalOptions.copy(verbose = verbose.get))
-              } else if (keepTmpDirs.isDefined) {
-                c.copy(globalOptions = c.globalOptions.copy(keepTmpDirs = keepTmpDirs.get))
-              } else {
-                sys.exit(1)
-              }
+              c.copy(globalOptions = normalUpdateGlobal(workdir, verbose, keepTmpDirs, c.globalOptions))
             })
+          opt[Unit]('i', "imm_instructions") action {
+            (x, c) => c.copy(imm_instructions = true)
+          }
         }
-        parser.parse(localArgs, InitOptions(GlobalOptions())) match {
+        parser.parse(localArgs, InitOptions(GlobalOptions(), false)) match {
           case Some(c) =>
             Initialize.run(args, c)
           case None =>
@@ -77,13 +72,19 @@ object Strata {
 
       ("run", "A full run of strata",
         (localArgs: Array[String], helpStr: String) => {
-          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
+          val parser = new scopt.OptionParser[InitOptions]("strata") {
             head(shortDescription)
             note(helpStr)
 
-            addGlobalOptions(this, "run", normalUpdateGlobal)
+            addGlobalOptions(this, "run",
+              (workdir: Option[File], verbose: Option[Boolean], keepTmpDirs: Option[Boolean], c: InitOptions) => {
+                c.copy(globalOptions = normalUpdateGlobal(workdir, verbose, keepTmpDirs, c.globalOptions))
+              })
+            opt[Unit]('i', "imm_instructions") action {
+              (x, c) => c.copy(imm_instructions = true)
+            }
           }
-          parser.parse(localArgs, GlobalOptions()) match {
+          parser.parse(localArgs, InitOptions(GlobalOptions())) match {
             case Some(c) =>
               Driver(c).run(args)
             case None =>
@@ -102,7 +103,7 @@ object Strata {
           }
           parser.parse(localArgs, GlobalOptions()) match {
             case Some(c) =>
-              Driver(c).run(args, continue=true)
+              Driver(InitOptions(c)).run(args, continue=true)
             case None =>
               // arguments are bad, error message will have been displayed
               sys.exit(1)
@@ -241,7 +242,7 @@ object Strata {
           head(shortDescription)
           note(helpStr)
 
-          addGlobalOptions(this, "init", normalUpdateGlobal)
+          addGlobalOptions(this, "step", normalUpdateGlobal)
           opt[Instruction]("instr") valueName ("<opcode>") action {
             (x, c: GlobalOptions) => {
               instr = Some(x)
@@ -252,7 +253,7 @@ object Strata {
         parser.parse(localArgs, GlobalOptions()) match {
           case Some(c) =>
             State(c).appendLog(LogEntryPoint(args))
-            val driver = Driver(c)
+            val driver = Driver(InitOptions(c))
             driver.selectNextTask(instr) match {
               case None =>
                 IO.info("No task available")
@@ -319,6 +320,6 @@ case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home
   val workdir = new File(workdirPath)
 }
 
-case class InitOptions(globalOptions: GlobalOptions)
+case class InitOptions(globalOptions: GlobalOptions, imm_instructions: Boolean = false)
 
 case class CheckOptions(circuitPath: File = new File(s"${System.getProperty("user.home")}/dev/circuits"), verbose: Boolean = false)

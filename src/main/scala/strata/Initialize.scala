@@ -37,7 +37,12 @@ object Initialize {
     IO.safeSubcommand(Vector("scripts/python/create_functions.py", functionTemplates, functionOutput))
 
     IO.info("initialize configuration using specgen init ...")
-    IO.safeSubcommand(Vector("stoke/bin/specgen", "init", "--workdir", workdir))
+    val initArgs = if (options.imm_instructions) {
+      Vector("--only_imm", "--imm_count", "256")
+    } else {
+      Nil
+    }
+    IO.safeSubcommand(Vector("stoke/bin/specgen", "init", "--workdir", workdir) ++ initArgs)
 
     IO.info("generate random testcases ...")
     IO.safeSubcommand(Vector("stoke/bin/stoke", "testcase", "--out", state.getTestcasePath,
