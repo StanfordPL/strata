@@ -19,7 +19,7 @@ case class Distribution(data: Seq[Long]) {
     var upperBound = min + binSize
     var n = 0
     var i = 0
-    val listB = ArrayBuffer[Int]()
+    val listB = ArrayBuffer[Long]()
     for (d <- data.sorted) {
       if (d < upperBound) {
         n += 1
@@ -40,8 +40,8 @@ case class Distribution(data: Seq[Long]) {
     val boundsChars = max.toString.length
     (for (i <- 0 to (realNBins - 1)) yield {
       val n = list(i)
-      val lower = (min + i * binSize).floor.toInt
-      val upper = (min + (i + 1) * binSize).floor.toInt
+      val lower = (min + i * binSize).floor.toLong
+      val upper = (min + (i + 1) * binSize).floor.toLong
       val lowerStr = if (i == 0) " " * (boundsChars + 2)
       else (" " * (boundsChars - lower.toString.length)) + lower.toString + " ≤"
       val upperStr = if (i == realNBins - 1) " " * (boundsChars + 2)

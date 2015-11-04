@@ -158,6 +158,11 @@ class Driver(initOptions: InitOptions) {
           val meta = state.getMetaOfInstr(task.instruction)
           val n = state.getResultFiles(instr).length // number of programs found
           IO.info(s"SS success #$n for ${task.instruction}")
+          // should we start blacklisting instructions?
+          val blacklist = meta.black_listed_instructions
+          if (n >= 30 + 10*blacklist.length) {
+
+          }
           // stop after we found enough
           if (n >= 30) {
             moveProgramToCircuitDir(meta, n)
