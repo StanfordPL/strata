@@ -106,7 +106,8 @@ object SecondarySearch {
             assert(beforeEqClasses.nClasses > 0)
 
             // go through all equivalence classes, and attempt to prove it against a representative program
-            val newProgram = EvaluatedProgram(resultFile.getName, Stoke.determineHeuristicScore(state, instr, resultFile))
+            val score = Stoke.determineHeuristicScore(state, instr, Some(resultFile))
+            val newProgram = EvaluatedProgram(resultFile.getName, score)
             def loop(remaining: Seq[EquivalenceClass], tail: Seq[EquivalenceClass]): (SecondarySearchResult, Seq[EquivalenceClass]) = {
               remaining match {
                 case Nil =>

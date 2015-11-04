@@ -33,9 +33,14 @@ object Stoke {
   }
 
   /** Compute the heuristic (how many uninterpreted functions/multiplications/nodes does the corresponding circuit use?). */
-  def determineHeuristicScore(state: State, instr: Instruction, program: File): Score = {
-    val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
-    IO.copyFile(program, resCircuit)
+  def determineHeuristicScore(state: State, instr: Instruction, program: Option[File] = None): Score = {
+    val resFile = if (program.isDefined) {
+      val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
+      IO.copyFile(program.get, resCircuit)
+      Some(resCircuit)
+    } else {
+      None
+    }
     val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/specgen", "evaluate",
       "--circuit_dir", state.getCircuitDir,
       "--opcode", instr)
@@ -45,7 +50,7 @@ object Stoke {
     }
     val outParsed = out.trim.split(",").map(_.toInt)
     assert(outParsed.length == 3)
-    resCircuit.delete()
+    resFile.map(f => f.delete())
     Score(outParsed(0), outParsed(1), outParsed(2))
   }
 }

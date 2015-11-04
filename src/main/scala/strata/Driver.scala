@@ -127,15 +127,20 @@ class Driver(initOptions: InitOptions) {
       val eqClasses = meta.equivalence_classes.getClasses(minEqClassSize)
       // copy a file to the circuits directory
       val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
-      if (eqClasses.isEmpty) {
-        val msg = s"Found $n programs for $instr, but no equivalence class has size at least $minEqClassSize"
-        state.appendLog(LogError(msg))
+      val score = if (eqClasses.isEmpty) {
+        if (n != -1) {
+          val msg = s"Found $n programs for $instr, but no equivalence class has size at least $minEqClassSize"
+          state.appendLog(LogError(msg))
+        }
         IO.copyFile(state.getResultFiles(instr).head, resCircuit)
+        meta.equivalence_classes.getClasses().head.sortedPrograms.head.score
       } else {
         // determine which program is the best according to our heuristics
-        val best = eqClasses.head.getRepresentativeProgram.getFile(instr, state)
-        IO.copyFile(best, resCircuit)
+        val best = eqClasses.head.getRepresentativeProgram
+        IO.copyFile(best.getFile(instr, state), resCircuit)
+        best.score
       }
+      state.addScore(instr, score)
       state.appendLog(LogEquivalenceClasses(instr, meta.equivalence_classes))
     }
     state.lockedInformation(() => {
@@ -145,6 +150,8 @@ class Driver(initOptions: InitOptions) {
           if (Vector("nop", "nopw_r16", "nopl_r32").contains(instr.opcode)) {
             state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
             state.addInstructionToFile(instr, InstructionFile.Success)
+            val meta = state.getMetaOfInstr(task.instruction)
+            moveProgramToCircuitDir(meta, -1)
           } else {
             state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
             state.addInstructionToFile(instr, InstructionFile.PartialSuccess)

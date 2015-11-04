@@ -151,6 +151,72 @@ class State(val globalOptions: GlobalOptions) {
     result
   }
 
+  private lazy val base = getInstructionFile(InstructionFile.Base)
+  private val scoreCache = collection.mutable.Map[String, Score]()
+  private var scoreFileContents: Seq[(String, Score)] = Nil
+
+  def updateUifCache(): Unit = {
+    implicit val formats = DefaultFormats
+    val file = new File(s"$getInfoPath/${State.PATH_SCORE_CACHE}")
+    if (file.exists()) {
+      scoreFileContents = parse(IO.readFile(file)).extract[Seq[(String, Score)]]
+      for ((opc, score) <- scoreFileContents) {
+        scoreCache.put(opc, score)
+      }
+    } else {
+      scoreCache.clear()
+    }
+  }
+
+  def addScore(instruction: Instruction, score: Score): Unit = {
+    scoreFileContents = Vector((instruction.opcode, score)) ++ scoreFileContents
+    implicit val formats = Serialization.formats(NoTypeHints)
+    val file = new File(s"$getInfoPath/${State.PATH_SCORE_CACHE}")
+    IO.writeFile(file, write(scoreFileContents))
+  }
+
+  /** Returns the score of an instruction we have already learned. */
+  def usesUIF(instr: Instruction, useCache: Boolean = false): Boolean = {
+    if (!useCache) {
+      updateUifCache()
+    }
+    if (base.contains(instr)) {
+      val baseUsesUIF = Vector(
+        "addsd_xmm_xmm",
+        "addss_xmm_xmm",
+        "cvtsd2sil_r32_xmm",
+        "cvtsd2siq_r64_xmm",
+        "cvtsd2ss_xmm_xmm",
+        "cvtsi2sdq_xmm_r64",
+        "cvtsi2ssq_xmm_r64",
+        "cvtss2sd_xmm_xmm",
+        "cvtss2sil_r32_xmm",
+        "cvtss2siq_r64_xmm",
+        "cvttsd2sil_r32_xmm",
+        "cvttsd2siq_r64_xmm",
+        "divsd_xmm_xmm",
+        "divss_xmm_xmm",
+        "maxsd_xmm_xmm",
+        "maxss_xmm_xmm",
+        "minsd_xmm_xmm",
+        "minss_xmm_xmm",
+        "mulsd_xmm_xmm",
+        "mulss_xmm_xmm",
+        "rcpss_xmm_xmm",
+        "rsqrtss_xmm_xmm",
+        "sqrtsd_xmm_xmm",
+        "sqrtss_xmm_xmm",
+        "subsd_xmm_xmm",
+        "subss_xmm_xmm",
+        "vfmadd132sd_xmm_xmm_xmm",
+        "vfmadd132ss_xmm_xmm_xmm"
+      )
+      return baseUsesUIF.contains(instr.opcode)
+    }
+    assert(scoreCache.contains(instr.opcode))
+    scoreCache(instr.opcode).uif > 0
+  }
+
   def getTmpLogFile: File = {
     new File(s"$getTmpDir/stats.log-copy.bin")
   }
@@ -301,11 +367,13 @@ class State(val globalOptions: GlobalOptions) {
 }
 
 object State {
+
   def apply(cmdOptions: GlobalOptions) = new State(cmdOptions)
 
   private val PATH_INFO = "information"
   private val PATH_TMP = "tmp"
   private val PATH_CIRCUITS = "circuits"
+  private val PATH_SCORE_CACHE = "score_cache.json"
   private val PATH_GOAL = s"$PATH_INFO/remaining_goal.instrs"
   private val PATH_WORKLIST = s"$PATH_INFO/worklist.instrs"
   private val PATH_SHUTDOWN = s"$PATH_INFO/signal.shutdown"
