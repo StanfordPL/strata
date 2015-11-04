@@ -1,7 +1,7 @@
 package strata
 
 import strata.data._
-import strata.util.{TimingBuilder, IO}
+import strata.util.{Locking, TimingBuilder, IO}
 
 /**
  * Initializing the configuration of a strata run.
@@ -29,6 +29,10 @@ object Initialize {
 
     val state = State(options.globalOptions)
     state.getInfoPath.mkdirs()
+
+    Locking.initDir(state.getInfoPath)
+    Locking.initFile(state.getLogFile)
+
     state.appendLog(LogEntryPoint(args))
 
     IO.info("producing pseudo functions ...")

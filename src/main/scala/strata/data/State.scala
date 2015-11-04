@@ -42,12 +42,7 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Run a function with the information directory being locked. */
   def lockedInformation[A](f: () => A): A = {
-    Locking.lockDir(getInfoPath)
-    try {
-      f()
-    } finally {
-      Locking.unlockDir(getInfoPath)
-    }
+    Locking.lockedDir(getInfoPath)(f)
   }
 
   /** Add an instruction to a file. */
@@ -156,7 +151,7 @@ class State(val globalOptions: GlobalOptions) {
   }
 
   /** Get the log file. */
-  private def getLogFile: File = {
+  def getLogFile: File = {
     new File(s"${globalOptions.workdir}/${State.PATH_LOG}")
   }
   /** Get the log file. */
