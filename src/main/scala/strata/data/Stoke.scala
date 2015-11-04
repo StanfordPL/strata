@@ -11,6 +11,11 @@ import strata.util.{IO, Sorting, TimingBuilder, TimingKind}
  */
 object Stoke {
 
+  /** Is this result "false" (i.e. a bug). */
+  def isFalseResult(res: StokeSearchOutput): Boolean = {
+    !res.success && !res.verified && !res.timeout && res.statistics.total_iterations == 0
+  }
+
   /** Parse the machine-readable output of `stoke search`. */
   def readStokeSearchOutput(machineOutput: File): Option[StokeSearchOutput] = {
     try {

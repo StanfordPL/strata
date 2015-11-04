@@ -37,6 +37,11 @@ object InitialSearch {
           InitialSearchError(task, timing.result)
         case Some(res) =>
           val meta = state.getMetaOfInstr(instr)
+
+          if (Stoke.isFalseResult(res)) {
+            return InitialSearchError(task, timing.result)
+          }
+          
           if (res.success && res.verified) {
             // copy result file
             val resFile = new File(s"$tmpDir/result.s")

@@ -93,6 +93,10 @@ object SecondarySearch {
           meta = meta.copy(secondary_searches = meta.secondary_searches ++ Vector(more))
           state.writeMetaOfInstr(instr, meta)
 
+          if (Stoke.isFalseResult(res)) {
+            return SecondarySearchError(task, timing.result)
+          }
+
           if (!(res.success && res.verified)) {
             return SecondarySearchTimeout(task, timing.result)
           } else {
