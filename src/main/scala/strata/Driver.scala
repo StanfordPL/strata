@@ -122,8 +122,8 @@ class Driver(initOptions: InitOptions) {
   private def handleTaskResult(taskRes: TaskResult): Int = {
     val task = taskRes.task
     val instr = taskRes.instruction
+    val minEqClassSize = 2
     def moveProgramToCircuitDir(meta: InstructionMeta, n: Int): Unit = {
-      val minEqClassSize = 2
       val eqClasses = meta.equivalence_classes.getClasses(minEqClassSize)
       // copy a file to the circuits directory
       val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
@@ -163,7 +163,7 @@ class Driver(initOptions: InitOptions) {
         case _: SecondarySearchError =>
         case _: SecondarySearchSuccess =>
           val meta = state.getMetaOfInstr(task.instruction)
-          val best = meta.equivalence_classes.getClasses().head.sortedPrograms.head
+          val best = meta.equivalence_classes.getClasses(minEqClassSize).head.sortedPrograms.head
           val n = state.getResultFiles(instr).length // number of programs found
           IO.info(s"SS success #$n for ${task.instruction}")
           // should we search for non-uif codes?

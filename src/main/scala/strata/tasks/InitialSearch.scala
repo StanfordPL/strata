@@ -41,7 +41,7 @@ object InitialSearch {
           if (Stoke.isFalseResult(res)) {
             return InitialSearchError(task, timing.result)
           }
-          
+
           if (res.success && res.verified) {
             // copy result file
             val resFile = new File(s"$tmpDir/result.s")
