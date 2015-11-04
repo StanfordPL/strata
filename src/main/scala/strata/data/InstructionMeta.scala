@@ -11,7 +11,7 @@ case class InstructionMeta(def_in: String,
                            live_out: String,
                            def_in_formal: String,
                            live_out_formal: String,
-                           black_listed_instructions: Seq[Instruction],
+                           search_without_uif: Boolean,
                            initial_searches: Seq[InitialSearchMeta],
                            secondary_searches: Seq[SecondarySearchMeta],
                            equivalence_classes: EquivalenceClasses

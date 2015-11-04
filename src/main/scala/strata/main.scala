@@ -8,6 +8,7 @@ import strata.tasks.InitialSearch
 import strata.util.{Distribution, IO}
 
 import scala.io.Source
+import scala.util.control.Breaks
 
 /**
  * Main entry point.
@@ -238,6 +239,7 @@ object Strata {
 
       ("step", "Take one more step towards finding the right specification", (localArgs: Array[String], helpStr: String) => {
         var instr: Option[Instruction] = None
+        var continue: Boolean = false
         val parser = new scopt.OptionParser[GlobalOptions]("strata") {
           head(shortDescription)
           note(helpStr)
@@ -249,19 +251,33 @@ object Strata {
               c
             }
           } text (s"The instruction that should be processed next.")
+          opt[Unit]('c', "continue") valueName ("<opcode>") action {
+            (x, c: GlobalOptions) => {
+              continue = true
+              c
+            }
+          } text (s"The instruction that should be processed next.")
         }
         parser.parse(localArgs, GlobalOptions()) match {
           case Some(c) =>
             State(c).appendLog(LogEntryPoint(args))
             val driver = Driver(InitOptions(c))
-            driver.selectNextTask(instr) match {
-              case None =>
-                IO.info("No task available")
-              case Some(task) =>
-                IO.info(s"Selected task '$task'")
-                val res = driver.runTaskAsync(task)
-                driver.finishTask(task, res)
-                driver.endAsync()
+            Breaks.breakable {
+              while (true) {
+                driver.selectNextTask(instr) match {
+                  case None =>
+                    IO.info("No task available")
+                    Breaks.break()
+                  case Some(task) =>
+                    IO.info(s"Selected task '$task'")
+                    val res = driver.runTaskAsync(task)
+                    driver.finishTask(task, res)
+                    driver.endAsync()
+                    if (!continue) {
+                      Breaks.break()
+                    }
+                }
+              }
             }
           case None =>
             // arguments are bad, error message will have been displayed

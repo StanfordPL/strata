@@ -2,10 +2,9 @@ package strata.data
 
 import java.io.File
 
-import strata.util.{Sorting, TimingBuilder, TimingKind, IO}
 import org.json4s._
 import org.json4s.native.JsonMethods._
-import strata.util.ColoredOutput._
+import strata.util.{IO, Sorting, TimingBuilder, TimingKind}
 
 /**
  * Various utility functionality for dealing with STOKE.
@@ -69,7 +68,14 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
       IO.copyFile(state.getTestcasePath, testcases)
 
       // get the base instructions
-      state.getInstructionFile(InstructionFile.Success)
+      val success = state.getInstructionFile(InstructionFile.Success)
+
+      if (meta.search_without_uif) {
+        state.updateUifCache()
+        success.filter(i => !state.usesUIF(i, useCache = true))
+      } else {
+        success
+      }
     })
 
     IO.writeFile(baseConfig, "--opc_whitelist \"{ " + base.mkString(" ") + " }\"\n")

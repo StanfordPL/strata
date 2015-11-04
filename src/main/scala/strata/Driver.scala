@@ -163,15 +163,16 @@ class Driver(initOptions: InitOptions) {
         case _: SecondarySearchError =>
         case _: SecondarySearchSuccess =>
           val meta = state.getMetaOfInstr(task.instruction)
+          val best = meta.equivalence_classes.getClasses().head.sortedPrograms.head
           val n = state.getResultFiles(instr).length // number of programs found
           IO.info(s"SS success #$n for ${task.instruction}")
-          // should we start blacklisting instructions?
-          val blacklist = meta.black_listed_instructions
-          if (n >= 30 + 10*blacklist.length) {
-
+          // should we search for non-uif codes?
+          if (n >= 20 && best.score.uif > 0 && !meta.search_without_uif) {
+            IO.info(s"  -> moving on to non-uif search for $instr")
+            state.writeMetaOfInstr(instr, meta.copy(search_without_uif = true))
           }
           // stop after we found enough
-          if (n >= 30) {
+          if ((n >= 20 && best.score.uif == 0) || (n >= 30)) {
             moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
@@ -205,8 +206,8 @@ class Driver(initOptions: InitOptions) {
   }
 
   /** Compute the budget for the secondary search. */
-  def secondarySearchBudget(instr: Instruction): Long = {
-    50000000
+  def secondarySearchBudget(instr: Instruction, search_without_uif: Boolean): Long = {
+    if (search_without_uif) 5000000 else 50000000
   }
 
   /** Select what next step should be done, and puts the task into the worklist. */
@@ -218,7 +219,8 @@ class Driver(initOptions: InitOptions) {
     }
 
     def mkSecondarySearch(instr: Instruction, pseudoTime: Int): Option[Task] = {
-      val budget = secondarySearchBudget(instr)
+      val meta = state.getMetaOfInstr(instr)
+      val budget = secondarySearchBudget(instr, meta.search_without_uif)
       state.addInstructionToFile(instr, InstructionFile.Worklist)
       Some(SecondarySearchTask(state.globalOptions, instr, budget, pseudoTime))
     }
