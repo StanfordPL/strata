@@ -95,6 +95,7 @@ case class Check(options: CheckOptions) {
     var stoke_wrong = 0
     var total = 0
     var usesWrongCircuit = 0
+    val dontCheckWrong = false
     val incorrectInstrs = collection.mutable.Set.empty[Instruction]
     for (instruction <- graph.topologicalSort if strataInstrs.contains(instruction)) {
       val node = graph.get(instruction)
@@ -108,7 +109,7 @@ case class Check(options: CheckOptions) {
         val program = getProgram(instruction)
 
         // check if this uses an instruction that we already know to be wrong
-        if (program.instructions.toSet.intersect(incorrectInstrs).nonEmpty) {
+        if (program.instructions.toSet.intersect(incorrectInstrs).nonEmpty && dontCheckWrong) {
           usesWrongCircuit += 1
           incorrectInstrs += instruction
         } else if (stokeIsWrong.contains(instruction.opcode)) {
