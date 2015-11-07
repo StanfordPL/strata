@@ -29,10 +29,9 @@ object Initialize {
 
     val state = State(options.globalOptions)
     state.getInfoPath.mkdirs()
-
     Locking.initDir(state.getInfoPath)
-    Locking.initFile(state.getLogFile)
-
+    state.getLogDir.mkdirs()
+    state.getLogBinDir.mkdirs()
     state.appendLog(LogEntryPoint(args))
 
     IO.info("producing pseudo functions ...")
@@ -63,7 +62,6 @@ object Initialize {
       IO.safeSubcommand(Vector("stoke/bin/specgen", "setup", "--workdir", workdir, "--opc", goal))
     }
 
-    state.getTmpDir.mkdirs()
     state.getCircuitDir.mkdirs()
 
     state.appendLog(LogInitEnd(timing.result))

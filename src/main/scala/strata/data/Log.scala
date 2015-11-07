@@ -159,6 +159,12 @@ case class LogError(msg: String, time: DateTime = DateTime.now(), context: Threa
   }
 }
 
+case class LogSearchBug(instruction: Instruction, def_in: String, live_out: String, output: String, time: DateTime = DateTime.now(), context: ThreadContext = ThreadContext.self) extends LogMessage {
+  override def toString = {
+    super.toString + s": search bug for $instruction"
+  }
+}
+
 case class LogVerifyResult(instr: Instruction,
                            formal: Boolean,
                            verifyResult: StokeVerifyOutput,

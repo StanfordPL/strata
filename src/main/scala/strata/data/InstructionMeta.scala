@@ -11,6 +11,8 @@ case class InstructionMeta(def_in: String,
                            live_out: String,
                            def_in_formal: String,
                            live_out_formal: String,
+                           search_without_uif: Boolean,
+                           data: Seq[String], // for various data
                            initial_searches: Seq[InitialSearchMeta],
                            secondary_searches: Seq[SecondarySearchMeta],
                            equivalence_classes: EquivalenceClasses

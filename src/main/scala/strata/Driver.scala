@@ -122,20 +122,25 @@ class Driver(initOptions: InitOptions) {
   private def handleTaskResult(taskRes: TaskResult): Int = {
     val task = taskRes.task
     val instr = taskRes.instruction
+    val minEqClassSize = 2
     def moveProgramToCircuitDir(meta: InstructionMeta, n: Int): Unit = {
-      val minEqClassSize = 2
       val eqClasses = meta.equivalence_classes.getClasses(minEqClassSize)
       // copy a file to the circuits directory
       val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
-      if (eqClasses.isEmpty) {
-        val msg = s"Found $n programs for $instr, but no equivalence class has size at least $minEqClassSize"
-        state.appendLog(LogError(msg))
+      val score = if (eqClasses.isEmpty) {
+        if (n != -1) {
+          val msg = s"Found $n programs for $instr, but no equivalence class has size at least $minEqClassSize"
+          state.appendLog(LogError(msg))
+        }
         IO.copyFile(state.getResultFiles(instr).head, resCircuit)
+        meta.equivalence_classes.getClasses().head.sortedPrograms.head.score
       } else {
         // determine which program is the best according to our heuristics
-        val best = eqClasses.head.getRepresentativeProgram.getFile(instr, state)
-        IO.copyFile(best, resCircuit)
+        val best = eqClasses.head.getRepresentativeProgram
+        IO.copyFile(best.getFile(instr, state), resCircuit)
+        best.score
       }
+      state.addScore(instr, score)
       state.appendLog(LogEquivalenceClasses(instr, meta.equivalence_classes))
     }
     state.lockedInformation(() => {
@@ -145,6 +150,8 @@ class Driver(initOptions: InitOptions) {
           if (Vector("nop", "nopw_r16", "nopl_r32").contains(instr.opcode)) {
             state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
             state.addInstructionToFile(instr, InstructionFile.Success)
+            val meta = state.getMetaOfInstr(task.instruction)
+            moveProgramToCircuitDir(meta, -1)
           } else {
             state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
             state.addInstructionToFile(instr, InstructionFile.PartialSuccess)
@@ -156,10 +163,21 @@ class Driver(initOptions: InitOptions) {
         case _: SecondarySearchError =>
         case _: SecondarySearchSuccess =>
           val meta = state.getMetaOfInstr(task.instruction)
+          val classes = meta.equivalence_classes.getClasses(minEqClassSize)
+          val uifsInBest = if (classes.nonEmpty) {
+            classes.head.sortedPrograms.head.score.uif
+          } else {
+            1
+          }
           val n = state.getResultFiles(instr).length // number of programs found
           IO.info(s"SS success #$n for ${task.instruction}")
+          // should we search for non-uif codes?
+          if (n >= 20 && uifsInBest > 0 && !meta.search_without_uif) {
+            IO.info(s"  -> moving on to non-uif search for $instr")
+            state.writeMetaOfInstr(instr, meta.copy(search_without_uif = true))
+          }
           // stop after we found enough
-          if (n >= 30) {
+          if ((n >= 20 && uifsInBest == 0) || (n >= 30)) {
             moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
@@ -193,8 +211,8 @@ class Driver(initOptions: InitOptions) {
   }
 
   /** Compute the budget for the secondary search. */
-  def secondarySearchBudget(instr: Instruction): Long = {
-    50000000
+  def secondarySearchBudget(instr: Instruction, search_without_uif: Boolean): Long = {
+    if (search_without_uif) 5000000 else 50000000
   }
 
   /** Select what next step should be done, and puts the task into the worklist. */
@@ -206,7 +224,8 @@ class Driver(initOptions: InitOptions) {
     }
 
     def mkSecondarySearch(instr: Instruction, pseudoTime: Int): Option[Task] = {
-      val budget = secondarySearchBudget(instr)
+      val meta = state.getMetaOfInstr(instr)
+      val budget = secondarySearchBudget(instr, meta.search_without_uif)
       state.addInstructionToFile(instr, InstructionFile.Worklist)
       Some(SecondarySearchTask(state.globalOptions, instr, budget, pseudoTime))
     }

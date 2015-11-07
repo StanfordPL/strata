@@ -2,15 +2,19 @@ package strata.data
 
 import java.io.File
 
-import strata.util.{Sorting, TimingBuilder, TimingKind, IO}
 import org.json4s._
 import org.json4s.native.JsonMethods._
-import strata.util.ColoredOutput._
+import strata.util.{IO, Sorting, TimingBuilder, TimingKind}
 
 /**
  * Various utility functionality for dealing with STOKE.
  */
 object Stoke {
+
+  /** Is this result "false" (i.e. a bug). */
+  def isFalseResult(res: StokeSearchOutput): Boolean = {
+    !res.success && !res.verified && !res.timeout && res.statistics.total_iterations == 0
+  }
 
   /** Parse the machine-readable output of `stoke search`. */
   def readStokeSearchOutput(machineOutput: File): Option[StokeSearchOutput] = {
@@ -33,9 +37,14 @@ object Stoke {
   }
 
   /** Compute the heuristic (how many uninterpreted functions/multiplications/nodes does the corresponding circuit use?). */
-  def determineHeuristicScore(state: State, instr: Instruction, program: File): Score = {
-    val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
-    IO.copyFile(program, resCircuit)
+  def determineHeuristicScore(state: State, instr: Instruction, program: Option[File] = None): Score = {
+    val resFile = if (program.isDefined) {
+      val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
+      IO.copyFile(program.get, resCircuit)
+      Some(resCircuit)
+    } else {
+      None
+    }
     val cmd = Vector(s"${IO.getProjectBase}/stoke/bin/specgen", "evaluate",
       "--circuit_dir", state.getCircuitDir,
       "--opcode", instr)
@@ -45,7 +54,7 @@ object Stoke {
     }
     val outParsed = out.trim.split(",").map(_.toInt)
     assert(outParsed.length == 3)
-    resCircuit.delete()
+    resFile.map(f => f.delete())
     Score(outParsed(0), outParsed(1), outParsed(2))
   }
 }
@@ -64,7 +73,14 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
       IO.copyFile(state.getTestcasePath, testcases)
 
       // get the base instructions
-      state.getInstructionFile(InstructionFile.Success)
+      val success = state.getInstructionFile(InstructionFile.Success)
+
+      if (meta.search_without_uif) {
+        state.updateUifCache()
+        success.filter(i => !state.usesUIF(i, useCache = true))
+      } else {
+        success
+      }
     })
 
     IO.writeFile(baseConfig, "--opc_whitelist \"{ " + base.mkString(" ") + " }\"\n")
@@ -111,9 +127,7 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
           case Some(verifyOutput) =>
             if (!verifyOutput.isVerified) {
               // this should NOT happen
-              val m = s"STOKE search returned a program that does not work for all" +
-                s"inputs for $instr (live_out/def_in are ${meta.live_out}/${meta.def_in}): $out"
-              state.appendLog(LogError(m))
+              state.appendLog(LogSearchBug(instr, meta.def_in, meta.live_out, out))
               // pretend the search failed
               val p = StokeCode(0, "")
               val stats = StokeSearchStatistics(0, 0, 0, 0)

@@ -1,6 +1,7 @@
 package strata.tasks
 
 import java.io.File
+import java.nio.file.Files
 
 import strata.data._
 import strata.util.{TimingKind, TimingBuilder, IO}
@@ -23,8 +24,7 @@ object InitialSearch {
     val budget = task.budget
 
     // set up tmp dir
-    val tmpDir = new File(s"${state.getTmpDir}/${ThreadContext.self.fileNameSafe}")
-    tmpDir.mkdir()
+    val tmpDir = IO.getTempDir("initial-search")
 
     try {
       val meta = state.getMetaOfInstr(instr)
@@ -37,6 +37,11 @@ object InitialSearch {
           InitialSearchError(task, timing.result)
         case Some(res) =>
           val meta = state.getMetaOfInstr(instr)
+
+          if (Stoke.isFalseResult(res)) {
+            return InitialSearchError(task, timing.result)
+          }
+
           if (res.success && res.verified) {
             // copy result file
             val resFile = new File(s"$tmpDir/result.s")
@@ -46,7 +51,7 @@ object InitialSearch {
             // update meta
             val more = InitialSearchMeta(success = true, budget, res.statistics.total_iterations, nBase)
             // get score
-            val score = Stoke.determineHeuristicScore(state, instr, finalResFile)
+            val score = Stoke.determineHeuristicScore(state, instr, Some(finalResFile))
             val eqClass = EvaluatedProgram(finalResFile.getName, score).asEquivalenceClass
             // the new program is in it's own equivalence class for now
             val newMeta = meta.copy(initial_searches = meta.initial_searches ++ Vector(more),

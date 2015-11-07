@@ -1,6 +1,7 @@
 package strata.tasks
 
 import java.io.{File, FileWriter}
+import java.nio.file.Files
 
 import strata.data._
 import strata.util.{IO, TimingBuilder}
@@ -20,8 +21,7 @@ object SecondarySearch {
     var meta = state.getMetaOfInstr(instr)
 
     // set up tmp dir
-    val tmpDir = new File(s"${state.getTmpDir}/${ThreadContext.self.fileNameSafe}")
-    tmpDir.mkdir()
+    val tmpDir = IO.getTempDir("secondary-search")
 
     val testcases = new File(s"$tmpDir/testcases.tc")
     val stoke = Stoke(tmpDir, meta, instr, state, timing)
@@ -93,6 +93,10 @@ object SecondarySearch {
           meta = meta.copy(secondary_searches = meta.secondary_searches ++ Vector(more))
           state.writeMetaOfInstr(instr, meta)
 
+          if (Stoke.isFalseResult(res)) {
+            return SecondarySearchError(task, timing.result)
+          }
+
           if (!(res.success && res.verified)) {
             return SecondarySearchTimeout(task, timing.result)
           } else {
@@ -106,7 +110,8 @@ object SecondarySearch {
             assert(beforeEqClasses.nClasses > 0)
 
             // go through all equivalence classes, and attempt to prove it against a representative program
-            val newProgram = EvaluatedProgram(resultFile.getName, Stoke.determineHeuristicScore(state, instr, resultFile))
+            val score = Stoke.determineHeuristicScore(state, instr, Some(resultFile))
+            val newProgram = EvaluatedProgram(resultFile.getName, score)
             def loop(remaining: Seq[EquivalenceClass], tail: Seq[EquivalenceClass]): (SecondarySearchResult, Seq[EquivalenceClass]) = {
               remaining match {
                 case Nil =>

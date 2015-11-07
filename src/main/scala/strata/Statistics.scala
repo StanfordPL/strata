@@ -50,6 +50,21 @@ object Statistics {
     }
     println(Distribution(budgets.map(x => Math.log(x).toLong)).info("initial search budget"))
 
+    // length of secondary search
+    val sndSearch = messages.collect {
+      case LogTaskEnd(SecondarySearchTask(_, instr, budget, _), Some(r), _, _, _) =>
+        (instr, r.timing.search)
+    }
+    val totalSearchTimes = sndSearch.groupBy(x => x._1).values.map(x => x.map(_._2).sum)
+    println(Distribution(totalSearchTimes.toSeq.map(x => x / 1000 / 1000 / 1000 / 60)).info("secondary search times"))
+    val nn = totalSearchTimes.size
+    if (nn > 0) {
+      val sorted1 = totalSearchTimes.toSeq.sorted
+      for (i <- 0 to 9) {
+        println(s"$i: " + IO.formatNanos(sorted1(nn * 10 * i / 100)))
+      }
+    }
+
     // equivalence class statistics
     val eqs = messages.collect {
       case LogEquivalenceClasses(instr, eq, _, _) =>
@@ -201,14 +216,14 @@ object Statistics {
   }
 
   case class StatsData(
-                    nBase: Int,
-                    nSuccess: Int,
-                    nPartialSuccess: Int,
-                    nWorklist: Int,
-                    nRemainingGoal: Int,
-                    nInitialGoal: Int,
-                    delim: Int
-                    )
+                        nBase: Int,
+                        nSuccess: Int,
+                        nPartialSuccess: Int,
+                        nWorklist: Int,
+                        nRemainingGoal: Int,
+                        nInitialGoal: Int,
+                        delim: Int
+                        )
 
   case class ExtendedStats(
                             globalStartTime: String = "n/a",

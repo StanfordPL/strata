@@ -1,11 +1,12 @@
 package strata.data
 
 import java.io.{File, FileWriter}
+import java.nio.file.Files
 
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.json4s.native.Serialization
-import org.json4s.native.Serialization.write
+import org.json4s.native.Serialization._
 import strata.GlobalOptions
 import strata.util.ColoredOutput._
 import strata.util.{IO, Locking}
@@ -112,12 +113,6 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Add an entry to the global log file. */
   def appendLog(logMessage: LogMessage): Unit = {
-    if (!exists) IO.error("state has not been initialized yet")
-
-    if (logMessage.isInstanceOf[LogError]) {
-      IO.info(logMessage.toString.red)
-    }
-
     def writeMessage(file: File, message: String): Unit = {
       if (!file.exists()) {
         file.createNewFile()
@@ -126,37 +121,106 @@ class State(val globalOptions: GlobalOptions) {
       writer.append(s"$message\n")
       writer.close()
     }
-    Locking.lockedFile(getLogFile)(() => {
+    this.synchronized {
+      if (!exists) IO.error("state has not been initialized yet")
+
+      if (logMessage.isInstanceOf[LogError]) {
+        IO.info(logMessage.toString.red)
+      }
+
       writeMessage(getReadableLogFile, logMessage.toString)
       writeMessage(getLogFile, s"${Log.serializeMessage(logMessage)}")
-    })
+    }
   }
 
   def getLogMessages: Seq[LogMessage] = {
-    val tmpFile = getTmpLogFile
-    Locking.lockedFile(getLogFile)(() => {
-      IO.copyFile(getLogFile, tmpFile)
-    })
-    val buf = scala.io.Source.fromFile(tmpFile)
-    val result = (for (line <- buf.getLines()) yield {
-      Log.deserializeMessage(line)
-    }).toList
-    buf.close()
-    tmpFile.delete()
-    result
+    val tmpDir = IO.getTempDir("logs")
+    IO.copyDir(getLogBinDir, tmpDir)
+    val res = collection.mutable.ListBuffer[LogMessage]()
+    for (tmpFile <- tmpDir.listFiles()) {
+      val buf = scala.io.Source.fromFile(tmpFile)
+      for (line <- buf.getLines()) {
+        res += Log.deserializeMessage(line)
+      }
+      buf.close()
+    }
+    IO.deleteDirectory(tmpDir)
+    res.toList
   }
 
-  def getTmpLogFile: File = {
-    new File(s"$getTmpDir/stats.log-copy.bin")
+  private lazy val base = getInstructionFile(InstructionFile.Base)
+  private val scoreCache = collection.mutable.Map[String, Score]()
+  private var scoreFileContents: Seq[(String, Score)] = Nil
+
+  def updateUifCache(): Unit = {
+    implicit val formats = DefaultFormats
+    val file = new File(s"$getInfoPath/${State.PATH_SCORE_CACHE}")
+    if (file.exists()) {
+      scoreFileContents = parse(IO.readFile(file)).extract[Seq[(String, Score)]]
+      for ((opc, score) <- scoreFileContents) {
+        scoreCache.put(opc, score)
+      }
+    } else {
+      scoreCache.clear()
+    }
+  }
+
+  def addScore(instruction: Instruction, score: Score): Unit = {
+    scoreFileContents = Vector((instruction.opcode, score)) ++ scoreFileContents
+    implicit val formats = Serialization.formats(NoTypeHints)
+    val file = new File(s"$getInfoPath/${State.PATH_SCORE_CACHE}")
+    IO.writeFile(file, write(scoreFileContents))
+  }
+
+  /** Returns the score of an instruction we have already learned. */
+  def usesUIF(instr: Instruction, useCache: Boolean = false): Boolean = {
+    if (!useCache) {
+      updateUifCache()
+    }
+    if (base.contains(instr)) {
+      val baseUsesUIF = Vector(
+        "addsd_xmm_xmm",
+        "addss_xmm_xmm",
+        "cvtsd2sil_r32_xmm",
+        "cvtsd2siq_r64_xmm",
+        "cvtsd2ss_xmm_xmm",
+        "cvtsi2sdq_xmm_r64",
+        "cvtsi2ssq_xmm_r64",
+        "cvtss2sd_xmm_xmm",
+        "cvtss2sil_r32_xmm",
+        "cvtss2siq_r64_xmm",
+        "cvttsd2sil_r32_xmm",
+        "cvttsd2siq_r64_xmm",
+        "divsd_xmm_xmm",
+        "divss_xmm_xmm",
+        "maxsd_xmm_xmm",
+        "maxss_xmm_xmm",
+        "minsd_xmm_xmm",
+        "minss_xmm_xmm",
+        "mulsd_xmm_xmm",
+        "mulss_xmm_xmm",
+        "rcpss_xmm_xmm",
+        "rsqrtss_xmm_xmm",
+        "sqrtsd_xmm_xmm",
+        "sqrtss_xmm_xmm",
+        "subsd_xmm_xmm",
+        "subss_xmm_xmm",
+        "vfmadd132sd_xmm_xmm_xmm",
+        "vfmadd132ss_xmm_xmm_xmm"
+      )
+      return baseUsesUIF.contains(instr.opcode)
+    }
+    assert(scoreCache.contains(instr.opcode))
+    scoreCache(instr.opcode).uif > 0
   }
 
   /** Get the log file. */
-  def getLogFile: File = {
-    new File(s"${globalOptions.workdir}/${State.PATH_LOG}")
+  private def getLogFile: File = {
+    new File(s"${globalOptions.workdir}/logs-bin/${ThreadContext.self.hostname}_log.bin")
   }
   /** Get the log file. */
   private def getReadableLogFile: File = {
-    new File(s"${globalOptions.workdir}/${State.PATH_READABLE_LOG}")
+    new File(s"${globalOptions.workdir}/logs/${ThreadContext.self.hostname}_log.txt")
   }
 
   /** Temporary directory for things currently running */
@@ -167,6 +231,15 @@ class State(val globalOptions: GlobalOptions) {
   /** Get the path where circuits are stored. */
   def getCircuitDir: File = {
     new File(s"${globalOptions.workdir}/${State.PATH_CIRCUITS}")
+  }
+
+  /** Get the path where logs are stored. */
+  def getLogDir: File = {
+    new File(s"${globalOptions.workdir}/logs")
+  }
+  /** Get the path where logs are stored. */
+  def getLogBinDir: File = {
+    new File(s"${globalOptions.workdir}/logs-bin")
   }
 
   /** Get the path to the target assembly file for a goal instruction. */
@@ -245,7 +318,7 @@ class State(val globalOptions: GlobalOptions) {
   def writeMetaOfInstr(instruction: Instruction, meta: InstructionMeta): Unit = {
     implicit val formats = Serialization.formats(NoTypeHints)
     val file = new File(s"${globalOptions.workdir}/instructions/$instruction/$instruction.meta.json")
-    IO.writeFile(file, write(meta))
+    IO.writeFile(file, writePretty(meta))
   }
 
   /** Get the number of pseudo instructions. */
@@ -277,30 +350,18 @@ class State(val globalOptions: GlobalOptions) {
       signal.delete()
     }
 
-    // remove old temp directories
-    for (tmp <- getTmpDir.listFiles) {
-      if (tmp.isDirectory) {
-        IO.info(s"Removing tmp directory: ${tmp.getName}")
-        IO.deleteDirectory(tmp)
-      }
-    }
-
-    // remove tmp stats file
-    if (getTmpLogFile.exists()) {
-      IO.info("Deleting temporary log copy from statistics")
-      getTmpLogFile.delete()
-    }
-
     IO.info("All clear now.")
   }
 }
 
 object State {
+
   def apply(cmdOptions: GlobalOptions) = new State(cmdOptions)
 
   private val PATH_INFO = "information"
   private val PATH_TMP = "tmp"
   private val PATH_CIRCUITS = "circuits"
+  private val PATH_SCORE_CACHE = "score_cache.json"
   private val PATH_GOAL = s"$PATH_INFO/remaining_goal.instrs"
   private val PATH_WORKLIST = s"$PATH_INFO/worklist.instrs"
   private val PATH_SHUTDOWN = s"$PATH_INFO/signal.shutdown"
@@ -309,8 +370,6 @@ object State {
   private val PATH_INITIAL_BASE = s"$PATH_INFO/initial_base.instrs"
   private val PATH_INITIAL_GAOL = s"$PATH_INFO/initial_goal.instrs"
   private val PATH_ALL = s"$PATH_INFO/all.instrs"
-  private val PATH_LOG = s"$PATH_INFO/log.bin"
-  private val PATH_READABLE_LOG = s"$PATH_INFO/log.txt"
   private val PATH_FUNCTIONS = "functions"
   private val PATH_TESTCASES = "testcases.tc"
 }
