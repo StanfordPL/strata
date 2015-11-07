@@ -1,6 +1,7 @@
 package strata.tasks
 
 import java.io.File
+import java.nio.file.Files
 
 import strata.data._
 import strata.util.{TimingKind, TimingBuilder, IO}
@@ -23,8 +24,7 @@ object InitialSearch {
     val budget = task.budget
 
     // set up tmp dir
-    val tmpDir = new File(s"${state.getTmpDir}/${ThreadContext.self.fileNameSafe}")
-    tmpDir.mkdir()
+    val tmpDir = Files.createTempDirectory(ThreadContext.self.fileNameSafe).toFile
 
     try {
       val meta = state.getMetaOfInstr(instr)

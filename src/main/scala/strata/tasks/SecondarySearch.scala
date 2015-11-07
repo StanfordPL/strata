@@ -1,6 +1,7 @@
 package strata.tasks
 
 import java.io.{File, FileWriter}
+import java.nio.file.Files
 
 import strata.data._
 import strata.util.{IO, TimingBuilder}
@@ -20,8 +21,7 @@ object SecondarySearch {
     var meta = state.getMetaOfInstr(instr)
 
     // set up tmp dir
-    val tmpDir = new File(s"${state.getTmpDir}/${ThreadContext.self.fileNameSafe}")
-    tmpDir.mkdir()
+    val tmpDir = Files.createTempDirectory(ThreadContext.self.fileNameSafe).toFile
 
     val testcases = new File(s"$tmpDir/testcases.tc")
     val stoke = Stoke(tmpDir, meta, instr, state, timing)

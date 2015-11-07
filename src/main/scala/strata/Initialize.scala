@@ -59,7 +59,6 @@ object Initialize {
       IO.safeSubcommand(Vector("stoke/bin/specgen", "setup", "--workdir", workdir, "--opc", goal))
     }
 
-    state.getTmpDir.mkdirs()
     state.getCircuitDir.mkdirs()
 
     state.appendLog(LogInitEnd(timing.result))

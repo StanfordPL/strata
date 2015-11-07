@@ -1,6 +1,7 @@
 package strata.data
 
 import java.io.{File, FileWriter}
+import java.nio.file.Files
 
 import org.json4s._
 import org.json4s.native.JsonMethods._
@@ -218,7 +219,7 @@ class State(val globalOptions: GlobalOptions) {
   }
 
   def getTmpLogFile: File = {
-    new File(s"$getTmpDir/stats.log-copy.bin")
+    Files.createTempFile("stats.log-copy", "bin").toFile
   }
 
   /** Get the log file. */
@@ -346,14 +347,6 @@ class State(val globalOptions: GlobalOptions) {
     if (signal.exists()) {
       IO.info("Removing shutdown signal.")
       signal.delete()
-    }
-
-    // remove old temp directories
-    for (tmp <- getTmpDir.listFiles) {
-      if (tmp.isDirectory) {
-        IO.info(s"Removing tmp directory: ${tmp.getName}")
-        IO.deleteDirectory(tmp)
-      }
     }
 
     // remove tmp stats file
