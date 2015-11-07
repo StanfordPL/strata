@@ -6,7 +6,7 @@ import java.nio.file.Files
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.json4s.native.Serialization
-import org.json4s.native.Serialization.write
+import org.json4s.native.Serialization._
 import strata.GlobalOptions
 import strata.util.ColoredOutput._
 import strata.util.{IO, Locking}
@@ -317,7 +317,7 @@ class State(val globalOptions: GlobalOptions) {
   def writeMetaOfInstr(instruction: Instruction, meta: InstructionMeta): Unit = {
     implicit val formats = Serialization.formats(NoTypeHints)
     val file = new File(s"${globalOptions.workdir}/instructions/$instruction/$instruction.meta.json")
-    IO.writeFile(file, write(meta))
+    IO.writeFile(file, writePretty(meta))
   }
 
   /** Get the number of pseudo instructions. */
