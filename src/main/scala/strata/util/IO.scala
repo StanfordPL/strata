@@ -2,6 +2,7 @@ package strata.util
 
 import java.io.{BufferedWriter, FileWriter, File}
 import java.lang.management.ManagementFactory
+import java.nio.file.Files
 import java.security.MessageDigest
 import org.apache.commons.io.FileUtils
 import org.joda.time.DateTime
@@ -140,6 +141,11 @@ object IO {
     FileUtils.copyFile(a, b)
   }
 
+  /** Copy a directory. */
+  def copyDir(a: File, b: File): Unit = {
+    FileUtils.copyDirectory(a, b)
+  }
+
   /** Move a file. */
   def moveFile(a: File, b: File): Unit = {
     FileUtils.moveFile(a, b)
@@ -148,6 +154,11 @@ object IO {
   /** Delete a directory. */
   def deleteDirectory(folder: File) = {
     FileUtils.deleteDirectory(folder)
+  }
+
+  /** Create a temporary file. */
+  def getTempDir(id: String): File = {
+    Files.createTempDirectory(id).toFile
   }
 
   /** Format a DateTime nicely. */

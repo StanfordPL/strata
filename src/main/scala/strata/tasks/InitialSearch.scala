@@ -24,7 +24,7 @@ object InitialSearch {
     val budget = task.budget
 
     // set up tmp dir
-    val tmpDir = Files.createTempDirectory(ThreadContext.self.fileNameSafe).toFile
+    val tmpDir = IO.getTempDir("initial-search")
 
     try {
       val meta = state.getMetaOfInstr(instr)

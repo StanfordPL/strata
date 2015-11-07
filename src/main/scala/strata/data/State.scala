@@ -118,12 +118,6 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Add an entry to the global log file. */
   def appendLog(logMessage: LogMessage): Unit = {
-    if (!exists) IO.error("state has not been initialized yet")
-
-    if (logMessage.isInstanceOf[LogError]) {
-      IO.info(logMessage.toString.red)
-    }
-
     def writeMessage(file: File, message: String): Unit = {
       if (!file.exists()) {
         file.createNewFile()
@@ -132,24 +126,31 @@ class State(val globalOptions: GlobalOptions) {
       writer.append(s"$message\n")
       writer.close()
     }
-    Locking.lockedFile(getLogFile)(() => {
+    this.synchronized {
+      if (!exists) IO.error("state has not been initialized yet")
+
+      if (logMessage.isInstanceOf[LogError]) {
+        IO.info(logMessage.toString.red)
+      }
+
       writeMessage(getReadableLogFile, logMessage.toString)
       writeMessage(getLogFile, s"${Log.serializeMessage(logMessage)}")
-    })
+    }
   }
 
   def getLogMessages: Seq[LogMessage] = {
-    val tmpFile = getTmpLogFile
-    Locking.lockedFile(getLogFile)(() => {
-      IO.copyFile(getLogFile, tmpFile)
-    })
-    val buf = scala.io.Source.fromFile(tmpFile)
-    val result = (for (line <- buf.getLines()) yield {
-      Log.deserializeMessage(line)
-    }).toList
-    buf.close()
-    tmpFile.delete()
-    result
+    val tmpDir = IO.getTempDir("logs")
+    IO.copyDir(getLogBinDir, tmpDir)
+    val res = collection.mutable.ListBuffer[LogMessage]()
+    for (tmpFile <- tmpDir.listFiles()) {
+      val buf = scala.io.Source.fromFile(tmpFile)
+      for (line <- buf.getLines()) yield {
+        res += Log.deserializeMessage(line)
+      }
+      buf.close()
+    }
+    IO.deleteDirectory(tmpDir)
+    res.toList
   }
 
   private lazy val base = getInstructionFile(InstructionFile.Base)
@@ -218,17 +219,13 @@ class State(val globalOptions: GlobalOptions) {
     scoreCache(instr.opcode).uif > 0
   }
 
-  def getTmpLogFile: File = {
-    Files.createTempFile("stats.log-copy", "bin").toFile
-  }
-
   /** Get the log file. */
   private def getLogFile: File = {
-    new File(s"${globalOptions.workdir}/${State.PATH_LOG}")
+    new File(s"${globalOptions.workdir}/logs-bin/${ThreadContext.self.fileNameSafe}_log.bin")
   }
   /** Get the log file. */
   private def getReadableLogFile: File = {
-    new File(s"${globalOptions.workdir}/${State.PATH_READABLE_LOG}")
+    new File(s"${globalOptions.workdir}/logs/${ThreadContext.self.fileNameSafe}_log.txt")
   }
 
   /** Temporary directory for things currently running */
@@ -239,6 +236,15 @@ class State(val globalOptions: GlobalOptions) {
   /** Get the path where circuits are stored. */
   def getCircuitDir: File = {
     new File(s"${globalOptions.workdir}/${State.PATH_CIRCUITS}")
+  }
+
+  /** Get the path where logs are stored. */
+  def getLogDir: File = {
+    new File(s"${globalOptions.workdir}/logs")
+  }
+  /** Get the path where logs are stored. */
+  def getLogBinDir: File = {
+    new File(s"${globalOptions.workdir}/logs-bin")
   }
 
   /** Get the path to the target assembly file for a goal instruction. */
@@ -349,12 +355,6 @@ class State(val globalOptions: GlobalOptions) {
       signal.delete()
     }
 
-    // remove tmp stats file
-    if (getTmpLogFile.exists()) {
-      IO.info("Deleting temporary log copy from statistics")
-      getTmpLogFile.delete()
-    }
-
     IO.info("All clear now.")
   }
 }
@@ -375,8 +375,6 @@ object State {
   private val PATH_INITIAL_BASE = s"$PATH_INFO/initial_base.instrs"
   private val PATH_INITIAL_GAOL = s"$PATH_INFO/initial_goal.instrs"
   private val PATH_ALL = s"$PATH_INFO/all.instrs"
-  private val PATH_LOG = s"$PATH_INFO/log.bin"
-  private val PATH_READABLE_LOG = s"$PATH_INFO/log.txt"
   private val PATH_FUNCTIONS = "functions"
   private val PATH_TESTCASES = "testcases.tc"
 }

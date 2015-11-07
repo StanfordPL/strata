@@ -29,6 +29,8 @@ object Initialize {
 
     val state = State(options.globalOptions)
     state.getInfoPath.mkdirs()
+    state.getLogDir.mkdirs()
+    state.getLogBinDir.mkdirs()
     state.appendLog(LogEntryPoint(args))
 
     IO.info("producing pseudo functions ...")

@@ -21,7 +21,7 @@ object SecondarySearch {
     var meta = state.getMetaOfInstr(instr)
 
     // set up tmp dir
-    val tmpDir = Files.createTempDirectory(ThreadContext.self.fileNameSafe).toFile
+    val tmpDir = IO.getTempDir("secondary-search")
 
     val testcases = new File(s"$tmpDir/testcases.tc")
     val stoke = Stoke(tmpDir, meta, instr, state, timing)
