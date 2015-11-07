@@ -163,16 +163,21 @@ class Driver(initOptions: InitOptions) {
         case _: SecondarySearchError =>
         case _: SecondarySearchSuccess =>
           val meta = state.getMetaOfInstr(task.instruction)
-          val best = meta.equivalence_classes.getClasses(minEqClassSize).head.sortedPrograms.head
+          val classes = meta.equivalence_classes.getClasses(minEqClassSize)
+          val uifsInBest = if (classes.nonEmpty) {
+            classes.head.sortedPrograms.head.score.uif
+          } else {
+            1
+          }
           val n = state.getResultFiles(instr).length // number of programs found
           IO.info(s"SS success #$n for ${task.instruction}")
           // should we search for non-uif codes?
-          if (n >= 20 && best.score.uif > 0 && !meta.search_without_uif) {
+          if (n >= 20 && uifsInBest > 0 && !meta.search_without_uif) {
             IO.info(s"  -> moving on to non-uif search for $instr")
             state.writeMetaOfInstr(instr, meta.copy(search_without_uif = true))
           }
           // stop after we found enough
-          if ((n >= 20 && best.score.uif == 0) || (n >= 30)) {
+          if ((n >= 20 && uifsInBest == 0) || (n >= 30)) {
             moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             state.addInstructionToFile(instr, InstructionFile.Success)
