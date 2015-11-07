@@ -91,12 +91,14 @@ class Driver(initOptions: InitOptions) {
 
   /** Run a task asynchronously. */
   private var poolForOthers: ExecutorService = null
+
   def runTaskAsync(task: Task): Future[TaskResult] = {
     poolForOthers = Executors.newFixedThreadPool(1)
     poolForOthers.submit(new Callable[TaskResult] {
       override def call(): TaskResult = runTask(task)
     })
   }
+
   def endAsync(): Unit = {
     poolForOthers.shutdown()
   }
@@ -205,7 +207,7 @@ class Driver(initOptions: InitOptions) {
     val default = 200000
     var res: Double = default
     for (initalSearch <- meta.initial_searches) {
-      res += Math.pow(1.5, - (pnow - initalSearch.start_ptime).toDouble / 10.0) * initalSearch.iterations
+      res += Math.pow(1.5, -(pnow - initalSearch.start_ptime).toDouble / 10.0) * initalSearch.iterations
     }
     Math.min(res.toLong, 100000000)
   }
@@ -238,7 +240,7 @@ class Driver(initOptions: InitOptions) {
       }
 
       val pseudoTime = state.getPseudoTime
-      val goal = state.getInstructionFile(InstructionFile.RemainingGoal)
+      val goal = state.getInstructionFile(InstructionFile.RemainingGoal).filter(i => !blacklist.contains(i))
       val partialSucc = state.getInstructionFile(InstructionFile.PartialSuccess)
 
       if (instruction.isDefined) {
@@ -268,6 +270,20 @@ class Driver(initOptions: InitOptions) {
       None
     })
   }
+
+  private val blacklist = Vector(
+    Instruction("vzeroupper"),
+    Instruction("divw_r16"),
+    Instruction("divl_r32"),
+    Instruction("divq_r64"),
+    Instruction("divb_r8"),
+    Instruction("divb_rh"),
+    Instruction("idivw_r16"),
+    Instruction("idivl_r32"),
+    Instruction("idivq_r64"),
+    Instruction("idivb_r8"),
+    Instruction("idivb_rh")
+  )
 }
 
 /**
