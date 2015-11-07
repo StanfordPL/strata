@@ -127,9 +127,7 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
           case Some(verifyOutput) =>
             if (!verifyOutput.isVerified) {
               // this should NOT happen
-              val m = s"STOKE search returned a program that does not work for all" +
-                s"inputs for $instr (live_out/def_in are ${meta.live_out}/${meta.def_in}): $out"
-              state.appendLog(LogError(m))
+              state.appendLog(LogSearchBug(instr, meta.def_in, meta.live_out, out))
               // pretend the search failed
               val p = StokeCode(0, "")
               val stats = StokeSearchStatistics(0, 0, 0, 0)
