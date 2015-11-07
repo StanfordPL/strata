@@ -144,7 +144,7 @@ class State(val globalOptions: GlobalOptions) {
     val res = collection.mutable.ListBuffer[LogMessage]()
     for (tmpFile <- tmpDir.listFiles()) {
       val buf = scala.io.Source.fromFile(tmpFile)
-      for (line <- buf.getLines()) yield {
+      for (line <- buf.getLines()) {
         res += Log.deserializeMessage(line)
       }
       buf.close()
@@ -221,11 +221,11 @@ class State(val globalOptions: GlobalOptions) {
 
   /** Get the log file. */
   private def getLogFile: File = {
-    new File(s"${globalOptions.workdir}/logs-bin/${ThreadContext.self.fileNameSafe}_log.bin")
+    new File(s"${globalOptions.workdir}/logs-bin/${ThreadContext.self.hostname}_log.bin")
   }
   /** Get the log file. */
   private def getReadableLogFile: File = {
-    new File(s"${globalOptions.workdir}/logs/${ThreadContext.self.fileNameSafe}_log.txt")
+    new File(s"${globalOptions.workdir}/logs/${ThreadContext.self.hostname}_log.txt")
   }
 
   /** Temporary directory for things currently running */
