@@ -20,7 +20,7 @@ case class InitialSearchTimeout(task: InitialSearchTask, timing: TimingInfo) ext
   override def toString = "Initial search timeout"
 }
 case class InitialSearchError(task: InitialSearchTask, timing: TimingInfo) extends InitialSearchResult {
-  override def toString = "Initial search error"
+  override def toString = "Initial search err"
 }
 
 sealed trait SecondarySearchResult extends TaskResult
@@ -31,7 +31,7 @@ case class SecondarySearchTimeout(task: SecondarySearchTask, timing: TimingInfo)
   override def toString = "Secondary search timeout"
 }
 case class SecondarySearchError(task: SecondarySearchTask, timing: TimingInfo) extends SecondarySearchResult {
-  override def toString = "Secondary search error"
+  override def toString = "Secondary search err"
 }
 
 sealed trait SecondarySuccessKind
