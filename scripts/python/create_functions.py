@@ -713,8 +713,13 @@ def all_mappings(variables, name):
         m1['xmm_0'] = reg
         m1['xmm_1'] = 'xmm12'
         m1['xmm_2'] = 'xmm13'
+        m2 = {}
+        m2['xmm_0'] = reg
+        m2['xmm_1'] = 'xmm8'
+        m2['xmm_2'] = 'xmm9'
         res.append(m0)
         res.append(m1)
+        res.append(m2)
     else:
       print "ERROR, unknown type of template 2.5"
       sys.exit(1)

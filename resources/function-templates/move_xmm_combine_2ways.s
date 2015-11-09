@@ -6,17 +6,17 @@
 #! must-undef { %ymm15 }
 .[name]:
   # ----------------------------------------------------------------------------
-  # moves the lower 64 bits of [xmm_1] to the higher 64 bits of [xmm_0],
-  # and the lower 64 bits of [xmm_2] to the lower 64 bits of [xmm_0]
+  # moves the lower 64 bits of [xmm_2] to the higher 64 bits of [xmm_0],
+  # and the lower 64 bits of [xmm_1] to the lower 64 bits of [xmm_0]
   # ----------------------------------------------------------------------------
   #
   # move low bits
-  movsd %[xmm_2], %[xmm_0]
+  movsd %[xmm_1], %[xmm_0]
   shufps $0x39, %[xmm_0], %[xmm_0]
   shufps $0x39, %[xmm_0], %[xmm_0]
   #
   # move high bits
-  movsd %[xmm_1], %[xmm_0]
+  movsd %[xmm_2], %[xmm_0]
   shufps $0x39, %[xmm_0], %[xmm_0]
   shufps $0x39, %[xmm_0], %[xmm_0]
   retq
