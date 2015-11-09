@@ -50,7 +50,7 @@ object Stoke {
       "--opcode", instr)
     val (out, status) = IO.runQuiet(cmd)
     if (status != 0) {
-      throw new RuntimeException(s"specgen_evaluate failed: $out")
+      throw new RuntimeException(s"specgen_evaluate failed with for $instr (call ${IO.cmd2String(cmd)}}) $status: $out")
     }
     val outParsed = out.trim.split(",").map(_.toInt)
     assert(outParsed.length == 3)
