@@ -73,7 +73,12 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
       IO.copyFile(state.getTestcasePath, testcases)
 
       // get the base instructions
-      val success = state.getInstructionFile(InstructionFile.Success)
+      val success = if (instr.isImm8Instr) {
+        // for imm8 instructions, we just use the base
+        state.getInstructionFile(InstructionFile.Base)
+      } else {
+        state.getInstructionFile(InstructionFile.Success)
+      }
 
       if (meta.search_without_uif) {
         state.updateUifCache()

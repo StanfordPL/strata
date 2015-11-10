@@ -29,6 +29,9 @@ case class Instruction(opcode: String) {
   }
 
   override def toString = opcode
+
+  /** Is this instruction a imm8 instruction? */
+  val isImm8Instr = realOpcode != opcode
 }
 
 object Instruction {
