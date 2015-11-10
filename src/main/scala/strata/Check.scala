@@ -37,12 +37,17 @@ case class Check(options: CheckOptions) {
     "vdivsd_xmm_xmm_xmm",
     "vmulsd_xmm_xmm_xmm",
     "vmulss_xmm_xmm_xmm",
-    "vcvttpd2dq_xmm_xmm"
+    "vcvttpd2dq_xmm_xmm",
+
+    "vcvtpd2ps_xmm_xmm"
   )
 
   val ignore = Vector(
     "cvtsi2ssl_xmm_r32",
-    "cvtsi2sdl_xmm_r32"
+    "cvtsi2sdl_xmm_r32",
+    "vcvtdq2pd_xmm_xmm",
+    "vcvtdq2pd_ymm_ymm",
+    "cvtdq2pd_xmm_xmm"
   )
   // vcvtdq2pd_ymm_ymm, vminsd_xmm_xmm_xmm, vdivsd_xmm_xmm_xmm
   /** Run the check. */
