@@ -1,5 +1,7 @@
 package strata
 
+import java.io.File
+
 import strata.data._
 import strata.util.{TimingBuilder, IO}
 
@@ -55,13 +57,18 @@ object Initialize {
       "--out", state.getTestcasePath
     ))
 
+    // copy imm8 base set
+    if (options.imm_instructions) {
+      IO.copyDir(new File("resources/imm8_baseset"), state.getCircuitDir)
+    } else {
+      state.getCircuitDir.mkdirs()
+    }
+
     IO.info("collecting basic information for all instructions ...")
     val config = State(options.globalOptions)
     config.getInstructionFile(InstructionFile.RemainingGoal).par foreach { goal =>
       IO.safeSubcommand(Vector("stoke/bin/specgen", "setup", "--workdir", workdir, "--opc", goal))
     }
-
-    state.getCircuitDir.mkdirs()
 
     state.appendLog(LogInitEnd(timing.result))
     IO.info("initialization complete")
