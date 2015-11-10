@@ -637,7 +637,24 @@ def get_variables(content):
 # return all combination of variable to value mappings
 def all_mappings(variables, name):
   types = list(set(map(lambda x: x['base'], variables.values())))
-  if len(types) == 2:
+  if len(types) == 2 and len(variables) == 5:
+    if "move_128_032" in name or "move_032_128" in name:
+      regs = ['eax', 'edx', 'r8d', 'r9d', 'r10d', 'r11d', 'r12d', 'r13d']
+      res = []
+      for reg in list_regs(types[0], 1)[0:3]:
+        m0 = {}
+        m0['xmm_0'] = reg
+        m1 = {}
+        m1['xmm_0'] = reg
+        for dest in range(4):
+          m0['gp32_' + str(dest)] = regs[dest]
+          m1['gp32_' + str(dest)] = regs[dest+4]
+        res.append(m0)
+        res.append(m1)
+    else:
+      print "ERROR, unknown type of template 2.6"
+      sys.exit(1)
+  elif len(types) == 2:
     if get_width(types[0]) < get_width(types[1]):
       input_type = types[1]
     else:
