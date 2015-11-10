@@ -18,6 +18,8 @@ class Driver(initOptions: InitOptions) {
 
   val globalOptions = initOptions.globalOptions
   val state = State(globalOptions)
+  val alreadySeen = collection.mutable.Set[Instruction]()
+  val isImm8Exp = initOptions.imm_instructions
 
   def run(args: Array[String], continue: Boolean = false): Unit = {
     // initialize
@@ -204,7 +206,12 @@ class Driver(initOptions: InitOptions) {
   def initialSearchBudget(instr: Instruction): Long = {
     val pnow = state.getPseudoTime
     val meta = state.getMetaOfInstr(instr)
-    val default = 200000
+    val default = if (instr.isImm8Instr) {
+      // there is nothing that gets added to the base set, so spend more initially
+      5000000
+    } else {
+      200000
+    }
     var res: Double = default
     for (initalSearch <- meta.initial_searches) {
       res += Math.pow(1.5, -(pnow - initalSearch.start_ptime).toDouble / 10.0) * initalSearch.iterations
@@ -262,6 +269,17 @@ class Driver(initOptions: InitOptions) {
 
       // then try an intial search
       if (goal.nonEmpty) {
+        if (isImm8Exp) {
+          // avoid doing the same instruction over and over
+          var notTried = goal.filter(x => !alreadySeen.contains(x))
+          if (notTried.isEmpty) {
+            alreadySeen.clear()
+            notTried = goal
+          }
+          val instr = notTried(Random.nextInt(notTried.size))
+          alreadySeen.add(instr)
+          return mkInitialSearch(instr, pseudoTime)
+        }
         val instr = goal(Random.nextInt(goal.size))
         return mkInitialSearch(instr, pseudoTime)
       }
