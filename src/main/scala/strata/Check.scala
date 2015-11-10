@@ -41,8 +41,8 @@ case class Check(options: CheckOptions) {
   )
 
   val ignore = Vector(
-    // minss/maxss problem
-    "movq_r64_xmm"
+    "cvtsi2ssl_xmm_r32",
+    "cvtsi2sdl_xmm_r32"
   )
   // vcvtdq2pd_ymm_ymm, vminsd_xmm_xmm_xmm, vdivsd_xmm_xmm_xmm
   /** Run the check. */
@@ -93,6 +93,7 @@ case class Check(options: CheckOptions) {
     var stoke_unsupported = 0
     var timeout = 0
     var stoke_wrong = 0
+    var missing_lemma = 0
     var total = 0
     var usesWrongCircuit = 0
     val dontCheckWrong = false
@@ -114,6 +115,8 @@ case class Check(options: CheckOptions) {
           incorrectInstrs += instruction
         } else if (stokeIsWrong.contains(instruction.opcode)) {
           stoke_wrong += 1
+        } else if (ignore.contains(instruction.opcode)) {
+          missing_lemma += 1
         } else if (status == 124) {
           println(s"$instruction: timeout")
           timeout += 1
@@ -154,6 +157,7 @@ case class Check(options: CheckOptions) {
     println(s"STOKE == strata:      $correct")
     println(s"STOKE is wrong:       $stoke_wrong")
     println(s"STOKE != strata:      $incorrect")
+    println(s"missing lemma:        $missing_lemma")
     println(s"not checked:          $usesWrongCircuit (uses incorrect instruction)")
     println(s"Timeout:              $timeout")
     println(s"Unsupported by STOKE: $stoke_unsupported")
