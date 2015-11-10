@@ -17,8 +17,15 @@ case class Instruction(opcode: String) {
     }
     Instruction.all = res.toList
   }
-  if (!Instruction.all.contains(opcode)) {
-    throw new IllegalArgumentException(s"Opcode '$opcode' does not exist.")
+
+  val realOpcode = if ("_[0-9]+$".r.findFirstIn(opcode).isDefined) {
+    opcode.substring(0, opcode.lastIndexOf("_"))
+  } else {
+    opcode
+  }
+
+  if (!Instruction.all.contains(realOpcode)) {
+    throw new IllegalArgumentException(s"Opcode '$realOpcode' does not exist.")
   }
 
   override def toString = opcode
