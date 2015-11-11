@@ -208,7 +208,7 @@ class Driver(initOptions: InitOptions) {
     val meta = state.getMetaOfInstr(instr)
     val default = if (instr.isImm8Instr) {
       // there is nothing that gets added to the base set, so spend more initially
-      5000000
+      800000
     } else {
       200000
     }
@@ -221,7 +221,11 @@ class Driver(initOptions: InitOptions) {
 
   /** Compute the budget for the secondary search. */
   def secondarySearchBudget(instr: Instruction, search_without_uif: Boolean): Long = {
-    if (search_without_uif) 5000000 else 50000000
+    if (instr.isImm8Instr) {
+      if (search_without_uif) 500000 else 1000000
+    } else {
+      if (search_without_uif) 5000000 else 50000000
+    }
   }
 
   /** Select what next step should be done, and puts the task into the worklist. */
