@@ -43,6 +43,8 @@ object Initialize {
     IO.info("initialize configuration using specgen init ...")
     val initArgs = if (options.imm_instructions) {
       Vector("--only_imm", "--imm_count", "256")
+    } else if (options.mm_instructions) {
+      Vector("--only_mm")
     } else {
       Nil
     }
