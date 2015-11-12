@@ -61,8 +61,11 @@ object Strata {
           opt[Unit]('i', "imm_instructions") action {
             (x, c) => c.copy(imm_instructions = true)
           }
+          opt[Unit]('m', "mm_instructions") action {
+            (x, c) => c.copy(mm_instructions = true)
+          }
         }
-        parser.parse(localArgs, InitOptions(GlobalOptions(), false)) match {
+        parser.parse(localArgs, InitOptions(GlobalOptions())) match {
           case Some(c) =>
             Initialize.run(args, c)
           case None =>
@@ -83,6 +86,9 @@ object Strata {
               })
             opt[Unit]('i', "imm_instructions") action {
               (x, c) => c.copy(imm_instructions = true)
+            }
+            opt[Unit]('m', "mm_instructions") action {
+              (x, c) => c.copy(mm_instructions = true)
             }
           }
           parser.parse(localArgs, InitOptions(GlobalOptions())) match {
@@ -336,6 +342,6 @@ case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home
   val workdir = new File(workdirPath)
 }
 
-case class InitOptions(globalOptions: GlobalOptions, imm_instructions: Boolean = false)
+case class InitOptions(globalOptions: GlobalOptions, imm_instructions: Boolean = false, mm_instructions: Boolean = false)
 
 case class CheckOptions(circuitPath: File = new File(s"${System.getProperty("user.home")}/dev/circuits"), verbose: Boolean = false)
