@@ -577,9 +577,9 @@ def instr_postfix(type):
   return m[type]
 
 # the list of all register types
-reg_types = ['ymm', 'xmm', 'gp64', 'gp32', 'gp16', 'gp8']
+reg_types = ['ymm', 'xmm', 'mm', 'gp64', 'gp32', 'gp16', 'gp8']
 # width of all types
-type_width = [256, 128, 64, 32, 16, 8]
+type_width = [256, 128, 64, 64, 32, 16, 8]
 
 # return a list of all registers of a given type
 def list_regs(type, kind):
@@ -599,6 +599,8 @@ def list_regs(type, kind):
     pass
   elif type == 'xmm':
     prefix = "xmm"
+  elif type == 'mm':
+    prefix = "mm"
   elif type == 'ymm':
     prefix = "ymm"
   else:
