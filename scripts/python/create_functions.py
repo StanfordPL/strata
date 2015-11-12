@@ -653,6 +653,19 @@ def all_mappings(variables, name):
           m1['gp32_' + str(dest)] = regs[dest+4]
         res.append(m0)
         res.append(m1)
+    elif "move_064_016" in name or "move_016_064" in name:
+      regs = ['ax', 'dx', 'r8w', 'r9w', 'r10w', 'r11w', 'r12w', 'r13w']
+      res = []
+      for reg in list_regs(types[0], 1)[0:3]:
+        m0 = {}
+        m0['mm_0'] = reg
+        m1 = {}
+        m1['mm_0'] = reg
+        for dest in range(4):
+          m0['gp16_' + str(dest)] = regs[dest]
+          m1['gp16_' + str(dest)] = regs[dest+4]
+        res.append(m0)
+        res.append(m1)
     else:
       print "ERROR, unknown type of template 2.6"
       sys.exit(1)
