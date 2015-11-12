@@ -656,7 +656,7 @@ def all_mappings(variables, name):
     elif "move_064_016" in name or "move_016_064" in name:
       regs = ['ax', 'dx', 'r8w', 'r9w', 'r10w', 'r11w', 'r12w', 'r13w']
       res = []
-      for reg in list_regs(types[0], 1)[0:3]:
+      for reg in list_regs('mm', 1)[0:3]:
         m0 = {}
         m0['mm_0'] = reg
         m1 = {}
