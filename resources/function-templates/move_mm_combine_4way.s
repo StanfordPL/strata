@@ -6,8 +6,8 @@
 #! must-undef { %r15 }
 .[name]:
   # ----------------------------------------------------------------------------
-  # moves the lowest 16 bits of [mm_0] to [xmm_1], the next 16 bits to
-  # [xmm_2], the next to [xmm_3] and the highest 16 bits to [xmm_4].
+  # moves the lowest 16 bits of [mm_0] to [gp16_0], the next 16 bits to
+  # [gp16_1], the next to [gp16_2] and the highest 16 bits to [gp16_3].
   # ----------------------------------------------------------------------------
   #
   pushfq
