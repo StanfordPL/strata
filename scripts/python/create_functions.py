@@ -601,6 +601,7 @@ def list_regs(type, kind):
     prefix = "xmm"
   elif type == 'mm':
     prefix = "mm"
+    start = 1
   elif type == 'ymm':
     prefix = "ymm"
   else:
