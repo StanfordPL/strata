@@ -60,7 +60,7 @@ object Initialize {
     ))
 
     // copy imm8 base set
-    if (options.imm_instructions) {
+    if (options.imm_instructions || options.mm_instructions) {
       IO.copyDir(new File("resources/imm8_baseset"), state.getCircuitDir)
     } else {
       state.getCircuitDir.mkdirs()
