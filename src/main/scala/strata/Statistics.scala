@@ -10,6 +10,7 @@ import strata.util._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
+import resource._
 
 /**
  * A class to collect various statistics of the current run.
@@ -31,18 +32,57 @@ object Statistics {
   def collectData(globalOptions: GlobalOptions): Unit = {
     val state = State(globalOptions)
     val messages = state.getLogMessages
+    val startTime = if (messages.isEmpty) 0 else messages.head.time.toDate.getTime
 
-    // graph initial searches
-    val initialGraph = new File("../data-strata/initial-search.csv")
-    val writer = CSVWriter.open(initialGraph)
-    for (message <- messages) {
-      message match {
-        case LogTaskEnd(_, Some(InitialSearchTimeout(task, timing)), pt, time, _) =>
-          writer.writeRow(Vector(time.toDate.getTime, task.pseudoTime, task.budget))
-        case _ =>
+    // levels (NOTE: data comes from a different place: checkOptions.circuitPath)
+    val checkOptions = CheckOptions()
+    val check = Check(checkOptions)
+    val (strataInstrs, graph) = check.dependencyGraph(checkOptions.circuitPath)
+    val difficultyMap: Map[Instruction, (Int, Instruction)] = check.computeDifficultyMap(graph)
+    val difficultyDist = difficultyMap.values.map(_._1.toLong).toSeq
+    for(writer <- managed(CSVWriter.open(new File("../data-strata/levels.csv")))) {
+      for (level <- difficultyMap.values.map(_._1)) {
+        writer.writeRow(Vector(level))
       }
     }
-    writer.close()
+
+    // search progress
+    for(writer <- managed(CSVWriter.open(new File("../data-strata/progress.csv")))) {
+      for (message <- messages) {
+        message match {
+          case LogTaskEnd(_, _, pt, time, _) =>
+            val tInMs = time.toDate.getTime - startTime
+            writer.writeRow(Vector(tInMs.toDouble / (1000d * 60d * 60d), pt))
+          case _ =>
+        }
+      }
+    }
+
+    // level vs timeouts
+    val initialTimeouts = messages.collect {
+      case LogTaskEnd(task: InitialSearchTask, Some(_: InitialSearchTimeout), _, _, _) =>
+        (task.instruction, task.budget)
+    }.groupBy(x => x._1).map(x => (x._1, x._2.map(_._2)))
+    for(writer <- managed(CSVWriter.open(new File("../data-strata/level-vs-attempts.csv")))) {
+      for ((instr, timeouts) <- initialTimeouts) {
+        val level = difficultyMap(instr)._1
+        writer.writeRow(Vector(instr, level, timeouts.size, timeouts.sum))
+      }
+    }
+
+    // graph initial searches
+//    val initialGraph = new File("../data-strata/initial-search.csv")
+//    val _ = {
+//      val writer = CSVWriter.open(initialGraph)
+//      for (message <- messages) {
+//        message match {
+//          case LogTaskEnd(_, Some(InitialSearchTimeout(task, timing)), pt, time, _) =>
+//            writer.writeRow(Vector(time.toDate.getTime, task.pseudoTime, task.budget))
+//          case _ =>
+//        }
+//      }
+//      writer.close()
+//    }
 
     // initial search budgets
     val budgets = messages.collect {

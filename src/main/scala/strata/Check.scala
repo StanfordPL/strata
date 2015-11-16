@@ -23,17 +23,6 @@ case class Check(options: CheckOptions) {
   implicit def orderingForPair1: Ordering[(Int, Instruction)] = Ordering.by(e => e._1)
   implicit def orderingForPair2: Ordering[(Instruction, Int)] = Ordering.by(e => e._2)
 
-  def levelGraph(): Unit = {
-    val (strataInstrs, graph) = dependencyGraph(options.circuitPath)
-    val difficultyMap: Map[Instruction, (Int, Instruction)] = computeDifficultyMap(graph)
-    val difficultyDist = difficultyMap.values.map(_._1.toLong).toSeq
-    val writer = CSVWriter.open(new File("../data-strata/levels.csv"))
-    for (level <- difficultyMap.values.map(_._1)) {
-      writer.writeRow(Vector(level))
-    }
-    writer.close()
-  }
-
   val stokeIsWrong = Vector(
     "vaddss_xmm_xmm_xmm",
     "vcvtss2sd_xmm_xmm_xmm",
