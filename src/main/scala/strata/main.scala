@@ -179,6 +179,21 @@ object Strata {
           }
         }),
 
+      ("data2", "Collect data for a later analysis (from circuit directory)",
+        (localArgs: Array[String], helpStr: String) => {
+          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
+            head(shortDescription)
+            note(helpStr)
+          }
+          parser.parse(localArgs, GlobalOptions()) match {
+            case Some(c) =>
+              Check(CheckOptions()).levelGraph()
+            case None =>
+              // arguments are bad, error message will have been displayed
+              sys.exit(1)
+          }
+        }),
+
       ("cleanup", "Clean up the working directory after a crash (removing stray lock files, etc.)",
         (localArgs: Array[String], helpStr: String) => {
           val parser = new scopt.OptionParser[GlobalOptions]("strata") {

@@ -2,9 +2,12 @@ package strata
 
 import java.io.File
 
-import strata.data.{Program, Instruction}
+import com.github.tototoshi.csv.CSVWriter
+import strata.data.{LogTaskEnd, Program, Instruction}
+import strata.tasks.InitialSearchTimeout
 import strata.util.{Distribution, IO}
 
+import scala.collection.mutable
 import scala.util.control.Breaks
 import scalax.collection.GraphEdge.DiEdge
 import scalax.collection.mutable.Graph
@@ -16,6 +19,20 @@ import scalax.collection.io.dot.implicits._
  * Check strata circuits against hand-written circuits in STOKE.
  */
 case class Check(options: CheckOptions) {
+
+  implicit def orderingForPair1: Ordering[(Int, Instruction)] = Ordering.by(e => e._1)
+  implicit def orderingForPair2: Ordering[(Instruction, Int)] = Ordering.by(e => e._2)
+
+  def levelGraph(): Unit = {
+    val (strataInstrs, graph) = dependencyGraph(options.circuitPath)
+    val difficultyMap: Map[Instruction, (Int, Instruction)] = computeDifficultyMap(graph)
+    val difficultyDist = difficultyMap.values.map(_._1.toLong).toSeq
+    val writer = CSVWriter.open(new File("../data-strata/levels.csv"))
+    for (level <- difficultyMap.values.map(_._1)) {
+      writer.writeRow(Vector(level))
+    }
+    writer.close()
+  }
 
   val stokeIsWrong = Vector(
     "vaddss_xmm_xmm_xmm",
@@ -62,19 +79,7 @@ case class Check(options: CheckOptions) {
     //    return
 
     // how many instructions did we need to learn in sequence.
-    implicit def orderingForPair1: Ordering[(Int, Instruction)] = Ordering.by(e => e._1)
-    implicit def orderingForPair2: Ordering[(Instruction, Int)] = Ordering.by(e => e._2)
-    val difficultyMap = collection.mutable.Map[Instruction, (Int, Instruction)]()
-    for (instruction <- graph.topologicalSort) {
-      val node = graph.get(instruction)
-      if (node.inDegree == 0) {
-        // instructions that we can learn directly get a score of 0
-        difficultyMap(instruction) = (0, instruction)
-      } else {
-        // otherwise, take max over predecessors
-        difficultyMap(instruction) = node.diPredecessors.map(x => (difficultyMap(x.value)._1 + 1, x.value)).max
-      }
-    }
+    val difficultyMap: Map[Instruction, (Int, Instruction)] = computeDifficultyMap(graph)
     val max = difficultyMap.values.max
     println(s"Maximum path length is ${max._1} (i.e. there is an instruction that required learning ${max._1 - 1} instructions first).")
     println("Path:")
@@ -167,6 +172,22 @@ case class Check(options: CheckOptions) {
     println(s"Timeout:              $timeout")
     println(s"Unsupported by STOKE: $stoke_unsupported")
 
+  }
+
+  def computeDifficultyMap(graph: Graph[Instruction, DiEdge]): Map[Instruction, (Int, Instruction)] = {
+    implicit def orderingForPair1: Ordering[(Int, Instruction)] = Ordering.by(e => e._1)
+    val difficultyMap = collection.mutable.Map[Instruction, (Int, Instruction)]()
+    for (instruction <- graph.topologicalSort) {
+      val node = graph.get(instruction)
+      if (node.inDegree == 0) {
+        // instructions that we can learn directly get a score of 0
+        difficultyMap(instruction) = (0, instruction)
+      } else {
+        // otherwise, take max over predecessors
+        difficultyMap(instruction) = node.diPredecessors.map(x => (difficultyMap(x.value)._1 + 1, x.value)).max
+      }
+    }
+    difficultyMap.toMap
   }
 
   /** Compute the dependency graph of all the circuits. */
