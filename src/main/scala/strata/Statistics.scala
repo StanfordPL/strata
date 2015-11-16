@@ -40,49 +40,58 @@ object Statistics {
     val (strataInstrs, graph) = check.dependencyGraph(checkOptions.circuitPath)
     val difficultyMap: Map[Instruction, (Int, Instruction)] = check.computeDifficultyMap(graph)
     val difficultyDist = difficultyMap.values.map(_._1.toLong).toSeq
-    for(writer <- managed(CSVWriter.open(new File("../data-strata/levels.csv")))) {
+    for (writer <- managed(CSVWriter.open(new File("../data-strata/levels.csv")))) {
       for (level <- difficultyMap.values.map(_._1)) {
         writer.writeRow(Vector(level))
       }
     }
 
     // search progress
-    for(writer <- managed(CSVWriter.open(new File("../data-strata/progress.csv")))) {
-      for (message <- messages) {
-        message match {
-          case LogTaskEnd(_, _, pt, time, _) =>
-            val tInMs = time.toDate.getTime - startTime
-            writer.writeRow(Vector(tInMs.toDouble / (1000d * 60d * 60d), pt))
-          case _ =>
+    val progressRows = messages.collect {
+      case LogTaskEnd(_, _, pt, time, _) if pt > 0 =>
+        val tInMs = time.toDate.getTime - startTime
+        (tInMs.toDouble / (1000d * 60d * 60d), pt)
+    }.sortBy(x => x._1)
+    val baseSetSize = progressRows.map(_._2).min
+    // optimize by dropping intermediate unchanged elements
+    for (writer <- managed(CSVWriter.open(new File("../data-strata/progress.csv")))) {
+      var last = -1
+      for ((r, i) <- progressRows.zipWithIndex) {
+        if (r._2 != last || i == 0 || i == progressRows.size-1) {
+          writer.writeRow(Vector(r._1, r._2 - baseSetSize))
+          last = r._2
         }
       }
     }
 
     // level vs timeouts
-    val initialTimeouts = messages.collect {
-      case LogTaskEnd(task: InitialSearchTask, Some(_: InitialSearchTimeout), _, _, _) =>
-        (task.instruction, task.budget)
-    }.groupBy(x => x._1).map(x => (x._1, x._2.map(_._2)))
-    for(writer <- managed(CSVWriter.open(new File("../data-strata/level-vs-attempts.csv")))) {
-      for ((instr, timeouts) <- initialTimeouts) {
-        val level = difficultyMap(instr)._1
-        writer.writeRow(Vector(instr, level, timeouts.size, timeouts.sum))
-      }
-    }
+    //    val initialTimeouts = messages.collect {
+    //      case LogTaskEnd(task: InitialSearchTask, Some(_: InitialSearchTimeout), _, _, _) =>
+    //        (task.instruction, task.budget)
+    //    }.groupBy(x => x._1).map(x => (x._1, x._2.map(_._2)))
+    //    for(writer <- managed(CSVWriter.open(new File("../data-strata/level-vs-attempts.csv")))) {
+    //      for ((instr, timeouts) <- initialTimeouts) {
+    //        // only do it for instruction where we succeeded
+    //        if (difficultyMap.contains(instr)) {
+    //          val level = difficultyMap(instr)._1
+    //          writer.writeRow(Vector(instr, level, timeouts.size, timeouts.sum))
+    //        }
+    //      }
+    //    }
 
     // graph initial searches
-//    val initialGraph = new File("../data-strata/initial-search.csv")
-//    val _ = {
-//      val writer = CSVWriter.open(initialGraph)
-//      for (message <- messages) {
-//        message match {
-//          case LogTaskEnd(_, Some(InitialSearchTimeout(task, timing)), pt, time, _) =>
-//            writer.writeRow(Vector(time.toDate.getTime, task.pseudoTime, task.budget))
-//          case _ =>
-//        }
-//      }
-//      writer.close()
-//    }
+    //    val initialGraph = new File("../data-strata/initial-search.csv")
+    //    val _ = {
+    //      val writer = CSVWriter.open(initialGraph)
+    //      for (message <- messages) {
+    //        message match {
+    //          case LogTaskEnd(_, Some(InitialSearchTimeout(task, timing)), pt, time, _) =>
+    //            writer.writeRow(Vector(time.toDate.getTime, task.pseudoTime, task.budget))
+    //          case _ =>
+    //        }
+    //      }
+    //      writer.close()
+    //    }
 
     // initial search budgets
     val budgets = messages.collect {
@@ -120,22 +129,22 @@ object Statistics {
     println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.mult.toLong)).info("best program's # of multiplications/divisions"))
     println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.nodes.toLong)).info("best program's # of nodes"))
 
-    for ((instr, eq) <- eqs) {
-      val sorted = eq.getClasses()
-      val first = sorted.head
-      if (first.size < 3) {
-        println(instr)
-        val firstProg = first.getRepresentativeProgram
-        println(s"${first.size} -> ${firstProg.score}")
-        println(IO.indented(Program.fromFile(firstProg.getFile(instr, state)).toString))
-        if (sorted.length > 1) {
-          val sndProg = sorted(1).getRepresentativeProgram
-          println(s"${sorted(1).size} -> ${sndProg.score}")
-          println(IO.indented(Program.fromFile(sndProg.getFile(instr, state)).toString))
-        }
-        println("--------")
-      }
-    }
+//    for ((instr, eq) <- eqs) {
+//      val sorted = eq.getClasses()
+//      val first = sorted.head
+//      if (first.size < 3) {
+//        println(instr)
+//        val firstProg = first.getRepresentativeProgram
+//        println(s"${first.size} -> ${firstProg.score}")
+//        println(IO.indented(Program.fromFile(firstProg.getFile(instr, state)).toString))
+//        if (sorted.length > 1) {
+//          val sndProg = sorted(1).getRepresentativeProgram
+//          println(s"${sorted(1).size} -> ${sndProg.score}")
+//          println(IO.indented(Program.fromFile(sndProg.getFile(instr, state)).toString))
+//        }
+//        println("--------")
+//      }
+//    }
 
     println(s"Processed ${messages.length} messages")
   }
