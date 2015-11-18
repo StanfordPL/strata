@@ -106,6 +106,8 @@ object Statistics {
       }
     }
     println(Stats.describe(simpleInc, "Strata simplification increase"))
+    println(Stats.describe(rows.map(_._1), "stoke circuit size"))
+    println(Stats.describe(rows.map(_._2), "strata circuit size"))
   }
 
   /** Collect data for further analysis. */
