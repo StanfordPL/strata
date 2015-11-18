@@ -103,6 +103,8 @@ case class Check(options: CheckOptions) {
         val cmd = Vector("timeout", "15s",
           s"${IO.getProjectBase}/stoke/bin/specgen", "compare",
           "--circuit_dir", options.circuitPath,
+          "--no_simplify",
+          "--solver", "cvc4",
           "--opcode", instruction)
         val (out, status) = IO.runQuiet(cmd)
         total += 1

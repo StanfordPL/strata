@@ -87,4 +87,17 @@ object Stats {
       (" " * (Math.max(minLength, formatter(total).length) - pFormatted.length)) + f"$pFormatted ($percentage%6.2f %%)"
     }
   }
+
+  /** Describe the distrbution given as a sorted list. */
+  def describe[A, B >: A](data: Seq[A], title: String)(implicit ord : scala.math.Ordering[B]) = {
+    val data2 = data.sorted(ord)
+    val n = data2.length
+    s"Information about '$title'\n" +
+      s"Size:    $n" + (if (data2.isEmpty) ""
+    else {
+      s"\nMinimum: ${data2.head}\n" +
+      s"Median:  ${data2.apply((n - 1) / 2)}\n" +
+      s"Maximum: ${data2.last}"
+    })
+  }
 }
