@@ -3,7 +3,7 @@ package strata
 import java.io.File
 
 import com.github.tototoshi.csv.CSVWriter
-import strata.data.{LogTaskEnd, Program, Instruction}
+import strata.data._
 import strata.tasks.InitialSearchTimeout
 import strata.util.{Distribution, IO}
 
@@ -21,39 +21,99 @@ import scalax.collection.io.dot.implicits._
 case class Check(options: CheckOptions) {
 
   implicit def orderingForPair1: Ordering[(Int, Instruction)] = Ordering.by(e => e._1)
+
   implicit def orderingForPair2: Ordering[(Instruction, Int)] = Ordering.by(e => e._2)
 
   val stokeIsWrong = Vector(
-    "vaddss_xmm_xmm_xmm",
-    "vcvtss2sd_xmm_xmm_xmm",
-    "vcvtsi2ssl_xmm_xmm_r32",
-    "vcvtsi2sdl_xmm_xmm_r32",
-    "vsqrtsd_xmm_xmm_xmm",
+    // wrong AVX circuit: upper bits should be taken from source operand, not be left unmodified
     "vaddsd_xmm_xmm_xmm",
+    "vsubsd_xmm_xmm_xmm",
+    "vdivsd_xmm_xmm_xmm",
+    "vcvtsi2sdq_xmm_xmm_r64",
+    "vcvtsi2ssq_xmm_xmm_r64",
+    "vmulsd_xmm_xmm_xmm",
     "vrcpss_xmm_xmm_xmm",
     "vcvtsd2ss_xmm_xmm_xmm",
     "vsubss_xmm_xmm_xmm",
-    "vsubss_xmm_xmm_xmm",
-    "vcvtsi2sdq_xmm_xmm_r64",
-    "vdivss_xmm_xmm_xmm",
-    "vsqrtss_xmm_xmm_xmm",
-    "vrsqrtss_xmm_xmm_xmm",
-    "vsubsd_xmm_xmm_xmm",
-    "vcvtsi2ssq_xmm_xmm_r64",
-    "vdivsd_xmm_xmm_xmm",
-    "vmulsd_xmm_xmm_xmm",
+    "vcvtsi2ssl_xmm_xmm_r32",
     "vmulss_xmm_xmm_xmm",
+    "vdivss_xmm_xmm_xmm",
+    "vrsqrtss_xmm_xmm_xmm",
+    "vsqrtss_xmm_xmm_xmm",
+    "vcvtss2sd_xmm_xmm_xmm",
+    "vcvtsi2sdl_xmm_xmm_r32",
+    "vaddss_xmm_xmm_xmm",
+    "vsqrtsd_xmm_xmm_xmm",
+
+    // upper bits should be 0, but are kept unmodified
+    "cvtpd2ps_xmm_xmm",
+    "vcvtpd2ps_xmm_xmm",
+    "cvttpd2dq_xmm_xmm",
     "vcvttpd2dq_xmm_xmm",
 
-    "vcvtpd2ps_xmm_xmm"
+    // should convert 4 packed doubles, but only converts 2
+    "vcvtpd2ps_xmm_ymm",
+    "vcvttpd2dq_xmm_ymm",
+
+    // should do add in upper bits and sub in lower bits, but reverses the two
+    "addsubps_xmm_xmm",
+    "vaddsubps_xmm_xmm_xmm",
+    "vaddsubpd_xmm_xmm_xmm",
+    "addsubpd_xmm_xmm",
+    "vaddsubpd_ymm_ymm_ymm"
+    //    "vaddss_xmm_xmm_xmm",
+    //    "vcvtss2sd_xmm_xmm_xmm",
+    //    "vcvtsi2ssl_xmm_xmm_r32",
+    //    "vcvtsi2sdl_xmm_xmm_r32",
+    //    "vsqrtsd_xmm_xmm_xmm",
+    //    "vaddsd_xmm_xmm_xmm",
+    //    "vrcpss_xmm_xmm_xmm",
+    //    "vcvtsd2ss_xmm_xmm_xmm",
+    //    "vsubss_xmm_xmm_xmm",
+    //    "vsubss_xmm_xmm_xmm",
+    //    "vcvtsi2sdq_xmm_xmm_r64",
+    //    "vdivss_xmm_xmm_xmm",
+    //    "vsqrtss_xmm_xmm_xmm",
+    //    "vrsqrtss_xmm_xmm_xmm",
+    //    "vsubsd_xmm_xmm_xmm",
+    //    "vcvtsi2ssq_xmm_xmm_r64",
+    //    "vdivsd_xmm_xmm_xmm",
+    //    "vmulsd_xmm_xmm_xmm",
+    //    "vmulss_xmm_xmm_xmm",
+    //    "vcvttpd2dq_xmm_xmm",
+    //    "vcvtpd2ps_xmm_xmm"
   )
 
-  val ignore = Vector(
+  val missingLemma = Vector(
+    // different convert (lemma)
     "cvtsi2ssl_xmm_r32",
+    "vcvtdq2ps_xmm_xmm",
     "cvtsi2sdl_xmm_r32",
     "vcvtdq2pd_xmm_xmm",
     "vcvtdq2pd_ymm_ymm",
-    "cvtdq2pd_xmm_xmm"
+    "cvtdq2ps_xmm_xmm",
+    "vcvtdq2ps_ymm_ymm",
+    "cvtdq2pd_xmm_xmm",
+
+    // fused with 0 operand
+    "mulps_xmm_xmm",
+    "vmulps_xmm_xmm_xmm",
+    "vmulps_ymm_ymm_ymm",
+
+    // noop fused with two 0 operands
+    "addps_xmm_xmm",
+    "vaddps_xmm_xmm_xmm",
+
+    // add is commutative
+    "haddpd_xmm_xmm",
+    "vhaddpd_ymm_ymm_ymm",
+    "vhaddpd_xmm_xmm_xmm",
+    "vaddpd_ymm_ymm_ymm"
+    //    "cvtsi2ssl_xmm_r32",
+    //    "cvtsi2sdl_xmm_r32",
+    //    "vcvtdq2pd_xmm_xmm",
+    //    "vcvtdq2pd_ymm_ymm",
+    //    "cvtdq2pd_xmm_xmm"
   )
   // vcvtdq2pd_ymm_ymm, vminsd_xmm_xmm_xmm, vdivsd_xmm_xmm_xmm
   /** Run the check. */
@@ -68,22 +128,23 @@ case class Check(options: CheckOptions) {
     //    return
 
     // how many instructions did we need to learn in sequence.
-    val difficultyMap: Map[Instruction, (Int, Instruction)] = computeDifficultyMap(graph)
+    val difficultyMap: Map[Instruction, Int] = computeDifficultyMap()
     val max = difficultyMap.values.max
-    println(s"Maximum path length is ${max._1} (i.e. there is an instruction that required learning ${max._1 - 1} instructions first).")
-    println("Path:")
-    var cur = max._2
-    Breaks.breakable {
-      while (true) {
-        println(cur)
-        if (difficultyMap(cur)._1 == 0)
-          Breaks.break()
-        cur = difficultyMap(cur)._2
-      }
-    }
-    println()
-    val difficultyDist = Distribution(difficultyMap.values.map(_._1.toLong).toSeq)
+    println(s"Maximum stratum is $max.")
+//    println("Path:")
+//    var cur = max._2
+//    Breaks.breakable {
+//      while (true) {
+//        println(cur)
+//        if (difficultyMap(cur)._1 == 0)
+//          Breaks.break()
+//        cur = difficultyMap(cur)._2
+//      }
+//    }
+//    println()
+    val difficultyDist = Distribution(difficultyMap.values.map(_.toLong).toSeq)
     println(difficultyDist.info("path lengths for all instructions"))
+    return
 
     val debug = options.verbose
 
@@ -103,8 +164,8 @@ case class Check(options: CheckOptions) {
         val cmd = Vector("timeout", "15s",
           s"${IO.getProjectBase}/stoke/bin/specgen", "compare",
           "--circuit_dir", options.circuitPath,
-          "--no_simplify",
-          "--solver", "cvc4",
+          //          "--no_simplify",
+          //          "--solver", "cvc4",
           "--opcode", instruction)
         val (out, status) = IO.runQuiet(cmd)
         total += 1
@@ -116,7 +177,7 @@ case class Check(options: CheckOptions) {
           incorrectInstrs += instruction
         } else if (stokeIsWrong.contains(instruction.opcode)) {
           stoke_wrong += 1
-        } else if (ignore.contains(instruction.opcode)) {
+        } else if (missingLemma.contains(instruction.opcode)) {
           missing_lemma += 1
         } else if (status == 124) {
           println(s"$instruction: timeout")
@@ -162,21 +223,23 @@ case class Check(options: CheckOptions) {
     println(s"not checked:          $usesWrongCircuit (uses incorrect instruction)")
     println(s"Timeout:              $timeout")
     println(s"Unsupported by STOKE: $stoke_unsupported")
-
   }
 
-  def computeDifficultyMap(graph: Graph[Instruction, DiEdge]): Map[Instruction, (Int, Instruction)] = {
-    implicit def orderingForPair1: Ordering[(Int, Instruction)] = Ordering.by(e => e._1)
-    val difficultyMap = collection.mutable.Map[Instruction, (Int, Instruction)]()
+  def computeDifficultyMap(baseSet: Seq[Instruction] = Nil): Map[Instruction, Int] = {
+    val (instrs, graph) = dependencyGraph(options.circuitPath)
+    val difficultyMap = collection.mutable.Map[Instruction, Int]()
     for (instruction <- graph.topologicalSort) {
       val node = graph.get(instruction)
       if (node.inDegree == 0) {
-        // instructions that we can learn directly get a score of 0
-        difficultyMap(instruction) = (0, instruction)
+        // instructions that we can learn directly get a score of 1
+        difficultyMap(instruction) = 1
       } else {
         // otherwise, take max over predecessors
-        difficultyMap(instruction) = node.diPredecessors.map(x => (difficultyMap(x.value)._1 + 1, x.value)).max
+        difficultyMap(instruction) = node.diPredecessors.map(x => difficultyMap(x.value) + 1).max
       }
+    }
+    for (base <- baseSet) {
+      difficultyMap(base) = 0
     }
     difficultyMap.toMap
   }
@@ -186,14 +249,16 @@ case class Check(options: CheckOptions) {
     val graph = Graph[Instruction, DiEdge]()
 
     // get all instructions
-    val instructions = for (circuitFile <- circuitPath.listFiles) yield {
+    val instructions = for (circuitFile <- circuitPath.listFiles if !isImm8CicuitFile(circuitFile)) yield {
       Instruction(circuitFile.getName.substring(0, circuitFile.getName.length - 2))
     }
-
     // loop over all circuits
-    for (circuitFile <- circuitPath.listFiles) {
+    for (circuitFile <- circuitPath.listFiles if !isImm8CicuitFile(circuitFile)) {
       val program = Program.fromFile(circuitFile)
       val circuit = Instruction(circuitFile.getName.substring(0, circuitFile.getName.length - 2))
+
+      // add this node
+      graph += circuit
 
       // add dependencies, but only on instructions that we learned
       for (instruction <- program.instructions if instructions.contains(instruction)) {
@@ -206,5 +271,10 @@ case class Check(options: CheckOptions) {
 
   private def getProgram(instruction: Instruction): Program = {
     Program.fromFile(new File(s"${options.circuitPath}/$instruction.s"))
+  }
+
+  def isImm8CicuitFile(file: File) = {
+    val name = file.getName.substring(0, file.getName.length - 2);
+    name.contains("_imm8_")
   }
 }

@@ -96,7 +96,9 @@ object Stats {
       s"Size:    $n" + (if (data2.isEmpty) ""
     else {
       s"\nMinimum: ${data2.head}\n" +
-      s"Median:  ${data2.apply((n - 1) / 2)}\n" +
+      s"1/4 q:   ${data2.apply(n / 4)}\n" +
+      s"Median:  ${data2.apply(n / 2)}\n" +
+      s"3/4 q:   ${data2.apply(n * 3 / 4)}\n" +
       s"Maximum: ${data2.last}"
     })
   }
