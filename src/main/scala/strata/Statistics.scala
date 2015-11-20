@@ -167,12 +167,6 @@ object Statistics {
 //      println(s"$i: ${j.length}")
 //    }
 
-    println("----")
-    for (x <- data if x.strata_reason == 1 || x.strata_reason == 0) {
-      println(x.instr)
-    }
-    println("----")
-
     val imm8 = data2.map(x => if (x.strata_support) x.used_for + 1 else 0).sum.toDouble / 256.0
     val table = f"""
                    |Base set                           &  ${data.count(x => x.strata_reason == 0)}\\\\
@@ -211,12 +205,6 @@ object Statistics {
         writer.writeRow(Vector(level))
       }
     }
-
-    println("----")
-    for (x <- difficultyMap.keys) {
-      println(x)
-    }
-    println("----")
 
     // search progress
     val progressRows = messages.collect {

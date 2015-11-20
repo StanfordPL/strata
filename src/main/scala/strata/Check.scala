@@ -144,7 +144,6 @@ case class Check(options: CheckOptions) {
 //    println()
     val difficultyDist = Distribution(difficultyMap.values.map(_.toLong).toSeq)
     println(difficultyDist.info("path lengths for all instructions"))
-    return
 
     val debug = options.verbose
 
