@@ -205,6 +205,11 @@ object Statistics {
         writer.writeRow(Vector(level))
       }
     }
+    val lvls = difficultyDist.filter(_ > 0).sorted
+    val nlvl = lvls.length
+    println(f"Learned at stratum 1: ${lvls.count(_<=1).toDouble * 100.0 / nlvl.toDouble}%.2f")
+    println(f"50th percentile: ${lvls((0.5*nlvl).round.toInt)}")
+    println(f"90th percentile: ${lvls((0.9*nlvl).round.toInt)}")
 
     // search progress
     val progressRows = messages.collect {
