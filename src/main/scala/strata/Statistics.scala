@@ -19,6 +19,34 @@ import resource._
  */
 object Statistics {
 
+  def analysis(c: GlobalOptions) = {
+    val state = State(c)
+    val baseSet = state.getInstructionFile(InstructionFile.Base)
+    val checkOptions = CheckOptions()
+    val check = Check(checkOptions)
+    val circuitPath = checkOptions.circuitPath
+    val (instrs, graph) = check.dependencyGraph(circuitPath)
+    val programs = instrs.map(x => Check.getProgram(circuitPath, x))
+    val circuit2baseInstrUsed = collection.mutable.Map[Instruction, Set[Instruction]]()
+    for (instr <- graph.topologicalSort) {
+      val set = collection.mutable.Set[Instruction]()
+      for (impl <- Check.getProgram(circuitPath, instr).instructions) {
+        if (impl.hasLabel) {
+          //set += impl.label
+        } else if (baseSet.contains(impl)) {
+          set += impl
+        } else {
+          set ++= circuit2baseInstrUsed(impl)
+        }
+      }
+      circuit2baseInstrUsed(instr) = set.toSet
+    }
+    val base2UsedBy = baseSet.map(x => (x, instrs.filter(y => circuit2baseInstrUsed(y).contains(x)))).sortBy(x => x._2.length)
+    for ((i, is) <- base2UsedBy) {
+      println(s"${is.length}: $i")
+    }
+  }
+
   val CLEAR_CONSOLE: String = "\u001b[H\u001b[2J"
 
   /** Some adhoc statistics. */

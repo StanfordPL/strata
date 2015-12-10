@@ -168,7 +168,7 @@ case class Check(options: CheckOptions) {
           "--opcode", instruction)
         val (out, status) = IO.runQuiet(cmd)
         total += 1
-        val program = getProgram(instruction)
+        val program = Check.getProgram(options.circuitPath, instruction)
 
         // check if this uses an instruction that we already know to be wrong
         if (program.instructions.toSet.intersect(incorrectInstrs).nonEmpty && dontCheckWrong) {
@@ -248,11 +248,11 @@ case class Check(options: CheckOptions) {
     val graph = Graph[Instruction, DiEdge]()
 
     // get all instructions
-    val instructions = for (circuitFile <- circuitPath.listFiles if !isImm8CicuitFile(circuitFile)) yield {
+    val instructions = for (circuitFile <- circuitPath.listFiles if !Check.isImm8CicuitFile(circuitFile)) yield {
       Instruction(circuitFile.getName.substring(0, circuitFile.getName.length - 2))
     }
     // loop over all circuits
-    for (circuitFile <- circuitPath.listFiles if !isImm8CicuitFile(circuitFile)) {
+    for (circuitFile <- circuitPath.listFiles if !Check.isImm8CicuitFile(circuitFile)) {
       val program = Program.fromFile(circuitFile)
       val circuit = Instruction(circuitFile.getName.substring(0, circuitFile.getName.length - 2))
 
@@ -267,13 +267,15 @@ case class Check(options: CheckOptions) {
 
     (instructions, graph)
   }
+}
 
-  private def getProgram(instruction: Instruction): Program = {
-    Program.fromFile(new File(s"${options.circuitPath}/$instruction.s"))
+object Check {
+  def getProgram(circuitPath: File, instruction: Instruction): Program = {
+    Program.fromFile(new File(s"$circuitPath/$instruction.s"))
   }
 
   def isImm8CicuitFile(file: File) = {
-    val name = file.getName.substring(0, file.getName.length - 2);
+    val name = file.getName.substring(0, file.getName.length - 2)
     name.contains("_imm8_")
   }
 }
