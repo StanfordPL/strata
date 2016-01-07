@@ -28,23 +28,31 @@ object Statistics {
     val (instrs, graph) = check.dependencyGraph(circuitPath)
     val programs = instrs.map(x => Check.getProgram(circuitPath, x))
     val circuit2baseInstrUsed = collection.mutable.Map[Instruction, Set[Instruction]]()
+    val circuit2fullInlinedSize = collection.mutable.Map[Instruction, Long]()
     for (instr <- graph.topologicalSort) {
       val set = collection.mutable.Set[Instruction]()
+      var size: Long = 0
       for (impl <- Check.getProgram(circuitPath, instr).instructions) {
         if (impl.hasLabel) {
+          size += 1
           //set += impl.label
         } else if (baseSet.contains(impl)) {
+          size += 1
           set += impl
         } else {
+          size += circuit2fullInlinedSize(impl)
           set ++= circuit2baseInstrUsed(impl)
         }
       }
+      circuit2fullInlinedSize(instr) = size
       circuit2baseInstrUsed(instr) = set.toSet
     }
-    val base2UsedBy = baseSet.map(x => (x, instrs.filter(y => circuit2baseInstrUsed(y).contains(x)))).sortBy(x => x._2.length)
-    for ((i, is) <- base2UsedBy) {
-      println(s"${is.length}: $i")
-    }
+    println(Stats.describe(circuit2fullInlinedSize.values.toList, "number of instructions"))
+//    val base2UsedBy = baseSet.map(x => (x, instrs.filter(y => circuit2baseInstrUsed(y).contains(x)))).sortBy(x => x._2.length)
+//    for ((i, is) <- base2UsedBy) {
+//      println(s"${is.length}: $i")
+//      println("  " + is.mkString(", "))
+//    }
   }
 
   val CLEAR_CONSOLE: String = "\u001b[H\u001b[2J"
