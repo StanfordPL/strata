@@ -67,7 +67,7 @@ object Initialize {
     IO.info("collecting basic information for all instructions ...")
     val config = State(options.globalOptions)
     config.getInstructionFile(InstructionFile.RemainingGoal).par foreach { goal =>
-      IO.safeSubcommand(Vector("stoke/bin/specgen", "setup", "--workdir", workdir, "--opc", goal))
+      IO.safeSubcommand(Vector("stoke/bin/specgen", "setup", "--workdir", workdir, "--opc", goal), noStatus = true)
     }
 
     state.appendLog(LogInitEnd(timing.result))
