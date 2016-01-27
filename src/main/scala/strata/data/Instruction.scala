@@ -7,7 +7,7 @@ import scala.collection.mutable.ListBuffer
 /**
  * A x86_64 instruction.
  */
-case class Instruction(opcode: String) {
+case class Instruction(opcode: String)(implicit val label: String = "") {
   // test if opcode exists
   if (Instruction.all.isEmpty) {
     val stream = getClass.getResourceAsStream("/all.instrs")
@@ -28,7 +28,15 @@ case class Instruction(opcode: String) {
     throw new IllegalArgumentException(s"Opcode '$realOpcode' does not exist.")
   }
 
-  override def toString = opcode
+  val hasLabel = label != ""
+
+  override def toString = {
+//    if (hasLabel) {
+//      s"$opcode[$label]"
+//    } else {
+      opcode
+//    }
+  }
 
   /** Is this instruction a imm8 instruction? */
   val isImm8Instr = realOpcode != opcode

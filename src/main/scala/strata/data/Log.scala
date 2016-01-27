@@ -71,18 +71,6 @@ object Log {
   }
 }
 
-trait Top
-
-case class A(i: Int) extends Top
-
-case class B(globalOptions: GlobalOptions, instruction: Instruction, budget: Long) extends Top
-
-trait Top2
-
-case class A2(i: Int) extends Top2
-
-case class B2(s: String) extends Top2
-
 /**
  * Context information
  *

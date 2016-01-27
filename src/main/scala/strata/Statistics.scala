@@ -1,8 +1,10 @@
 package strata
 
-import java.io.File
+import java.io.{FileInputStream, File}
 
 import com.github.tototoshi.csv.CSVWriter
+import org.json4s.DefaultFormats
+import org.json4s.native.JsonMethods._
 import strata.data._
 import strata.tasks._
 import strata.util.ColoredOutput._
@@ -10,11 +12,48 @@ import strata.util._
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
+import resource._
 
 /**
  * A class to collect various statistics of the current run.
  */
 object Statistics {
+
+  def analysis(c: GlobalOptions) = {
+    val state = State(c)
+    val baseSet = state.getInstructionFile(InstructionFile.Base)
+    val checkOptions = CheckOptions()
+    val check = Check(checkOptions)
+    val circuitPath = checkOptions.circuitPath
+    val (instrs, graph) = check.dependencyGraph(circuitPath)
+    val programs = instrs.map(x => Check.getProgram(circuitPath, x))
+    val circuit2baseInstrUsed = collection.mutable.Map[Instruction, Set[Instruction]]()
+    val circuit2fullInlinedSize = collection.mutable.Map[Instruction, Long]()
+    for (instr <- graph.topologicalSort) {
+      val set = collection.mutable.Set[Instruction]()
+      var size: Long = 0
+      for (impl <- Check.getProgram(circuitPath, instr).instructions) {
+        if (impl.hasLabel) {
+          size += 1
+          //set += impl.label
+        } else if (baseSet.contains(impl)) {
+          size += 1
+          set += impl
+        } else {
+          size += circuit2fullInlinedSize(impl)
+          set ++= circuit2baseInstrUsed(impl)
+        }
+      }
+      circuit2fullInlinedSize(instr) = size
+      circuit2baseInstrUsed(instr) = set.toSet
+    }
+    println(Stats.describe(circuit2fullInlinedSize.values.toList, "number of instructions"))
+//    val base2UsedBy = baseSet.map(x => (x, instrs.filter(y => circuit2baseInstrUsed(y).contains(x)))).sortBy(x => x._2.length)
+//    for ((i, is) <- base2UsedBy) {
+//      println(s"${is.length}: $i")
+//      println("  " + is.mkString(", "))
+//    }
+  }
 
   val CLEAR_CONSOLE: String = "\u001b[H\u001b[2J"
 
@@ -27,22 +66,233 @@ object Statistics {
 
   }
 
+  case class InstructionStats(instr: String,
+                              is_base: Boolean, strata_support: Boolean, stoke_support: Boolean, strata_reason: Int,
+                              used_for: Int, strata: Option[Score], strata_long: Option[Score],
+                              stoke: Option[Score], delim: Int) {
+    override def toString = {
+      if (strata_support && stoke_support) {
+        s"$instr: ${stoke.get} / ${strata.get} (used for ${used_for+1})"
+      } else {
+        s"$instr (used for ${used_for+1})"
+      }
+    }
+  }
+
+  def processSpecgenStats(): Unit = {
+    val data = for (line <- IO.readFile(new File("stoke/stats.txt")).split("\n")) yield {
+      implicit val formats = DefaultFormats
+      parse(line).extract[InstructionStats]
+    }
+    val data2 = for (line <- IO.readFile(new File("stoke/stats2.txt")).split("\n")) yield {
+      implicit val formats = DefaultFormats
+      parse(line).extract[InstructionStats]
+    }
+    for (instr <- data) {
+      //      if (instr.strata_support && instr.stoke_support && instr.stoke.get.nodes > 0) {
+      //        println((instr.stoke.get.nodes - instr.strata.get.nodes).abs.toDouble / instr.stoke.get.nodes)
+      //      }
+//      if (!instr.stoke_support && instr.strata_support) {
+//        println(instr)
+//      }
+      if (instr.stoke.nonEmpty && instr.strata.nonEmpty) {
+        val s0 = instr.stoke.get
+        val s1 = instr.strata.get
+        if (s0.uif != s1.uif) {
+          println(s"uif: $instr (used ${instr.used_for+1} times)")
+        }
+        if (s0.mult != s1.mult) {
+          println(s"non-linear: $instr (used ${instr.used_for+1} times)")
+        }
+      }
+    }
+    val nStokeCircuits = data.count(p => p.stoke_support && p.strata_support) + data2.count(p => p.stoke_support && p.strata_support).toDouble / 256.0
+    val nStrataCircuits = data.count(p => p.strata_support) + data2.count(p => p.strata_support).toDouble / 256.0
+    println(f"We can formally compare to handwritten circuits for ${nStokeCircuits/nStrataCircuits * 100.0}%.2f%% or $nStokeCircuits")
+    val check = Check(CheckOptions())
+    for (instr <- data) {
+      if (check.missingLemma.contains(instr.instr)) {
+        println(s"${instr.instr} is used ${instr.used_for+1} times")
+//        assert(instr.used_for == 1)
+      }
+      if (check.stokeIsWrong.contains(instr.instr)) {
+//        println(s"${instr.instr} is used ${instr.used_for+1} times")
+        assert(instr.used_for == 1)
+      }
+    }
+    // all three absolut sizes
+    val rows = (for (instr <- data if instr.stoke.nonEmpty && instr.strata.nonEmpty) yield {
+      //      if (instr.strata_support && instr.stoke_support && instr.stoke.get.nodes > 0) {
+      //        println((instr.stoke.get.nodes - instr.strata.get.nodes).abs.toDouble / instr.stoke.get.nodes)
+      //      }
+      val s0 = instr.stoke.get
+      val s1 = instr.strata.get
+      val s2 = instr.strata_long.get
+      (s0.nodes, s1.nodes, s2.nodes)
+    }).sortBy(_._1)
+
+    val data2Both = data2.filter(p => p.strata_support && p.stoke_support).groupBy(x => x.instr.substring(0, x.instr.lastIndexOf("_")))
+    val data2Strata = data2.filter(p => p.strata_support).groupBy(x => x.instr.substring(0, x.instr.lastIndexOf("_")))
+
+    // compute relative increase
+    val strataInc = (for (instr <- data if instr.stoke.nonEmpty && instr.strata.nonEmpty) yield {
+      val n0 = instr.stoke.get.nodes
+      val n1 = instr.strata.get.nodes
+      val res = if (n0 == n1) {
+        1
+      } else {
+        n1.toDouble / n0.toDouble
+      }
+//      if (res > 5) {
+//        println(instr)
+//      }
+      List.fill(instr.used_for + 1)(res)
+    }).flatten ++ (for ((instr, list) <- data2Both) yield {
+      val n = list.length
+      val n0 = list.map(x => x.strata.get.nodes).sum.toDouble / n.toDouble
+      val n1 = list.map(x => x.strata.get.nodes).sum.toDouble / n.toDouble
+      val res = if (n0 == n1) {
+        1
+      } else {
+        n1 / n0
+      }
+      List.fill(list.head.used_for + 1)(res)
+    }).flatten
+    val simpleInc = (for (instr <- data if instr.strata_long.nonEmpty && instr.strata.nonEmpty) yield {
+      val n0 = instr.strata.get.nodes
+      val n1 = instr.strata_long.get.nodes
+      val res = if (n0 == n1) {
+        1
+      } else {
+        n1.toDouble / n0.toDouble
+      }
+      List.fill(instr.used_for + 1)(res)
+    }).flatten ++ (for ((instr, list) <- data2Strata) yield {
+      val n = list.length
+      val n0 = list.map(x => x.strata.get.nodes).sum.toDouble / n.toDouble
+      val n1 = list.map(x => x.strata.get.nodes).sum.toDouble / n.toDouble
+      val res = if (n0 == n1) {
+        1
+      } else {
+        n1 / n0
+      }
+      List.fill(list.head.used_for + 1)(res)
+    }).flatten
+
+    for (writer <- managed(CSVWriter.open(new File("../data-strata/strata-increase.csv")))) {
+      for (r <- strataInc) {
+        writer.writeRow(Vector(r))
+      }
+    }
+    println(Stats.describe(strataInc, "Strata circuits increase"))
+    for (writer <- managed(CSVWriter.open(new File("../data-strata/strata-simplication-increase.csv")))) {
+      for (r <- simpleInc) {
+        writer.writeRow(Vector(r))
+      }
+    }
+    println(Stats.describe(simpleInc, "Strata simplification increase"))
+    println(Stats.describe(rows.map(_._1), "stoke circuit size"))
+    println(Stats.describe(rows.map(_._2), "strata circuit size"))
+
+    println(s"Strata circuits that are smaller:  ${strataInc.count(x => x < 0)}")
+    println(s"Strata circuits that are the same: ${strataInc.count(x => x == 0)}")
+    println(s"Strata circuits that are larger:   ${strataInc.count(x => x > 0)}")
+
+    val immDistribution = data2.filter(p => p.strata_support).groupBy(x => x.instr.substring(0, x.instr.lastIndexOf("_")))
+//    for ((i, j) <- immDistribution) {
+//      println(s"$i: ${j.length}")
+//    }
+
+    val imm8 = data2.map(x => if (x.strata_support) x.used_for + 1 else 0).sum.toDouble / 256.0
+    val table = f"""
+                   |Base set                           &  ${data.count(x => x.strata_reason == 0)}\\\\
+                   |Pseudo instruction templates       &  11\\\\
+                   |\\midrule
+                   |Register-only variants learned      &  ${data.count(x => x.strata_reason == 1)}\\\\
+                   |Generalized (same-sized operands)  &  ${data.count(x => x.strata_reason == 2)}\\\\
+                   |Generalized (extending operands)   &  ${data.count(x => x.strata_reason == 3)}\\\\
+                   |Generalized (shrinking operands)   &  ${data.count(x => x.strata_reason == 4)}\\\\
+                   |8-bit constant instructions learned &  $imm8%.2f\\\\
+                   |\\midrule
+                   |\\textbf{Learned formulas in total} &  \\textbf{${data.count(x => x.strata_reason > 0) + imm8}%.2f}\\\\
+                   |""".stripMargin
+    println(table)
+    IO.writeFile(new File("../data-strata/result-table.tex"), table)
+  }
+
   /** Collect data for further analysis. */
   def collectData(globalOptions: GlobalOptions): Unit = {
     val state = State(globalOptions)
     val messages = state.getLogMessages
+    val startTime = if (messages.isEmpty) 0 else messages.head.time.toDate.getTime
 
-    // graph initial searches
-    val initialGraph = new File("../data-strata/initial-search.csv")
-    val writer = CSVWriter.open(initialGraph)
-    for (message <- messages) {
-      message match {
-        case LogTaskEnd(_, Some(InitialSearchTimeout(task, timing)), pt, time, _) =>
-          writer.writeRow(Vector(time.toDate.getTime, task.pseudoTime, task.budget))
-        case _ =>
+    // process output form specgen_statistics
+    processSpecgenStats()
+
+    // levels (NOTE: data comes from a different place: checkOptions.circuitPath)
+    val checkOptions = CheckOptions()
+    val check = Check(checkOptions)
+    val (strataInstrs, graph) = check.dependencyGraph(checkOptions.circuitPath)
+    val baseSet = state.getInstructionFile(InstructionFile.Base)
+    val difficultyMap: Map[Instruction, Int] = check.computeDifficultyMap(baseSet)
+    val difficultyDist = difficultyMap.values.map(_.toLong).toSeq
+    for (writer <- managed(CSVWriter.open(new File("../data-strata/levels.csv")))) {
+      for (level <- difficultyMap.values) {
+        writer.writeRow(Vector(level))
       }
     }
-    writer.close()
+    val lvls = difficultyDist.filter(_ > 0).sorted
+    val nlvl = lvls.length
+    println(f"Learned at stratum 1: ${lvls.count(_<=1).toDouble * 100.0 / nlvl.toDouble}%.2f")
+    println(f"50th percentile: ${lvls((0.5*nlvl).round.toInt)}")
+    println(f"90th percentile: ${lvls((0.9*nlvl).round.toInt)}")
+
+    // search progress
+    val progressRows = messages.collect {
+      case LogTaskEnd(_, _, pt, time, _) if pt > 0 =>
+        val tInMs = time.toDate.getTime - startTime
+        (tInMs.toDouble / (1000d * 60d * 60d), pt)
+    }.sortBy(x => x._1)
+    val baseSetSize = progressRows.map(_._2).min
+    // optimize by dropping intermediate unchanged elements
+    for (writer <- managed(CSVWriter.open(new File("../data-strata/progress.csv")))) {
+      var last = -1
+      for ((r, i) <- progressRows.zipWithIndex) {
+        if (r._2 != last || i == 0 || i == progressRows.size - 1) {
+          writer.writeRow(Vector(r._1, r._2 - baseSetSize))
+          last = r._2
+        }
+      }
+    }
+
+    // level vs timeouts
+    //    val initialTimeouts = messages.collect {
+    //      case LogTaskEnd(task: InitialSearchTask, Some(_: InitialSearchTimeout), _, _, _) =>
+    //        (task.instruction, task.budget)
+    //    }.groupBy(x => x._1).map(x => (x._1, x._2.map(_._2)))
+    //    for(writer <- managed(CSVWriter.open(new File("../data-strata/level-vs-attempts.csv")))) {
+    //      for ((instr, timeouts) <- initialTimeouts) {
+    //        // only do it for instruction where we succeeded
+    //        if (difficultyMap.contains(instr)) {
+    //          val level = difficultyMap(instr)._1
+    //          writer.writeRow(Vector(instr, level, timeouts.size, timeouts.sum))
+    //        }
+    //      }
+    //    }
+
+    // graph initial searches
+    //    val initialGraph = new File("../data-strata/initial-search.csv")
+    //    val _ = {
+    //      val writer = CSVWriter.open(initialGraph)
+    //      for (message <- messages) {
+    //        message match {
+    //          case LogTaskEnd(_, Some(InitialSearchTimeout(task, timing)), pt, time, _) =>
+    //            writer.writeRow(Vector(time.toDate.getTime, task.pseudoTime, task.budget))
+    //          case _ =>
+    //        }
+    //      }
+    //      writer.close()
+    //    }
 
     // initial search budgets
     val budgets = messages.collect {
@@ -80,22 +330,22 @@ object Statistics {
     println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.mult.toLong)).info("best program's # of multiplications/divisions"))
     println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.nodes.toLong)).info("best program's # of nodes"))
 
-    for ((instr, eq) <- eqs) {
-      val sorted = eq.getClasses()
-      val first = sorted.head
-      if (first.size < 3) {
-        println(instr)
-        val firstProg = first.getRepresentativeProgram
-        println(s"${first.size} -> ${firstProg.score}")
-        println(IO.indented(Program.fromFile(firstProg.getFile(instr, state)).toString))
-        if (sorted.length > 1) {
-          val sndProg = sorted(1).getRepresentativeProgram
-          println(s"${sorted(1).size} -> ${sndProg.score}")
-          println(IO.indented(Program.fromFile(sndProg.getFile(instr, state)).toString))
-        }
-        println("--------")
-      }
-    }
+    //    for ((instr, eq) <- eqs) {
+    //      val sorted = eq.getClasses()
+    //      val first = sorted.head
+    //      if (first.size < 3) {
+    //        println(instr)
+    //        val firstProg = first.getRepresentativeProgram
+    //        println(s"${first.size} -> ${firstProg.score}")
+    //        println(IO.indented(Program.fromFile(firstProg.getFile(instr, state)).toString))
+    //        if (sorted.length > 1) {
+    //          val sndProg = sorted(1).getRepresentativeProgram
+    //          println(s"${sorted(1).size} -> ${sndProg.score}")
+    //          println(IO.indented(Program.fromFile(sndProg.getFile(instr, state)).toString))
+    //        }
+    //        println("--------")
+    //      }
+    //    }
 
     println(s"Processed ${messages.length} messages")
   }

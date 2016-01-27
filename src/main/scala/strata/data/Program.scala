@@ -13,11 +13,22 @@ case class Program(instructions: Seq[Instruction], src: String) {
 object Program {
   def fromFile(f: File): Program = {
     val Pattern = "  (.*)#.*OPC=([^ ]*) *".r
+    val Pattern2 = "callq .(.*)".r
     val instructions = (for (line <- IO.readFile(f).split("\n")) yield {
       line match {
         case Pattern(code, opcode) =>
           if (opcode != "retq" && opcode != "<label>") {
-            Some((code, Instruction(opcode)))
+            if (opcode == "callq_label") {
+              code match {
+                case Pattern2(label) =>
+                  Some(code, Instruction(opcode)(label))
+                case _ =>
+                  assert(false)
+                  None
+              }
+            } else {
+              Some((code, Instruction(opcode)))
+            }
           } else {
             None
           }

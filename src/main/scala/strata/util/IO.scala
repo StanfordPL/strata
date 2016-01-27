@@ -73,8 +73,8 @@ object IO {
    * Run a command and return it's output (stderr and stdout) and exit code.
    * Uses the base directory as working directory by default.
    */
-  def runPrint(cmd: Seq[Any], workingDirectory: File = null): (String, Int) = {
-    IO.info(s"Running command '${cmd2String(cmd)}'")
+  def runPrint(cmd: Seq[Any], workingDirectory: File = null, noStatus: Boolean = false): (String, Int) = {
+    if (!noStatus) IO.info(s"Running command '${cmd2String(cmd)}'")
     run(cmd, s => print(s.gray), s => print(s.red), workingDirectory = workingDirectory)
   }
 
@@ -99,8 +99,8 @@ object IO {
   }
 
   /** Run a subcommand, show it's output and abort if it fails. */
-  def safeSubcommand(cmd: Seq[Any], workingDirectory: File = null): Unit = {
-    val (out, status) = runPrint(cmd, workingDirectory = workingDirectory)
+  def safeSubcommand(cmd: Seq[Any], workingDirectory: File = null, noStatus: Boolean = false): Unit = {
+    val (out, status) = runPrint(cmd, workingDirectory = workingDirectory, noStatus)
     if (status != 0) {
       error(s"Command failed: ${
         cmd2String(cmd)
