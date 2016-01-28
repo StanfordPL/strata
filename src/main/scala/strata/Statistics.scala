@@ -21,7 +21,7 @@ object Statistics {
 
   def analysis(c: GlobalOptions) = {
     val state = State(c)
-    val baseSet = state.getInstructionFile(InstructionFile.Base)
+    val baseSet = collection.mutable.Set[Instruction]()//state.getInstructionFile(InstructionFile.Base)
     val checkOptions = CheckOptions()
     val check = Check(checkOptions)
     val circuitPath = checkOptions.circuitPath
@@ -36,7 +36,8 @@ object Statistics {
         if (impl.hasLabel) {
           size += 1
           //set += impl.label
-        } else if (baseSet.contains(impl)) {
+        } else if (!circuit2baseInstrUsed.contains(impl)) { // must be base set
+          baseSet += impl
           size += 1
           set += impl
         } else {
@@ -48,10 +49,10 @@ object Statistics {
       circuit2baseInstrUsed(instr) = set.toSet
     }
     println(Stats.describe(circuit2fullInlinedSize.values.toList, "number of instructions"))
-    val base2UsedBy = baseSet.map(x => (x, instrs.filter(y => circuit2baseInstrUsed(y).contains(x)))).sortBy(x => x._2.length)
+    val base2UsedBy = baseSet.toSeq.map(x => (x, instrs.filter(y => circuit2baseInstrUsed(y).contains(x)))).sortBy(x => x._2.length)
     for ((i, is) <- base2UsedBy) {
       println(s"${is.length}: $i")
-//      println("  " + is.mkString(", "))
+      println("  " + is.mkString(", "))
     }
   }
 
