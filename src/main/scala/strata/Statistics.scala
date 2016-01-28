@@ -48,11 +48,11 @@ object Statistics {
       circuit2baseInstrUsed(instr) = set.toSet
     }
     println(Stats.describe(circuit2fullInlinedSize.values.toList, "number of instructions"))
-//    val base2UsedBy = baseSet.map(x => (x, instrs.filter(y => circuit2baseInstrUsed(y).contains(x)))).sortBy(x => x._2.length)
-//    for ((i, is) <- base2UsedBy) {
-//      println(s"${is.length}: $i")
+    val base2UsedBy = baseSet.map(x => (x, instrs.filter(y => circuit2baseInstrUsed(y).contains(x)))).sortBy(x => x._2.length)
+    for ((i, is) <- base2UsedBy) {
+      println(s"${is.length}: $i")
 //      println("  " + is.mkString(", "))
-//    }
+    }
   }
 
   val CLEAR_CONSOLE: String = "\u001b[H\u001b[2J"
