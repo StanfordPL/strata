@@ -171,6 +171,7 @@ class State(val globalOptions: GlobalOptions) {
   }
 
   def addScore(instruction: Instruction, score: Score): Unit = {
+    updateUifCache()
     scoreFileContents = Vector((instruction.opcode, score)) ++ scoreFileContents
     implicit val formats = Serialization.formats(NoTypeHints)
     val file = new File(s"$getInfoPath/${State.PATH_SCORE_CACHE}")
@@ -184,34 +185,38 @@ class State(val globalOptions: GlobalOptions) {
     }
     if (base.contains(instr)) {
       val baseUsesUIF = Vector(
-        "addsd_xmm_xmm",
-        "addss_xmm_xmm",
-        "cvtsd2sil_r32_xmm",
-        "cvtsd2siq_r64_xmm",
-        "cvtsd2ss_xmm_xmm",
-        "cvtsi2sdq_xmm_r64",
-        "cvtsi2ssq_xmm_r64",
-        "cvtss2sd_xmm_xmm",
-        "cvtss2sil_r32_xmm",
-        "cvtss2siq_r64_xmm",
-        "cvttsd2sil_r32_xmm",
-        "cvttsd2siq_r64_xmm",
-        "divsd_xmm_xmm",
-        "divss_xmm_xmm",
-        "maxsd_xmm_xmm",
-        "maxss_xmm_xmm",
-        "minsd_xmm_xmm",
-        "minss_xmm_xmm",
-        "mulsd_xmm_xmm",
-        "mulss_xmm_xmm",
-        "rcpss_xmm_xmm",
-        "rsqrtss_xmm_xmm",
-        "sqrtsd_xmm_xmm",
-        "sqrtss_xmm_xmm",
-        "subsd_xmm_xmm",
-        "subss_xmm_xmm",
-        "vfmadd132sd_xmm_xmm_xmm",
-        "vfmadd132ss_xmm_xmm_xmm"
+        "vaddpd_ymm_ymm_ymm",
+        "vaddps_ymm_ymm_ymm",
+        "vcvtdq2pd_ymm_ymm",
+        "vcvtdq2ps_ymm_ymm",
+        "vcvtpd2dq_xmm_ymm",
+        "vcvtpd2ps_xmm_ymm",
+        "vcvtps2dq_ymm_ymm",
+        "vcvtps2pd_ymm_xmm",
+        "vcvttpd2dq_xmm_ymm",
+        "vcvttps2dq_ymm_ymm",
+        "vdivpd_ymm_ymm_ymm",
+        "vdivps_ymm_ymm_ymm",
+        "vfmadd132pd_ymm_ymm_ymm",
+        "vfmadd132ps_ymm_ymm_ymm",
+        "vfmsub132pd_ymm_ymm_ymm",
+        "vfmsub132ps_ymm_ymm_ymm",
+        "vfnmadd132pd_ymm_ymm_ymm",
+        "vfnmadd132ps_ymm_ymm_ymm",
+        "vfnmsub132pd_ymm_ymm_ymm",
+        "vfnmsub132ps_ymm_ymm_ymm",
+        "vmaxpd_ymm_ymm_ymm",
+        "vmaxps_ymm_ymm_ymm",
+        "vminpd_ymm_ymm_ymm",
+        "vminps_ymm_ymm_ymm",
+        "vmulpd_ymm_ymm_ymm",
+        "vmulps_ymm_ymm_ymm",
+        "vrcpps_ymm_ymm",
+        "vrsqrtps_ymm_ymm",
+        "vsqrtpd_ymm_ymm",
+        "vsqrtps_ymm_ymm",
+        "vsubpd_ymm_ymm_ymm",
+        "vsubps_ymm_ymm_ymm"
       )
       return baseUsesUIF.contains(instr.opcode)
     }

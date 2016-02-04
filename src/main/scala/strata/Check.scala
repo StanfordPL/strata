@@ -86,29 +86,29 @@ case class Check(options: CheckOptions) {
 
   val missingLemma = Vector(
     // different convert (lemma)
-    "cvtsi2ssl_xmm_r32",
-    "vcvtdq2ps_xmm_xmm",
-    "cvtsi2sdl_xmm_r32",
-    "vcvtdq2pd_xmm_xmm",
-    "vcvtdq2pd_ymm_ymm",
-    "cvtdq2ps_xmm_xmm",
-    "vcvtdq2ps_ymm_ymm",
-    "cvtdq2pd_xmm_xmm",
-
-    // fused with 0 operand
-    "mulps_xmm_xmm",
-    "vmulps_xmm_xmm_xmm",
-    "vmulps_ymm_ymm_ymm",
-
-    // noop fused with two 0 operands
-    "addps_xmm_xmm",
-    "vaddps_xmm_xmm_xmm",
-
-    // add is commutative
-    "haddpd_xmm_xmm",
-    "vhaddpd_ymm_ymm_ymm",
-    "vhaddpd_xmm_xmm_xmm",
-    "vaddpd_ymm_ymm_ymm"
+//    "cvtsi2ssl_xmm_r32",
+//    "vcvtdq2ps_xmm_xmm",
+//    "cvtsi2sdl_xmm_r32",
+//    "vcvtdq2pd_xmm_xmm",
+//    "vcvtdq2pd_ymm_ymm",
+//    "cvtdq2ps_xmm_xmm",
+//    "vcvtdq2ps_ymm_ymm",
+//    "cvtdq2pd_xmm_xmm",
+//
+//    // fused with 0 operand
+//    "mulps_xmm_xmm",
+//    "vmulps_xmm_xmm_xmm",
+//    "vmulps_ymm_ymm_ymm",
+//
+//    // noop fused with two 0 operands
+//    "addps_xmm_xmm",
+//    "vaddps_xmm_xmm_xmm",
+//
+//    // add is commutative
+//    "haddpd_xmm_xmm",
+//    "vhaddpd_ymm_ymm_ymm",
+//    "vhaddpd_xmm_xmm_xmm",
+//    "vaddpd_ymm_ymm_ymm"
     //    "cvtsi2ssl_xmm_r32",
     //    "cvtsi2sdl_xmm_r32",
     //    "vcvtdq2pd_xmm_xmm",
