@@ -350,7 +350,7 @@ object Strata {
  */
 case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home")}/dev/output-strata",
                          verbose: Boolean = false, keepTmpDirs: Boolean = false) {
-  val workdir = new File(workdirPath)
+  val workdir = new File(workdirPath).getAbsoluteFile
 }
 
 case class InitOptions(globalOptions: GlobalOptions, imm_instructions: Boolean = false)
