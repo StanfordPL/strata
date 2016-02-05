@@ -5,9 +5,11 @@ build:
 	sbt compile
 
 debug: build
+	cd stoke && ./configure.sh
 	$(MAKE) -C stoke debug
 
 stoke:
+	cd stoke && ./configure.sh
 	$(MAKE) -C stoke all
 
 clean:
