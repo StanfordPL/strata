@@ -14,6 +14,7 @@ stoke:
 
 clean:
 	sbt clean
+	cd stoke && ./configure.sh
 	$(MAKE) -C stoke clean
 
 update_imm8_base:
