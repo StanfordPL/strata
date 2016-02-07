@@ -61,6 +61,9 @@ object Strata {
           opt[Unit]('i', "imm_instructions") action {
             (x, c) => c.copy(imm_instructions = true)
           }
+          opt[Int]("imm_block") action {
+            (x, c) => c.copy(imm_block = x)
+          }
         }
         parser.parse(localArgs, InitOptions(GlobalOptions(), false)) match {
           case Some(c) =>
@@ -353,6 +356,6 @@ case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home
   val workdir = new File(workdirPath).getAbsoluteFile
 }
 
-case class InitOptions(globalOptions: GlobalOptions, imm_instructions: Boolean = false)
+case class InitOptions(globalOptions: GlobalOptions, imm_instructions: Boolean = false, imm_block: Int = 0)
 
 case class CheckOptions(circuitPath: File = new File(s"${System.getProperty("user.home")}/dev/circuits"), verbose: Boolean = false)
