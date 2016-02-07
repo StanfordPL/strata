@@ -87,6 +87,9 @@ object Strata {
             opt[Unit]('i', "imm_instructions") action {
               (x, c) => c.copy(imm_instructions = true)
             }
+            opt[Int]("imm_block") action {
+              (x, c) => c.copy(imm_block = x)
+            }
           }
           parser.parse(localArgs, InitOptions(GlobalOptions())) match {
             case Some(c) =>
@@ -99,15 +102,21 @@ object Strata {
 
       ("continue", "Continue an already running run of strata",
         (localArgs: Array[String], helpStr: String) => {
-          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
+          val parser = new scopt.OptionParser[InitOptions]("strata") {
             head(shortDescription)
             note(helpStr)
 
-            addGlobalOptions(this, "continue", normalUpdateGlobal)
+            addGlobalOptions(this, "continue",
+              (workdir: Option[File], verbose: Option[Boolean], keepTmpDirs: Option[Boolean], c: InitOptions) => {
+                c.copy(globalOptions = normalUpdateGlobal(workdir, verbose, keepTmpDirs, c.globalOptions))
+              })
+            opt[Unit]('i', "imm_instructions") action {
+              (x, c) => c.copy(imm_instructions = true)
+            }
           }
-          parser.parse(localArgs, GlobalOptions()) match {
+          parser.parse(localArgs, InitOptions(GlobalOptions())) match {
             case Some(c) =>
-              Driver(InitOptions(c)).run(args, continue=true)
+              Driver(c).run(args, continue=true)
             case None =>
               // arguments are bad, error message will have been displayed
               sys.exit(1)
