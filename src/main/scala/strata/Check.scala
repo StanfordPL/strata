@@ -50,6 +50,7 @@ case class Check(options: CheckOptions) {
     "vcvtpd2ps_xmm_xmm",
     "cvttpd2dq_xmm_xmm",
     "vcvttpd2dq_xmm_xmm",
+    "cvtpd2dq_xmm_xmm",
 
     // should convert 4 packed doubles, but only converts 2
     "vcvtpd2ps_xmm_ymm",

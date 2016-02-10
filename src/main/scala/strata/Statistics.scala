@@ -118,7 +118,7 @@ object Statistics {
       }
       if (check.stokeIsWrong.contains(instr.instr)) {
 //        println(s"${instr.instr} is used ${instr.used_for+1} times")
-        assert(instr.used_for == 1)
+        assert(instr.used_for <= 1)
       }
     }
     // all three absolut sizes
@@ -131,6 +131,17 @@ object Statistics {
       val s2 = instr.strata_long.get
       (s0.nodes, s1.nodes, s2.nodes)
     }).sortBy(_._1)
+
+    val sizeComparison = (for (instr <- data if instr.stoke.nonEmpty && instr.strata.nonEmpty) yield {
+      //      if (instr.strata_support && instr.stoke_support && instr.stoke.get.nodes > 0) {
+      //        println((instr.stoke.get.nodes - instr.strata.get.nodes).abs.toDouble / instr.stoke.get.nodes)
+      //      }
+      val s0 = instr.stoke.get
+      val s1 = instr.strata.get
+      val s2 = instr.strata_long.get
+      (instr, s1.nodes.toDouble/s0.nodes.toDouble, s0.nodes, s1.nodes)
+    }).sortBy(_._2).reverse
+    println(sizeComparison.take(40).mkString("\n"))
 
     val data2Both = data2.filter(p => p.strata_support && p.stoke_support).groupBy(x => x.instr.substring(0, x.instr.lastIndexOf("_")))
     val data2Strata = data2.filter(p => p.strata_support).groupBy(x => x.instr.substring(0, x.instr.lastIndexOf("_")))
@@ -226,6 +237,15 @@ object Statistics {
     val state = State(globalOptions)
     val messages = state.getLogMessages
     val startTime = if (messages.isEmpty) 0 else messages.head.time.toDate.getTime
+
+//    val successes = messages.collect({
+////      case LogTaskEnd(_, Some(s: InitialSearchSuccess), _, _, _) =>
+////        s.task.instruction
+//      case LogEquivalenceClasses(instr, _, _, _) =>
+//        instr
+//    })
+//    println(successes)
+//    println(successes.size)
 
     // process output form specgen_statistics
     processSpecgenStats()
