@@ -21,10 +21,14 @@ bin/statistics-regs.json:
 	# cache statistics about instructions and formulas (e.g. formula size)
 	stoke/bin/specgen_statistics --circuit_dir ../strata-data/circuits > in/statistics-regs.json
 
+bin/statistics-imm8.json:
+	# cache statistics about instructions and formulas (e.g. formula size)
+	stoke/bin/specgen_statistics --circuit_dir ../strata-data/circuits --two > in/statistics-imm8.json
+
 bin:
 	mkdir bin
 
-evaluate: bin bin/statistics-regs.json
+evaluate: bin bin/statistics-regs.json bin bin/statistics-imm8.json
 	echo "yes"
 
 update_imm8_base:
