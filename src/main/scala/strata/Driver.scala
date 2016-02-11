@@ -128,6 +128,7 @@ class Driver(initOptions: InitOptions) {
     val instr = taskRes.instruction
     val minEqClassSize = 2
     def moveProgramToCircuitDir(meta: InstructionMeta, n: Int): Unit = {
+      if (initOptions.no_stratification) return
       val eqClasses = meta.equivalence_classes.getClasses(minEqClassSize)
       // copy a file to the circuits directory
       val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")

@@ -64,6 +64,9 @@ object Strata {
           opt[Int]("imm_block") action {
             (x, c) => c.copy(imm_block = x)
           }
+          opt[Unit]("no_stratification") action {
+            (x, c) => c.copy(no_stratification = true)
+          }
         }
         parser.parse(localArgs, InitOptions(GlobalOptions(), false)) match {
           case Some(c) =>
@@ -89,6 +92,9 @@ object Strata {
             }
             opt[Int]("imm_block") action {
               (x, c) => c.copy(imm_block = x)
+            }
+            opt[Unit]("no_stratification") action {
+              (x, c) => c.copy(no_stratification = true)
             }
           }
           parser.parse(localArgs, InitOptions(GlobalOptions())) match {
@@ -375,7 +381,7 @@ case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home
   val workdir = new File(workdirPath).getAbsoluteFile
 }
 
-case class InitOptions(globalOptions: GlobalOptions, imm_instructions: Boolean = false, imm_block: Int = 0)
+case class InitOptions(globalOptions: GlobalOptions, imm_instructions: Boolean = false, imm_block: Int = 0, no_stratification: Boolean = false)
 
 case class EvaluateOptions(dataPath: File = new File(s"../strata-data"), verbose: Boolean = false) {
   def circuitPath = new File(s"$dataPath/circuits")
