@@ -174,15 +174,20 @@ object Strata {
           }
         }),
 
-      ("data", "Collect data for a later analysis (e.g., to produce graphs)",
+      ("evaluate", "Evaluate the data from an experiment (to later produce graphs, etc.)",
         (localArgs: Array[String], helpStr: String) => {
-          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
+          val parser = new scopt.OptionParser[EvaluateOptions]("strata") {
             head(shortDescription)
             note(helpStr)
-
-            addGlobalOptions(this, "data", normalUpdateGlobal)
+            help("help") text s"Usage information for the evaluate command"
+            opt[File]("dataPath") valueName ("<dir>") action {
+              (x, c) => c.copy(dataPath = x)
+            } text (s"The directory where the output of the experiment is stored. Default: ${EvaluateOptions().dataPath}")
+            opt[Unit]('v', "verbose") action {
+              (x, c) => c.copy(verbose = true)
+            } text (s"Verbose output.  Default: ${EvaluateOptions().verbose}")
           }
-          parser.parse(localArgs, GlobalOptions()) match {
+          parser.parse(localArgs, EvaluateOptions()) match {
             case Some(c) =>
               Statistics.collectData(c)
             case None =>
@@ -193,13 +198,18 @@ object Strata {
 
       ("analysis", "Analyise use of base set instruction usage",
         (localArgs: Array[String], helpStr: String) => {
-          val parser = new scopt.OptionParser[GlobalOptions]("strata") {
+          val parser = new scopt.OptionParser[EvaluateOptions]("strata") {
             head(shortDescription)
             note(helpStr)
-
-            addGlobalOptions(this, "analysis", normalUpdateGlobal)
+            help("help") text s"Usage information for the analysis command"
+            opt[File]("dataPath") valueName ("<dir>") action {
+              (x, c) => c.copy(dataPath = x)
+            } text (s"The directory where the output of the experiment is stored. Default: ${EvaluateOptions().dataPath}")
+            opt[Unit]('v', "verbose") action {
+              (x, c) => c.copy(verbose = true)
+            } text (s"Verbose output.  Default: ${EvaluateOptions().verbose}")
           }
-          parser.parse(localArgs, GlobalOptions()) match {
+          parser.parse(localArgs, EvaluateOptions()) match {
             case Some(c) =>
               Statistics.analysis(c)
             case None =>
@@ -246,18 +256,18 @@ object Strata {
 
       ("check", "Check the circuits found by strata against the circuits used in STOKE.",
         (localArgs: Array[String], helpStr: String) => {
-          val parser = new scopt.OptionParser[CheckOptions]("strata") {
+          val parser = new scopt.OptionParser[EvaluateOptions]("strata") {
             head(shortDescription)
             note(helpStr)
             help("help") text s"Usage information for the check command"
-            opt[File]("circuitPath") valueName ("<dir>") action {
-              (x, c) => c.copy(x)
-            } text (s"The directory where outputs and intermediate progress are stored. Default: ${GlobalOptions().workdir}")
+            opt[File]("dataPath") valueName ("<dir>") action {
+              (x, c) => c.copy(dataPath = x)
+            } text (s"The directory where the output of the experiment is stored. Default: ${EvaluateOptions().dataPath}")
             opt[Unit]('v', "verbose") action {
               (x, c) => c.copy(verbose = true)
-            } text (s"Verbose output.  Default: ${CheckOptions().verbose}")
+            } text (s"Verbose output.  Default: ${EvaluateOptions().verbose}")
           }
-          parser.parse(localArgs, CheckOptions()) match {
+          parser.parse(localArgs, EvaluateOptions()) match {
             case Some(c) =>
               Check(c).run()
             case None =>
@@ -367,4 +377,6 @@ case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home
 
 case class InitOptions(globalOptions: GlobalOptions, imm_instructions: Boolean = false, imm_block: Int = 0)
 
-case class CheckOptions(circuitPath: File = new File(s"${System.getProperty("user.home")}/dev/circuits"), verbose: Boolean = false)
+case class EvaluateOptions(dataPath: File = new File(s"../strata-data"), verbose: Boolean = false) {
+  def circuitPath = new File(s"$dataPath/circuits")
+}

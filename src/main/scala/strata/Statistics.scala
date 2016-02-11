@@ -19,12 +19,11 @@ import resource._
  */
 object Statistics {
 
-  def analysis(c: GlobalOptions) = {
-    val state = State(c)
+  def analysis(c: EvaluateOptions) = {
+//    val state = State(c)
     val baseSet = collection.mutable.Set[Instruction]()//state.getInstructionFile(InstructionFile.Base)
-    val checkOptions = CheckOptions()
-    val check = Check(checkOptions)
-    val circuitPath = checkOptions.circuitPath
+    val check = Check(c)
+    val circuitPath = c.circuitPath
     val (instrs, graph) = check.dependencyGraph(circuitPath)
     val programs = instrs.map(x => Check.getProgram(circuitPath, x))
     val circuit2baseInstrUsed = collection.mutable.Map[Instruction, Set[Instruction]]()
@@ -80,15 +79,25 @@ object Statistics {
     }
   }
 
+  def readInstructionStatsBase: (Seq[InstructionStats], Seq[InstructionStats]) = {
+    val data = for (line <- IO.readFile(new File("bin/statistics-regs.json")).split("\n")) yield {
+      implicit val formats = DefaultFormats
+      parse(line).extract[InstructionStats]
+    }
+    val data2 = for (line <- IO.readFile(new File("bin/statistics-imm8.json")).split("\n")) yield {
+      implicit val formats = DefaultFormats
+      parse(line).extract[InstructionStats]
+    }
+    (data, data2)
+  }
+
+  def readInstructionStats: Map[Instruction, InstructionStats] = {
+    val (a, b) = readInstructionStatsBase
+    (a ++ b).filter(x => x.instr != "<label>").map(x => Instruction(x.instr) -> x).toMap
+  }
+
   def processSpecgenStats(): Unit = {
-    val data = for (line <- IO.readFile(new File("stoke/stats.txt")).split("\n")) yield {
-      implicit val formats = DefaultFormats
-      parse(line).extract[InstructionStats]
-    }
-    val data2 = for (line <- IO.readFile(new File("stoke/stats2.txt")).split("\n")) yield {
-      implicit val formats = DefaultFormats
-      parse(line).extract[InstructionStats]
-    }
+    val (data, data2) = readInstructionStatsBase
     for (instr <- data) {
       //      if (instr.strata_support && instr.stoke_support && instr.stoke.get.nodes > 0) {
       //        println((instr.stoke.get.nodes - instr.strata.get.nodes).abs.toDouble / instr.stoke.get.nodes)
@@ -110,17 +119,17 @@ object Statistics {
     val nStokeCircuits = data.count(p => p.stoke_support && p.strata_support) + data2.count(p => p.stoke_support && p.strata_support).toDouble / 256.0
     val nStrataCircuits = data.count(p => p.strata_support) + data2.count(p => p.strata_support).toDouble / 256.0
     println(f"We can formally compare to handwritten circuits for ${nStokeCircuits/nStrataCircuits * 100.0}%.2f%% or $nStokeCircuits")
-    val check = Check(CheckOptions())
-    for (instr <- data) {
-      if (check.missingLemma.contains(instr.instr)) {
-        println(s"${instr.instr} is used ${instr.used_for+1} times")
-//        assert(instr.used_for == 1)
-      }
-      if (check.stokeIsWrong.contains(instr.instr)) {
+//    val check = Check(EvaluateOptions())
+//    for (instr <- data) {
+//      if (check.missingLemma.contains(instr.instr)) {
 //        println(s"${instr.instr} is used ${instr.used_for+1} times")
-        assert(instr.used_for <= 1)
-      }
-    }
+////        assert(instr.used_for == 1)
+//      }
+//      if (check.stokeIsWrong.contains(instr.instr)) {
+////        println(s"${instr.instr} is used ${instr.used_for+1} times")
+//        assert(instr.used_for == 1)
+//      }
+//    }
     // all three absolut sizes
     val rows = (for (instr <- data if instr.stoke.nonEmpty && instr.strata.nonEmpty) yield {
       //      if (instr.strata_support && instr.stoke_support && instr.stoke.get.nodes > 0) {
@@ -215,6 +224,10 @@ object Statistics {
 //      println(s"$i: ${j.length}")
 //    }
 
+    for (x <- data) {
+      if (x.strata_reason > 0) println(x.instr)
+    }
+
     val imm8 = data2.map(x => if (x.strata_support) x.used_for + 1 else 0).sum.toDouble / 256.0
     val table = f"""
                    |Base set                           &  ${data.count(x => x.strata_reason == 0)}\\\\
@@ -233,10 +246,34 @@ object Statistics {
   }
 
   /** Collect data for further analysis. */
-  def collectData(globalOptions: GlobalOptions): Unit = {
-    val state = State(globalOptions)
-    val messages = state.getLogMessages
-    val startTime = if (messages.isEmpty) 0 else messages.head.time.toDate.getTime
+  def collectData(evalOptions: EvaluateOptions): Unit = {
+    val regState = State(GlobalOptions(workdirPath = s"${evalOptions.dataPath}/data-regs"))
+    val messages = regState.getLogMessages
+
+    // ensure that there is only a single entry point per host
+    val startTimes = collection.mutable.Map[String, Long]()
+    for (i <- messages.collect({ case x: LogEntryPoint if x.arguments(0) != "cleanup" => x })) {
+      assert(!startTimes.contains(i.context.hostname))
+      startTimes(i.context.hostname) = i.time.toDate.getTime
+    }
+    // determine start times (taking into account breaks between entry points)
+    val offsets = collection.mutable.Map[String, Long]()
+    val timeData = messages.groupBy(x => x.context.hostname).map(x => {
+      val a = x._2.map(x => x.time.toDate.getTime)
+      (x._1, a.min, a.max)
+    }).toList.sortBy(x => x._2)
+    var lastEndTime = 0L
+    var runSoFar = 0L
+    for (i <- timeData) {
+      if (lastEndTime == 0L) {
+        offsets(i._1) = i._2 // offset is just the start time
+      } else {
+        assert(i._2 >= lastEndTime)
+        offsets(i._1) = i._2 - runSoFar
+      }
+      lastEndTime = i._3
+      runSoFar = i._3 - i._2
+    }
 
 //    val successes = messages.collect({
 ////      case LogTaskEnd(_, Some(s: InitialSearchSuccess), _, _, _) =>
@@ -251,13 +288,12 @@ object Statistics {
     processSpecgenStats()
 
     // levels (NOTE: data comes from a different place: checkOptions.circuitPath)
-    val checkOptions = CheckOptions()
-    val check = Check(checkOptions)
-    val (strataInstrs, graph) = check.dependencyGraph(checkOptions.circuitPath)
-    val baseSet = state.getInstructionFile(InstructionFile.Base)
+    val check = Check(evalOptions)
+    val (strataInstrs, graph) = check.dependencyGraph(evalOptions.circuitPath)
+    val baseSet = regState.getInstructionFile(InstructionFile.Base)
     val difficultyMap: Map[Instruction, Int] = check.computeDifficultyMap(baseSet)
     val difficultyDist = difficultyMap.values.map(_.toLong).toSeq
-    for (writer <- managed(CSVWriter.open(new File("../data-strata/levels.csv")))) {
+    for (writer <- managed(CSVWriter.open(new File("bin/levels.csv")))) {
       for (level <- difficultyMap.values) {
         writer.writeRow(Vector(level))
       }
@@ -270,13 +306,14 @@ object Statistics {
 
     // search progress
     val progressRows = messages.collect {
-      case LogTaskEnd(_, _, pt, time, _) if pt > 0 =>
-        val tInMs = time.toDate.getTime - startTime
+      case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
+        assert(offsets.contains(ctx.hostname))
+        val tInMs = time.toDate.getTime - offsets(ctx.hostname)
         (tInMs.toDouble / (1000d * 60d * 60d), pt)
     }.sortBy(x => x._1)
     val baseSetSize = progressRows.map(_._2).min
     // optimize by dropping intermediate unchanged elements
-    for (writer <- managed(CSVWriter.open(new File("../data-strata/progress.csv")))) {
+    for (writer <- managed(CSVWriter.open(new File("bin/progress.csv")))) {
       var last = -1
       for ((r, i) <- progressRows.zipWithIndex) {
         if (r._2 != last || i == 0 || i == progressRows.size - 1) {
@@ -285,6 +322,8 @@ object Statistics {
         }
       }
     }
+
+    println(s"Processed ${messages.length} messages")
 
     // level vs timeouts
     //    val initialTimeouts = messages.collect {
@@ -316,40 +355,40 @@ object Statistics {
     //    }
 
     // initial search budgets
-    val budgets = messages.collect {
-      case LogTaskEnd(InitialSearchTask(_, _, budget, _), _, _, _, _) => budget
-    }
-    println(Distribution(budgets.map(x => Math.log(x).toLong)).info("initial search budget"))
+//    val budgets = messages.collect {
+//      case LogTaskEnd(InitialSearchTask(_, _, budget, _), _, _, _, _) => budget
+//    }
+//    println(Distribution(budgets.map(x => Math.log(x).toLong)).info("initial search budget"))
 
     // length of secondary search
-    val sndSearch = messages.collect {
-      case LogTaskEnd(SecondarySearchTask(_, instr, budget, _), Some(r), _, _, _) =>
-        (instr, r.timing.search)
-    }
-    val totalSearchTimes = sndSearch.groupBy(x => x._1).values.map(x => x.map(_._2).sum)
-    println(Distribution(totalSearchTimes.toSeq.map(x => x / 1000 / 1000 / 1000 / 60)).info("secondary search times"))
-    val nn = totalSearchTimes.size
-    if (nn > 0) {
-      val sorted1 = totalSearchTimes.toSeq.sorted
-      for (i <- 0 to 9) {
-        println(s"$i: " + IO.formatNanos(sorted1(nn * 10 * i / 100)))
-      }
-    }
+//    val sndSearch = messages.collect {
+//      case LogTaskEnd(SecondarySearchTask(_, instr, budget, _), Some(r), _, _, _) =>
+//        (instr, r.timing.search)
+//    }
+//    val totalSearchTimes = sndSearch.groupBy(x => x._1).values.map(x => x.map(_._2).sum)
+//    println(Distribution(totalSearchTimes.toSeq.map(x => x / 1000 / 1000 / 1000 / 60)).info("secondary search times"))
+//    val nn = totalSearchTimes.size
+//    if (nn > 0) {
+//      val sorted1 = totalSearchTimes.toSeq.sorted
+//      for (i <- 0 to 9) {
+//        println(s"$i: " + IO.formatNanos(sorted1(nn * 10 * i / 100)))
+//      }
+//    }
 
     // equivalence class statistics
-    val eqs = messages.collect {
-      case LogEquivalenceClasses(instr, eq, _, _) =>
-        (instr, eq)
-    }
-    val firstEq = eqs.map(x => x._2.getClasses().head)
-    val secondEq = eqs.flatMap(x => if (x._2.nClasses <= 1) None else Some(x._2.getClasses().seq(1)))
-    println(Distribution(firstEq.map(x => x.size.toLong)).info("size of first equivalence class"))
-    println(Distribution(secondEq.map(x => x.size.toLong)).info("size of second equivalence class"))
-    //println(Distribution(eqs.map(x => x._2.getClasses().map(y => y.size).sum.toLong)).info("all programs"))
-
-    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.uif.toLong)).info("best program's # of UIF"))
-    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.mult.toLong)).info("best program's # of multiplications/divisions"))
-    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.nodes.toLong)).info("best program's # of nodes"))
+//    val eqs = messages.collect {
+//      case LogEquivalenceClasses(instr, eq, _, _) =>
+//        (instr, eq)
+//    }
+//    val firstEq = eqs.map(x => x._2.getClasses().head)
+//    val secondEq = eqs.flatMap(x => if (x._2.nClasses <= 1) None else Some(x._2.getClasses().seq(1)))
+//    println(Distribution(firstEq.map(x => x.size.toLong)).info("size of first equivalence class"))
+//    println(Distribution(secondEq.map(x => x.size.toLong)).info("size of second equivalence class"))
+//    //println(Distribution(eqs.map(x => x._2.getClasses().map(y => y.size).sum.toLong)).info("all programs"))
+//
+//    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.uif.toLong)).info("best program's # of UIF"))
+//    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.mult.toLong)).info("best program's # of multiplications/divisions"))
+//    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.nodes.toLong)).info("best program's # of nodes"))
 
     //    for ((instr, eq) <- eqs) {
     //      val sorted = eq.getClasses()
@@ -367,8 +406,6 @@ object Statistics {
     //        println("--------")
     //      }
     //    }
-
-    println(s"Processed ${messages.length} messages")
   }
 
   /** Show statistics and update them periodically. */

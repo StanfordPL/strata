@@ -18,7 +18,7 @@ import scalax.collection.io.dot.implicits._
 /**
  * Check strata circuits against hand-written circuits in STOKE.
  */
-case class Check(options: CheckOptions) {
+case class Check(options: EvaluateOptions) {
 
   implicit def orderingForPair1: Ordering[(Int, Instruction)] = Ordering.by(e => e._1)
 
@@ -29,8 +29,6 @@ case class Check(options: CheckOptions) {
     "vaddsd_xmm_xmm_xmm",
     "vsubsd_xmm_xmm_xmm",
     "vdivsd_xmm_xmm_xmm",
-    "vcvtsi2sdq_xmm_xmm_r64",
-    "vcvtsi2ssq_xmm_xmm_r64",
     "vmulsd_xmm_xmm_xmm",
     "vrcpss_xmm_xmm_xmm",
     "vcvtsd2ss_xmm_xmm_xmm",
@@ -52,81 +50,36 @@ case class Check(options: CheckOptions) {
     "vcvttpd2dq_xmm_xmm",
     "cvtpd2dq_xmm_xmm",
 
-    // should convert 4 packed doubles, but only converts 2
-    "vcvtpd2ps_xmm_ymm",
-    "vcvttpd2dq_xmm_ymm",
-
     // should do add in upper bits and sub in lower bits, but reverses the two
     "addsubps_xmm_xmm",
     "vaddsubps_xmm_xmm_xmm",
     "vaddsubpd_xmm_xmm_xmm",
     "addsubpd_xmm_xmm",
     "vaddsubpd_ymm_ymm_ymm"
-    //    "vaddss_xmm_xmm_xmm",
-    //    "vcvtss2sd_xmm_xmm_xmm",
-    //    "vcvtsi2ssl_xmm_xmm_r32",
-    //    "vcvtsi2sdl_xmm_xmm_r32",
-    //    "vsqrtsd_xmm_xmm_xmm",
-    //    "vaddsd_xmm_xmm_xmm",
-    //    "vrcpss_xmm_xmm_xmm",
-    //    "vcvtsd2ss_xmm_xmm_xmm",
-    //    "vsubss_xmm_xmm_xmm",
-    //    "vsubss_xmm_xmm_xmm",
-    //    "vcvtsi2sdq_xmm_xmm_r64",
-    //    "vdivss_xmm_xmm_xmm",
-    //    "vsqrtss_xmm_xmm_xmm",
-    //    "vrsqrtss_xmm_xmm_xmm",
-    //    "vsubsd_xmm_xmm_xmm",
-    //    "vcvtsi2ssq_xmm_xmm_r64",
-    //    "vdivsd_xmm_xmm_xmm",
-    //    "vmulsd_xmm_xmm_xmm",
-    //    "vmulss_xmm_xmm_xmm",
-    //    "vcvttpd2dq_xmm_xmm",
-    //    "vcvtpd2ps_xmm_xmm"
   )
 
   val missingLemma = Vector(
-    // different convert (lemma)
-//    "cvtsi2ssl_xmm_r32",
-//    "vcvtdq2ps_xmm_xmm",
-//    "cvtsi2sdl_xmm_r32",
-//    "vcvtdq2pd_xmm_xmm",
-//    "vcvtdq2pd_ymm_ymm",
-//    "cvtdq2ps_xmm_xmm",
-//    "vcvtdq2ps_ymm_ymm",
-//    "cvtdq2pd_xmm_xmm",
-//
-//    // fused with 0 operand
-//    "mulps_xmm_xmm",
-//    "vmulps_xmm_xmm_xmm",
-//    "vmulps_ymm_ymm_ymm",
-//
-//    // noop fused with two 0 operands
-//    "addps_xmm_xmm",
-//    "vaddps_xmm_xmm_xmm",
-//
-//    // add is commutative
-//    "haddpd_xmm_xmm",
-//    "vhaddpd_ymm_ymm_ymm",
-//    "vhaddpd_xmm_xmm_xmm",
-//    "vaddpd_ymm_ymm_ymm"
-    //    "cvtsi2ssl_xmm_r32",
-    //    "cvtsi2sdl_xmm_r32",
-    //    "vcvtdq2pd_xmm_xmm",
-    //    "vcvtdq2pd_ymm_ymm",
-    //    "cvtdq2pd_xmm_xmm"
+    "vfnmsub132ss_xmm_xmm_xmm"
   )
-  // vcvtdq2pd_ymm_ymm, vminsd_xmm_xmm_xmm, vdivsd_xmm_xmm_xmm
+
   /** Run the check. */
   def run(): Unit = {
 
-    val (strataInstrs, graph) = dependencyGraph(options.circuitPath)
+    val circuitPath = options.circuitPath
+    val (strataInstrs, graph) = dependencyGraph(circuitPath)
+    val baseSet = State(GlobalOptions(s"${options.dataPath}/data-regs")).getInstructionFile(InstructionFile.Base)
 
     //    val root = DotRootGraph(
     //      directed = true,
     //      id = Some("strata dependencies"))
     //    println(graph.toDot(root, x => Some((root, DotEdgeStmt(x.edge.source.toString, x.edge.target.toString)))))
     //    return
+
+    // instruction stats
+    val stats = Statistics.readInstructionStats
+    def usedFor(x: Instruction) = {
+      stats(x).used_for
+    }
 
     // how many instructions did we need to learn in sequence.
     val difficultyMap: Map[Instruction, Int] = computeDifficultyMap()
@@ -144,7 +97,7 @@ case class Check(options: CheckOptions) {
 //    }
 //    println()
     val difficultyDist = Distribution(difficultyMap.values.map(_.toLong).toSeq)
-    println(difficultyDist.info("path lengths for all instructions"))
+    println(difficultyDist.info("strata (for register-only variants)"))
 
     val debug = options.verbose
 
@@ -158,36 +111,43 @@ case class Check(options: CheckOptions) {
     var usesWrongCircuit = 0
     val dontCheckWrong = false
     val incorrectInstrs = collection.mutable.Set.empty[Instruction]
+    for (b <- baseSet) {
+      correct += usedFor(b)
+      total += usedFor(b)
+      println(b)
+    }
     for (instruction <- graph.topologicalSort if strataInstrs.contains(instruction)) {
       val node = graph.get(instruction)
       if (node.diPredecessors.size >= 0) {
         val cmd = Vector("timeout", "15s",
           s"${IO.getProjectBase}/stoke/bin/specgen", "compare",
-          "--circuit_dir", options.circuitPath,
+          "--circuit_dir", circuitPath,
           //          "--no_simplify",
           //          "--solver", "cvc4",
           "--opcode", instruction)
         val (out, status) = IO.runQuiet(cmd)
-        total += 1
-        val program = Check.getProgram(options.circuitPath, instruction)
+        val usedNTimes = usedFor(instruction) + 1
+        total += usedNTimes
+        println(instruction)
+        val program = Check.getProgram(circuitPath, instruction)
 
         // check if this uses an instruction that we already know to be wrong
         if (program.instructions.toSet.intersect(incorrectInstrs).nonEmpty && dontCheckWrong) {
-          usesWrongCircuit += 1
+          usesWrongCircuit += usedNTimes
           incorrectInstrs += instruction
         } else if (stokeIsWrong.contains(instruction.opcode)) {
-          stoke_wrong += 1
+          stoke_wrong += usedNTimes
         } else if (missingLemma.contains(instruction.opcode)) {
-          missing_lemma += 1
+          missing_lemma += usedNTimes
         } else if (status == 124) {
           println(s"$instruction: timeout")
-          timeout += 1
+          timeout += usedNTimes
         } else if (status == 2) {
           // not supported by STOKE
-          stoke_unsupported += 1
+          stoke_unsupported += usedNTimes
         } else if (status == 4) {
           // circuits are not proven equivalent
-          incorrect += 1
+          incorrect += usedNTimes
 
           if (debug) {
             println()
@@ -205,7 +165,7 @@ case class Check(options: CheckOptions) {
           incorrectInstrs += instruction
         } else if (status == 0) {
           // correct :)
-          correct += 1
+          correct += usedNTimes
         } else {
           println(s"Unexpected error: $status")
           println(out)
@@ -215,14 +175,14 @@ case class Check(options: CheckOptions) {
     }
 
     println()
-    println(s"Total:                $total")
-    println(s"STOKE == strata:      $correct")
-    println(s"STOKE is wrong:       $stoke_wrong")
-    println(s"STOKE != strata:      $incorrect")
-    println(s"missing lemma:        $missing_lemma")
-    println(s"not checked:          $usesWrongCircuit (uses incorrect instruction)")
-    println(s"Timeout:              $timeout")
-    println(s"Unsupported by STOKE: $stoke_unsupported")
+    println(s"Total:                    $total")
+    println(s"hand-written == strata:   $correct")
+    println(s"hand-written is wrong:    $stoke_wrong")
+    println(s"hand-written != strata:   $incorrect")
+    println(s"missing lemma:            $missing_lemma")
+    println(s"not checked:              $usesWrongCircuit (because it relies on previously reported wrong formulas)")
+    println(s"Timeout:                  $timeout")
+    println(s"Unsupported by STOKE:     $stoke_unsupported")
   }
 
   def computeDifficultyMap(baseSet: Seq[Instruction] = Nil): Map[Instruction, Int] = {

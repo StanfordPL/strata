@@ -19,11 +19,11 @@ clean:
 
 bin/statistics-regs.json:
 	# cache statistics about instructions and formulas (e.g. formula size)
-	stoke/bin/specgen_statistics --circuit_dir ../strata-data/circuits > in/statistics-regs.json
+	stoke/bin/specgen_statistics --circuit_dir ../strata-data/circuits > bin/statistics-regs.json
 
 bin/statistics-imm8.json:
 	# cache statistics about instructions and formulas (e.g. formula size)
-	stoke/bin/specgen_statistics --circuit_dir ../strata-data/circuits --two > in/statistics-imm8.json
+	stoke/bin/specgen_statistics --circuit_dir ../strata-data/circuits --two > bin/statistics-imm8.json
 
 bin:
 	mkdir bin
