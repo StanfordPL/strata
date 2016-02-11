@@ -128,7 +128,6 @@ class Driver(initOptions: InitOptions) {
     val instr = taskRes.instruction
     val minEqClassSize = 2
     def moveProgramToCircuitDir(meta: InstructionMeta, n: Int): Unit = {
-      if (initOptions.no_stratification) return
       val eqClasses = meta.equivalence_classes.getClasses(minEqClassSize)
       // copy a file to the circuits directory
       val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
@@ -154,7 +153,9 @@ class Driver(initOptions: InitOptions) {
           // special case nop's, because we never learn more than 1 program for them anyway
           if (Vector("nop", "nopw_r16", "nopl_r32").contains(instr.opcode)) {
             state.removeInstructionToFile(instr, InstructionFile.RemainingGoal)
-            state.addInstructionToFile(instr, InstructionFile.Success)
+            if (!initOptions.no_stratification) {
+              state.addInstructionToFile(instr, InstructionFile.Success)
+            }
             val meta = state.getMetaOfInstr(task.instruction)
             moveProgramToCircuitDir(meta, -1)
           } else {
@@ -185,7 +186,9 @@ class Driver(initOptions: InitOptions) {
           if ((n >= 20 && uifsInBest == 0) || (n >= 30)) {
             moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
-            state.addInstructionToFile(instr, InstructionFile.Success)
+            if (!initOptions.no_stratification) {
+              state.addInstructionToFile(instr, InstructionFile.Success)
+            }
           }
         case _: SecondarySearchTimeout =>
           val meta = state.getMetaOfInstr(task.instruction)
@@ -195,7 +198,9 @@ class Driver(initOptions: InitOptions) {
           if (meta.secondary_searches.length >= 5) {
             moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
-            state.addInstructionToFile(instr, InstructionFile.Success)
+            if (!initOptions.no_stratification) {
+              state.addInstructionToFile(instr, InstructionFile.Success)
+            }
           }
       }
       state.removeInstructionToFile(instr, InstructionFile.Worklist)
