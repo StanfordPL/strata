@@ -112,22 +112,12 @@ case class Check(options: EvaluateOptions) {
     val dontCheckWrong = false
     val incorrectInstrs = collection.mutable.Set.empty[Instruction]
 
-    // imm8 instructions
-    val (data, data2) = Statistics.readInstructionStatsBase
-    val imm8_instructions = data2.filter(x => x.stoke_support && x.strata_support).map(x => Instruction(x.instr))
+    println("Analyzing correctness formulas (comparing with hand-written formulas where available).")
+    println("There are no hand-written formulas available for the imm8 instructions.")
+    println("")
 
-    for (b <- baseSet) {
-      correct += usedFor(b)
-      total += usedFor(b)
-    }
-    val unsupportedImm8 = data2.map(x => if (!x.stoke_support) x.used_for + 1 else 0).sum
-    total += unsupportedImm8
-    stoke_unsupported += unsupportedImm8
-
-    val all = strataInstrs ++ imm8_instructions
-    for (instruction <- graph.topologicalSort ++ imm8_instructions if all.contains(instruction)) {
-      val isImm8 = imm8_instructions.contains(instruction)
-      if (isImm8 || graph.get(instruction).diPredecessors.size >= 0) {
+    for (instruction <- graph.topologicalSort if strataInstrs.contains(instruction)) {
+      if (graph.get(instruction).diPredecessors.size >= 0) {
         val cmd = Vector("timeout", "15s",
           s"${IO.getProjectBase}/stoke/bin/specgen", "compare",
           "--circuit_dir", circuitPath,
@@ -136,11 +126,7 @@ case class Check(options: EvaluateOptions) {
           "--opcode", instruction)
         val (out, status) = IO.runQuiet(cmd)
         val usedNTimes = usedFor(instruction) + 1
-        if (!isImm8) {
-          total += usedNTimes * 256
-        } else {
-          total += usedNTimes
-        }
+        total += usedNTimes
         val program = Check.getProgram(circuitPath, instruction)
 
         // check if this uses an instruction that we already know to be wrong
@@ -154,7 +140,7 @@ case class Check(options: EvaluateOptions) {
             println()
             println("-------------------------------------")
             println()
-            println(s"Hand-written formula for '$instruction' is wrong:")
+            println(s"Hand-written formula for '$instruction' is wrong (it is used $usedNTimes times):")
             println()
             println(out.trim)
           }
@@ -165,7 +151,7 @@ case class Check(options: EvaluateOptions) {
             println()
             println("-------------------------------------")
             println()
-            println(s"Formulas for '$instruction' are equivalent, but require a lemma:")
+            println(s"Formulas for '$instruction' are equivalent, but require a lemma (it is used $usedNTimes times):")
             println()
             println(out.trim)
           }
@@ -183,7 +169,7 @@ case class Check(options: EvaluateOptions) {
             println()
             println("-------------------------------------")
             println()
-            println(s"Formulas for '$instruction' are not equivalent:")
+            println(s"Formulas for '$instruction' are not equivalent (it is used $usedNTimes times):")
             println()
             println("Program:")
             println("  " + program.toString.replace("\n", "\n  "))
@@ -205,14 +191,14 @@ case class Check(options: EvaluateOptions) {
     }
 
     println()
-    println(f"Total:                    ${total.toDouble/256.0}%.2f")
-    println(f"hand-written == strata:   ${correct.toDouble/256.0}%.2f")
-    println(f"hand-written is wrong:    ${stoke_wrong.toDouble/256.0}%.2f")
-    println(f"hand-written != strata:   ${incorrect.toDouble/256.0}%.2f")
-    println(f"missing lemma:            ${missing_lemma.toDouble/256.0}%.2f")
-    println(f"not checked:              ${usesWrongCircuit.toDouble/256.0}%.2f (because it relies on previously reported wrong formulas)")
-    println(f"Timeout:                  ${timeout.toDouble/256.0}%.2f")
-    println(f"Unsupported by STOKE:     ${stoke_unsupported.toDouble/256.0}%.2f")
+    //println(f"Total:                    $total")
+    println(f"hand-written == strata:   $correct")
+    println(f"hand-written is wrong:    $stoke_wrong")
+    println(f"hand-written != strata:   $incorrect")
+    println(f"missing lemma:            $missing_lemma")
+    println(f"not checked:              $usesWrongCircuit (because it relies on previously reported wrong formulas)")
+    println(f"Timeout:                  $timeout")
+    println(f"Unsupported by STOKE:     $stoke_unsupported")
   }
 
   def computeDifficultyMap(baseSet: Seq[Instruction] = Nil): Map[Instruction, Int] = {

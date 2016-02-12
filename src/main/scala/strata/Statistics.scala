@@ -215,15 +215,17 @@ object Statistics {
         writer.writeRow(Vector(r))
       }
     }
-    println(Stats.describe(strataInc, "Strata circuits increase"))
+    println(Stats.describe(strataInc, "Distribution of (strata size / hand-written size)"))
     for (writer <- managed(CSVWriter.open(new File("bin/strata-simplication-increase.csv")))) {
       for (r <- simpleInc) {
         writer.writeRow(Vector(r))
       }
     }
-    println(Stats.describe(simpleInc, "Distribution of (strata size / hand-written size)"))
+    //println(Stats.describe(simpleInc, "Distribution of (strata size / hand-written size)"))
 //    println(Stats.describe(rows.map(_._1), "hand-written formula size"))
 //    println(Stats.describe(rows.map(_._2), "strata formula size"))
+    println(s"Maximum size for hand-written formulas: ${rows.map(_._1).max}")
+    println(s"Maximum size for hand-written formulas: ${rows.map(_._2).max}")
 
     println(s"Strata formulas that are smaller:  ${strataInc.count(x => x < 1)}")
     println(s"Strata formulas that are the same size: ${strataInc.count(x => x == 1)}")
@@ -279,7 +281,7 @@ object Statistics {
         offsets(i._1) = i._2 - runSoFar
       }
       lastEndTime = i._3
-      runSoFar = i._3 - i._2
+      runSoFar += i._3 - i._2
     }
 
 //    val successes = messages.collect({
@@ -312,6 +314,8 @@ object Statistics {
     println(f"90th percentile is at stratum ${lvls((0.9*nlvl).round.toInt)}")
 
     // search progress
+    println()
+    println("Computing information about the search progress...")
     val progressRows = messages.collect {
       case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
         assert(offsets.contains(ctx.hostname))
@@ -329,8 +333,23 @@ object Statistics {
         }
       }
     }
+    val wallHoursRegs = runSoFar.toDouble / (1000d * 60d * 60d)
+    println(f"Experiment to learn register-only variants ran for ${wallHoursRegs}%.2f hours")
 
-    println(s"Processed ${messages.length} messages")
+    // calculate imm8 running time
+    var runTime = 0L
+    for (i <- 0 to 7) {
+      val imm8State = State(GlobalOptions(workdirPath = s"${evalOptions.dataPath}/data-imm8/block-$i"))
+      val immMessages = imm8State.getLogMessages.map(x => x.time.toDate.getTime)
+      runTime += immMessages.max - immMessages.min
+    }
+    val wallHoursImm8 = runTime.toDouble / (1000d * 60d * 60d)
+    println(f"Experiment to learn imm8 instructions ran for ${wallHoursImm8}%.2f hours")
+
+    println(f"Total runtime therefore is ${wallHoursRegs+wallHoursImm8}%.2f hours, or ${(wallHoursRegs+wallHoursImm8)*27}%.2f CPU core hours")
+
+
+    //println(s"Processed ${messages.length} messages")
 
     // level vs timeouts
     //    val initialTimeouts = messages.collect {
