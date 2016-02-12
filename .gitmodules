@@ -1,4 +1,4 @@
 [submodule "stoke"]
 	path = stoke
-	url = git@github.com:StanfordPL/stoke.git
+	url = https://github.com:StanfordPL/stoke.git
 	branch = feature-strata
