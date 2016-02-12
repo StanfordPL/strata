@@ -96,7 +96,7 @@ object Statistics {
     (a ++ b).filter(x => x.instr != "<label>").map(x => Instruction(x.instr) -> x).toMap
   }
 
-  def processSpecgenStats(): Unit = {
+  def processSpecgenStats(baseSet: Seq[Instruction]): Unit = {
     val (data, data2) = readInstructionStatsBase
     println("Detecting differences in the number of uninterpreted functions (UIF) and use of non-linear arithmetic:")
     for (instr <- data) {
@@ -123,10 +123,6 @@ object Statistics {
     }
 
     println("\n")
-    val nStokeCircuits = data.count(p => p.stoke_support && p.strata_support) + data2.count(p => p.stoke_support && p.strata_support).toDouble / 256.0
-    val nStrataCircuits = data.count(p => p.strata_support) + data2.count(p => p.strata_support).toDouble / 256.0
-    println(f"We can formally compare to handwritten circuits in ${nStokeCircuits/nStrataCircuits * 100.0}%.2f%%, or $nStokeCircuits%.2f instruction variants")
-    println()
     //    val check = Check(EvaluateOptions())
 //    for (instr <- data) {
 //      if (check.missingLemma.contains(instr.instr)) {
@@ -221,11 +217,13 @@ object Statistics {
         writer.writeRow(Vector(r))
       }
     }
-    //println(Stats.describe(simpleInc, "Distribution of (strata size / hand-written size)"))
+    println()
+    println(Stats.describe(simpleInc, "Distribution of (non-simplified strata size / strata size)"))
 //    println(Stats.describe(rows.map(_._1), "hand-written formula size"))
 //    println(Stats.describe(rows.map(_._2), "strata formula size"))
+    println()
     println(s"Maximum size for hand-written formulas: ${rows.map(_._1).max}")
-    println(s"Maximum size for hand-written formulas: ${rows.map(_._2).max}")
+    println(s"Maximum size for strata formulas: ${rows.map(_._2).max}")
 
     println(s"Strata formulas that are smaller:  ${strataInc.count(x => x < 1)}")
     println(s"Strata formulas that are the same size: ${strataInc.count(x => x == 1)}")
@@ -294,12 +292,12 @@ object Statistics {
 //    println(successes.size)
 
     // process output form specgen_statistics
-    processSpecgenStats()
+    val baseSet = regState.getInstructionFile(InstructionFile.Base)
+    processSpecgenStats(baseSet)
 
     // levels (NOTE: data comes from a different place: checkOptions.circuitPath)
     val check = Check(evalOptions)
     val (strataInstrs, graph) = check.dependencyGraph(evalOptions.circuitPath)
-    val baseSet = regState.getInstructionFile(InstructionFile.Base)
     val difficultyMap: Map[Instruction, Int] = check.computeDifficultyMap(baseSet)
     val difficultyDist = difficultyMap.values.map(_.toLong).toSeq
     for (writer <- managed(CSVWriter.open(new File("bin/levels.csv")))) {

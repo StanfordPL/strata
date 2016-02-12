@@ -28,11 +28,18 @@ bin/statistics-imm8.json:
 bin:
 	mkdir bin
 
-evaluate: bin bin/statistics-regs.json bin bin/statistics-imm8.json
-	echo "yes"
+evaluate_precompute: bin bin/statistics-regs.json bin bin/statistics-imm8.json
+
+graphs: evaluate_precompute bin/levels.csv
+	scripts/graphs/levels.py
+	scripts/graphs/size.py
+	scripts/graphs/size2.py
+
+bin/levels.csv:
+	./strata evaluate
 
 update_imm8_base:
 	rm -rf resources/imm8_baseset
 	cp -r ~/dev/circuits resources/imm8_baseset
 
-.PHONY: build stoke clean debug update_imm8_base
+.PHONY: build stoke clean debug update_imm8_base graphs

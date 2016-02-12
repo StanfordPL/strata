@@ -41,21 +41,21 @@ case class Check(options: EvaluateOptions) {
     "vcvtss2sd_xmm_xmm_xmm",
     "vcvtsi2sdl_xmm_xmm_r32",
     "vaddss_xmm_xmm_xmm",
-    "vsqrtsd_xmm_xmm_xmm",
+    "vsqrtsd_xmm_xmm_xmm", // 16
 
     // upper bits should be 0, but are kept unmodified
     "cvtpd2ps_xmm_xmm",
     "vcvtpd2ps_xmm_xmm",
     "cvttpd2dq_xmm_xmm",
     "vcvttpd2dq_xmm_xmm",
-    "cvtpd2dq_xmm_xmm",
+    "cvtpd2dq_xmm_xmm", // 5
 
     // should do add in upper bits and sub in lower bits, but reverses the two
     "addsubps_xmm_xmm",
     "vaddsubps_xmm_xmm_xmm",
     "vaddsubpd_xmm_xmm_xmm",
     "addsubpd_xmm_xmm",
-    "vaddsubpd_ymm_ymm_ymm"
+    "vaddsubpd_ymm_ymm_ymm" // 5
   )
 
   val missingLemma = Vector(
@@ -199,6 +199,11 @@ case class Check(options: EvaluateOptions) {
     println(f"not checked:              $usesWrongCircuit (because it relies on previously reported wrong formulas)")
     println(f"Timeout:                  $timeout")
     println(f"Unsupported by STOKE:     $stoke_unsupported")
+
+    println()
+    val handwrittenFormulaAvailable = correct + stoke_wrong + incorrect + missing_lemma + usesWrongCircuit + timeout
+    println(f"We can formally compare to handwritten formulas for ${handwrittenFormulaAvailable} instruction variants")
+    println()
   }
 
   def computeDifficultyMap(baseSet: Seq[Instruction] = Nil): Map[Instruction, Int] = {
