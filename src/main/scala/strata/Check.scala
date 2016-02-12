@@ -107,18 +107,27 @@ case class Check(options: EvaluateOptions) {
     var timeout = 0
     var stoke_wrong = 0
     var missing_lemma = 0
-    var total = 0
+    var total = -1
     var usesWrongCircuit = 0
     val dontCheckWrong = false
     val incorrectInstrs = collection.mutable.Set.empty[Instruction]
+
+    // imm8 instructions
+    val (data, data2) = Statistics.readInstructionStatsBase
+    val imm8_instructions = data2.filter(x => x.stoke_support && x.strata_support).map(x => Instruction(x.instr))
+
     for (b <- baseSet) {
       correct += usedFor(b)
       total += usedFor(b)
-      println(b)
     }
-    for (instruction <- graph.topologicalSort if strataInstrs.contains(instruction)) {
-      val node = graph.get(instruction)
-      if (node.diPredecessors.size >= 0) {
+    val unsupportedImm8 = data2.map(x => if (!x.stoke_support) x.used_for + 1 else 0).sum
+    total += unsupportedImm8
+    stoke_unsupported += unsupportedImm8
+
+    val all = strataInstrs ++ imm8_instructions
+    for (instruction <- graph.topologicalSort ++ imm8_instructions if all.contains(instruction)) {
+      val isImm8 = imm8_instructions.contains(instruction)
+      if (isImm8 || graph.get(instruction).diPredecessors.size >= 0) {
         val cmd = Vector("timeout", "15s",
           s"${IO.getProjectBase}/stoke/bin/specgen", "compare",
           "--circuit_dir", circuitPath,
@@ -127,8 +136,11 @@ case class Check(options: EvaluateOptions) {
           "--opcode", instruction)
         val (out, status) = IO.runQuiet(cmd)
         val usedNTimes = usedFor(instruction) + 1
-        total += usedNTimes
-        println(instruction)
+        if (!isImm8) {
+          total += usedNTimes * 256
+        } else {
+          total += usedNTimes
+        }
         val program = Check.getProgram(circuitPath, instruction)
 
         // check if this uses an instruction that we already know to be wrong
@@ -137,8 +149,26 @@ case class Check(options: EvaluateOptions) {
           incorrectInstrs += instruction
         } else if (stokeIsWrong.contains(instruction.opcode)) {
           stoke_wrong += usedNTimes
+
+          if (debug) {
+            println()
+            println("-------------------------------------")
+            println()
+            println(s"Hand-written formula for '$instruction' is wrong:")
+            println()
+            println(out.trim)
+          }
         } else if (missingLemma.contains(instruction.opcode)) {
           missing_lemma += usedNTimes
+
+          if (debug) {
+            println()
+            println("-------------------------------------")
+            println()
+            println(s"Formulas for '$instruction' are equivalent, but require a lemma:")
+            println()
+            println(out.trim)
+          }
         } else if (status == 124) {
           println(s"$instruction: timeout")
           timeout += usedNTimes
@@ -149,19 +179,19 @@ case class Check(options: EvaluateOptions) {
           // circuits are not proven equivalent
           incorrect += usedNTimes
 
-          if (debug) {
+//          if (debug) {
             println()
             println("-------------------------------------")
             println()
-            println(s"Opcode '$instruction' not equivalent:")
+            println(s"Formulas for '$instruction' are not equivalent:")
             println()
             println("Program:")
             println("  " + program.toString.replace("\n", "\n  "))
             println()
             println(out.trim)
-          } else {
-            println(s"$instruction: not equivalent")
-          }
+//          } else {
+//            println(s"$instruction: not equivalent")
+//          }
           incorrectInstrs += instruction
         } else if (status == 0) {
           // correct :)
@@ -175,14 +205,14 @@ case class Check(options: EvaluateOptions) {
     }
 
     println()
-    println(s"Total:                    $total")
-    println(s"hand-written == strata:   $correct")
-    println(s"hand-written is wrong:    $stoke_wrong")
-    println(s"hand-written != strata:   $incorrect")
-    println(s"missing lemma:            $missing_lemma")
-    println(s"not checked:              $usesWrongCircuit (because it relies on previously reported wrong formulas)")
-    println(s"Timeout:                  $timeout")
-    println(s"Unsupported by STOKE:     $stoke_unsupported")
+    println(f"Total:                    ${total.toDouble/256.0}%.2f")
+    println(f"hand-written == strata:   ${correct.toDouble/256.0}%.2f")
+    println(f"hand-written is wrong:    ${stoke_wrong.toDouble/256.0}%.2f")
+    println(f"hand-written != strata:   ${incorrect.toDouble/256.0}%.2f")
+    println(f"missing lemma:            ${missing_lemma.toDouble/256.0}%.2f")
+    println(f"not checked:              ${usesWrongCircuit.toDouble/256.0}%.2f (because it relies on previously reported wrong formulas)")
+    println(f"Timeout:                  ${timeout.toDouble/256.0}%.2f")
+    println(f"Unsupported by STOKE:     ${stoke_unsupported.toDouble/256.0}%.2f")
   }
 
   def computeDifficultyMap(baseSet: Seq[Instruction] = Nil): Map[Instruction, Int] = {

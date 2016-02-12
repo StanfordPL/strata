@@ -98,6 +98,7 @@ object Statistics {
 
   def processSpecgenStats(): Unit = {
     val (data, data2) = readInstructionStatsBase
+    println("Detecting differences in the number of uninterpreted functions (UIF) and use of non-linear arithmetic:")
     for (instr <- data) {
       //      if (instr.strata_support && instr.stoke_support && instr.stoke.get.nodes > 0) {
       //        println((instr.stoke.get.nodes - instr.strata.get.nodes).abs.toDouble / instr.stoke.get.nodes)
@@ -109,17 +110,24 @@ object Statistics {
         val s0 = instr.stoke.get
         val s1 = instr.strata.get
         if (s0.uif != s1.uif) {
-          println(s"uif: $instr (used ${instr.used_for+1} times)")
+          println(s"Formula from ${instr.instr} (used for ${instr.used_for+1} instruction variants):")
+          println(s"  hand-written formula: ${s0.uif} UIFs")
+          println(s"  strata formula:       ${s1.uif} UIFs")
         }
         if (s0.mult != s1.mult) {
-          println(s"non-linear: $instr (used ${instr.used_for+1} times)")
+          println(s"Formula from ${instr.instr} (used for ${instr.used_for+1} instruction variants):")
+          println(s"  hand-written formula: ${s0.mult} non-linear arithmetic operations")
+          println(s"  strata formula:       ${s1.mult} non-linear arithmetic operations")
         }
       }
     }
+
+    println("\n")
     val nStokeCircuits = data.count(p => p.stoke_support && p.strata_support) + data2.count(p => p.stoke_support && p.strata_support).toDouble / 256.0
     val nStrataCircuits = data.count(p => p.strata_support) + data2.count(p => p.strata_support).toDouble / 256.0
-    println(f"We can formally compare to handwritten circuits for ${nStokeCircuits/nStrataCircuits * 100.0}%.2f%% or $nStokeCircuits")
-//    val check = Check(EvaluateOptions())
+    println(f"We can formally compare to handwritten circuits in ${nStokeCircuits/nStrataCircuits * 100.0}%.2f%%, or $nStokeCircuits%.2f instruction variants")
+    println()
+    //    val check = Check(EvaluateOptions())
 //    for (instr <- data) {
 //      if (check.missingLemma.contains(instr.instr)) {
 //        println(s"${instr.instr} is used ${instr.used_for+1} times")
@@ -150,7 +158,7 @@ object Statistics {
       val s2 = instr.strata_long.get
       (instr, s1.nodes.toDouble/s0.nodes.toDouble, s0.nodes, s1.nodes)
     }).sortBy(_._2).reverse
-    println(sizeComparison.take(40).mkString("\n"))
+    //println(sizeComparison.take(40).mkString("\n"))
 
     val data2Both = data2.filter(p => p.strata_support && p.stoke_support).groupBy(x => x.instr.substring(0, x.instr.lastIndexOf("_")))
     val data2Strata = data2.filter(p => p.strata_support).groupBy(x => x.instr.substring(0, x.instr.lastIndexOf("_")))
@@ -200,34 +208,33 @@ object Statistics {
       List.fill(list.head.used_for + 1)(res)
     }).flatten
 
-    for (writer <- managed(CSVWriter.open(new File("../data-strata/strata-increase.csv")))) {
+    println("Computing size comparison data...")
+
+    for (writer <- managed(CSVWriter.open(new File("bin/strata-increase.csv")))) {
       for (r <- strataInc) {
         writer.writeRow(Vector(r))
       }
     }
     println(Stats.describe(strataInc, "Strata circuits increase"))
-    for (writer <- managed(CSVWriter.open(new File("../data-strata/strata-simplication-increase.csv")))) {
+    for (writer <- managed(CSVWriter.open(new File("bin/strata-simplication-increase.csv")))) {
       for (r <- simpleInc) {
         writer.writeRow(Vector(r))
       }
     }
-    println(Stats.describe(simpleInc, "Strata simplification increase"))
-    println(Stats.describe(rows.map(_._1), "stoke circuit size"))
-    println(Stats.describe(rows.map(_._2), "strata circuit size"))
+    println(Stats.describe(simpleInc, "Distribution of (strata size / hand-written size)"))
+//    println(Stats.describe(rows.map(_._1), "hand-written formula size"))
+//    println(Stats.describe(rows.map(_._2), "strata formula size"))
 
-    println(s"Strata circuits that are smaller:  ${strataInc.count(x => x < 0)}")
-    println(s"Strata circuits that are the same: ${strataInc.count(x => x == 0)}")
-    println(s"Strata circuits that are larger:   ${strataInc.count(x => x > 0)}")
+    println(s"Strata formulas that are smaller:  ${strataInc.count(x => x < 1)}")
+    println(s"Strata formulas that are the same size: ${strataInc.count(x => x == 1)}")
+    println(s"Strata formulas that are larger:   ${strataInc.count(x => x > 1)}")
 
     val immDistribution = data2.filter(p => p.strata_support).groupBy(x => x.instr.substring(0, x.instr.lastIndexOf("_")))
 //    for ((i, j) <- immDistribution) {
 //      println(s"$i: ${j.length}")
 //    }
 
-    for (x <- data) {
-      if (x.strata_reason > 0) println(x.instr)
-    }
-
+    println("\nTable from the paper:")
     val imm8 = data2.map(x => if (x.strata_support) x.used_for + 1 else 0).sum.toDouble / 256.0
     val table = f"""
                    |Base set                           &  ${data.count(x => x.strata_reason == 0)}\\\\
@@ -242,7 +249,7 @@ object Statistics {
                    |\\textbf{Learned formulas in total} &  \\textbf{${data.count(x => x.strata_reason > 0) + imm8}%.2f}\\\\
                    |""".stripMargin
     println(table)
-    IO.writeFile(new File("../data-strata/result-table.tex"), table)
+    IO.writeFile(new File("bin/result-table.tex"), table)
   }
 
   /** Collect data for further analysis. */
@@ -300,9 +307,9 @@ object Statistics {
     }
     val lvls = difficultyDist.filter(_ > 0).sorted
     val nlvl = lvls.length
-    println(f"Learned at stratum 1: ${lvls.count(_<=1).toDouble * 100.0 / nlvl.toDouble}%.2f")
-    println(f"50th percentile: ${lvls((0.5*nlvl).round.toInt)}")
-    println(f"90th percentile: ${lvls((0.9*nlvl).round.toInt)}")
+    println(f"Percentage of instructions learned at stratum 1: ${lvls.count(_<=1).toDouble * 100.0 / nlvl.toDouble}%.2f")
+    println(f"50th percentile is at stratum ${lvls((0.5*nlvl).round.toInt)}")
+    println(f"90th percentile is at stratum ${lvls((0.9*nlvl).round.toInt)}")
 
     // search progress
     val progressRows = messages.collect {
