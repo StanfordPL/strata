@@ -257,6 +257,17 @@ object Statistics {
     val regState = State(GlobalOptions(workdirPath = s"${evalOptions.dataPath}/data-regs"))
     val messages = regState.getLogMessages
 
+    val extstats = getExtendedStats(messages)
+    def printBox(b: Box) = {
+      val (o, _) = printBoxesHorizontally(Vector(b), 45)
+      println(o)
+    }
+    printBox(extstats.otherInfoBox)
+    printBox(extstats.searchOverviewBox)
+    printBox(extstats.timingBox)
+    printBox(extstats.validatorInvocationsBox)
+    println()
+
     // ensure that there is only a single entry point per host
     val startTimes = collection.mutable.Map[String, Long]()
     for (i <- messages.collect({ case x: LogEntryPoint if x.arguments(0) != "cleanup" => x })) {
@@ -344,8 +355,7 @@ object Statistics {
     val wallHoursImm8 = runTime.toDouble / (1000d * 60d * 60d)
     println(f"Experiment to learn imm8 instructions ran for ${wallHoursImm8}%.2f hours")
 
-    println(f"Total runtime therefore is ${wallHoursRegs+wallHoursImm8}%.2f hours, or ${(wallHoursRegs+wallHoursImm8)*27}%.2f CPU core hours")
-
+    println(f"Total runtime therefore is ${wallHoursRegs+wallHoursImm8}%.2f hours, or ${(wallHoursRegs+wallHoursImm8)*28}%.2f CPU core hours")
 
     //println(s"Processed ${messages.length} messages")
 
@@ -407,6 +417,7 @@ object Statistics {
 //    val firstEq = eqs.map(x => x._2.getClasses().head)
 //    val secondEq = eqs.flatMap(x => if (x._2.nClasses <= 1) None else Some(x._2.getClasses().seq(1)))
 //    println(Distribution(firstEq.map(x => x.size.toLong)).info("size of first equivalence class"))
+//    println(Distribution(secondEq.map(x => x.size.toLong)).info("size of second equivalence class"))
 //    println(Distribution(secondEq.map(x => x.size.toLong)).info("size of second equivalence class"))
 //    //println(Distribution(eqs.map(x => x._2.getClasses().map(y => y.size).sum.toLong)).info("all programs"))
 //
