@@ -55,14 +55,88 @@ object Statistics {
     }
   }
 
+  // determine start times (taking into account breaks between entry points)
+  def computeOffsets(messages: Seq[LogMessage]): (Long, Map[String, Long]) = {
+    val offsets = collection.mutable.Map[String, Long]()
+    val timeData = messages.groupBy(x => x.context.hostname).map(x => {
+      val a = x._2.map(x => x.time.toDate.getTime)
+      (x._1, a.min, a.max)
+    }).toList.sortBy(x => x._2)
+    var lastEndTime = 0L
+    var runSoFar = 0L
+    for (i <- timeData) {
+      if (lastEndTime == 0L) {
+        offsets(i._1) = i._2 // offset is just the start time
+      } else {
+        assert(i._2 >= lastEndTime)
+        offsets(i._1) = i._2 - runSoFar
+      }
+      lastEndTime = i._3
+      runSoFar += i._3 - i._2
+    }
+    (runSoFar, offsets.toMap)
+  }
+
   val CLEAR_CONSOLE: String = "\u001b[H\u001b[2J"
 
   /** Some adhoc statistics. */
   def tmp(globalOptions: GlobalOptions): Unit = {
-    val state = State(globalOptions)
-    //val messages = state.getLogMessages
+    def computeProgress: Unit = {
+      val state = State(globalOptions)
+      val messages = state.getLogMessages
 
-    // go through all instructions that have programs and run the testcases against them
+      val (runSoFar, offsets) = computeOffsets(messages)
+
+      val progressRows = messages.collect {
+        case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
+          assert(offsets.contains(ctx.hostname))
+          val tInMs = time.toDate.getTime - offsets(ctx.hostname)
+          (tInMs.toDouble / (1000d * 60d * 60d), pt)
+      }.sortBy(x => x._1)
+      val baseSetSize = progressRows.map(_._2).min
+      // optimize by dropping intermediate unchanged elements
+      for (writer <- managed(CSVWriter.open(new File("bin/progress.csv")))) {
+        var last = -1
+        for ((r, i) <- progressRows.zipWithIndex) {
+          if (r._2 != last || i == 0 || i == progressRows.size - 1) {
+            writer.writeRow(Vector(r._1, r._2 - baseSetSize))
+            last = r._2
+          }
+        }
+      }
+      val wallHoursRegs = runSoFar.toDouble / (1000d * 60d * 60d)
+    }
+
+    def instructionsLearnedPreviously(): Unit = {
+      val state = State(GlobalOptions(workdirPath = "/home/sheule/dev/strata-data/data-regs"))
+      val messages = state.getLogMessages
+      val (runSoFar, offsets) = computeOffsets(messages)
+
+      val ms = messages.filter(p => {
+        val hours = (p.time.toDate.getTime - offsets(p.context.hostname)).toDouble / (1000d * 60d * 60d)
+        hours < 17
+      })
+
+//      val extstats = getExtendedStats(ms)
+//      def printBox(b: Box) = {
+//        val (o, _) = printBoxesHorizontally(Vector(b), 45)
+//        println(o)
+//      }
+//      printBox(extstats.otherInfoBox)
+//      printBox(extstats.searchOverviewBox)
+//      printBox(extstats.timingBox)
+//      printBox(extstats.validatorInvocationsBox)
+//      println()
+
+      val succ = ms.collect({
+        case LogEquivalenceClasses(instr, _, _, _) => instr
+      })
+      println(succ.map(i => i.realOpcode).sorted.mkString("\n"))
+    }
+
+
+    computeProgress
+//    instructionsLearnedPreviously()
 
   }
 
@@ -275,23 +349,7 @@ object Statistics {
       startTimes(i.context.hostname) = i.time.toDate.getTime
     }
     // determine start times (taking into account breaks between entry points)
-    val offsets = collection.mutable.Map[String, Long]()
-    val timeData = messages.groupBy(x => x.context.hostname).map(x => {
-      val a = x._2.map(x => x.time.toDate.getTime)
-      (x._1, a.min, a.max)
-    }).toList.sortBy(x => x._2)
-    var lastEndTime = 0L
-    var runSoFar = 0L
-    for (i <- timeData) {
-      if (lastEndTime == 0L) {
-        offsets(i._1) = i._2 // offset is just the start time
-      } else {
-        assert(i._2 >= lastEndTime)
-        offsets(i._1) = i._2 - runSoFar
-      }
-      lastEndTime = i._3
-      runSoFar += i._3 - i._2
-    }
+    val (runSoFar, offsets) = computeOffsets(messages)
 
 //    val successes = messages.collect({
 ////      case LogTaskEnd(_, Some(s: InitialSearchSuccess), _, _, _) =>

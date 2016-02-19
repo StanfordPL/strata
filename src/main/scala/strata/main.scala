@@ -384,5 +384,5 @@ case class GlobalOptions(workdirPath: String = s"${System.getProperty("user.home
 case class InitOptions(globalOptions: GlobalOptions, imm_instructions: Boolean = false, imm_block: Int = 0, no_stratification: Boolean = false)
 
 case class EvaluateOptions(dataPath: File = new File(s"../strata-data"), verbose: Boolean = false) {
-  def circuitPath = new File(s"$dataPath/circuits")
+  def circuitPath = new File("/home/sheule/dev/circuits")//new File(s"$dataPath/circuits")
 }
