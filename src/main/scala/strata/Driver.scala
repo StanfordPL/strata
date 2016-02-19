@@ -178,12 +178,12 @@ class Driver(initOptions: InitOptions) {
           val n = state.getResultFiles(instr).length // number of programs found
           IO.info(s"SS success #$n for ${task.instruction}")
           // should we search for non-uif codes?
-          if (n >= 20 && uifsInBest > 0 && !meta.search_without_uif) {
+          if (n >= 10 && uifsInBest > 0 && !meta.search_without_uif) {
             IO.info(s"  -> moving on to non-uif search for $instr")
             state.writeMetaOfInstr(instr, meta.copy(search_without_uif = true))
           }
           // stop after we found enough
-          if ((n >= 20 && uifsInBest == 0) || (n >= 30)) {
+          if ((n >= 10 && uifsInBest == 0) || (n >= 13)) {
             moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             if (!initOptions.no_stratification) {
@@ -195,7 +195,7 @@ class Driver(initOptions: InitOptions) {
           val n = meta.secondary_searches.map(s => s.n_found).sum + 1 // +1 for initial search
           IO.info(s"SS timeout for ${task.instruction} after ${IO.formatNanos(taskRes.timing.total)}")
           // stop if we tried 5 times and didn't succeed
-          if (meta.secondary_searches.length >= 5) {
+          if (meta.secondary_searches.length >= 3) {
             moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             if (!initOptions.no_stratification) {
@@ -230,7 +230,7 @@ class Driver(initOptions: InitOptions) {
     if (instr.isImm8Instr) {
       if (search_without_uif) 500000 else 1000000
     } else {
-      if (search_without_uif) 5000000 else 50000000
+      if (search_without_uif) 1000000 else 10000000
     }
   }
 
