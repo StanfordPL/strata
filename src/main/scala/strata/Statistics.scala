@@ -81,7 +81,7 @@ object Statistics {
 
   /** Some adhoc statistics. */
   def tmp(globalOptions: GlobalOptions): Unit = {
-    def computeProgress: Unit = {
+    def computeProgress(): Unit = {
       val state = State(globalOptions)
       val messages = state.getLogMessages
 
@@ -134,8 +134,27 @@ object Statistics {
       println(succ.map(i => i.realOpcode).sorted.mkString("\n"))
     }
 
+    def computeTimeSpentDoingX() = {
+      val state = State(globalOptions)
+      val messages = state.getLogMessages
 
-    computeProgress
+      val taskResults = messages.collect({
+        case LogTaskEnd(_, Some(res), _, _, _) => res
+      })
+
+      val categoryData = taskResults.map(x => {
+        val cat = x.getClass.getName
+        (cat, x.timing.total)
+      }).groupBy(x => x._1)
+
+      for ((cat, times) <- categoryData) {
+        val t = times.map(x => x._2).sum
+        println(s"$cat: ${IO.formatNanos(t)}")
+      }
+    }
+
+    computeTimeSpentDoingX()
+//    computeProgress()
 //    instructionsLearnedPreviously()
 
   }
