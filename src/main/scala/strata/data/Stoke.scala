@@ -183,8 +183,7 @@ case class Stoke(tmpDir: File, meta: InstructionMeta, instr: Instruction, state:
           state.appendLog(LogError(message))
           state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, a.getName, b.getName))
           None
-        case Some(x) =>
-          val verifyRes = StokeVerifyOutput(true, false, "", "")
+        case Some(verifyRes) =>
           state.appendLog(LogVerifyResult(instr, useFormal, verifyRes, a.getName, b.getName))
           Some(verifyRes)
       }
