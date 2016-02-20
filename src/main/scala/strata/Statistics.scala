@@ -153,8 +153,8 @@ object Statistics {
       }
     }
 
-    computeTimeSpentDoingX()
-//    computeProgress()
+//    computeTimeSpentDoingX()
+    computeProgress()
 //    instructionsLearnedPreviously()
 
   }
