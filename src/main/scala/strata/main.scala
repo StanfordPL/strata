@@ -8,6 +8,7 @@ import strata.tasks.InitialSearch
 import strata.util.{Distribution, IO}
 
 import scala.io.Source
+import scala.util.Random
 import scala.util.control.Breaks
 
 /**
@@ -15,6 +16,9 @@ import scala.util.control.Breaks
  */
 object Strata {
   def main(args: Array[String]) {
+
+    // fix randomness for now
+    Random.setSeed(0)
 
 //    Log.test()
 //    return
