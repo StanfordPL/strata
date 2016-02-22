@@ -20,8 +20,8 @@ import resource._
 object Statistics {
 
   def analysis(c: EvaluateOptions) = {
-//    val state = State(c)
-    val baseSet = collection.mutable.Set[Instruction]()//state.getInstructionFile(InstructionFile.Base)
+    //    val state = State(c)
+    val baseSet = collection.mutable.Set[Instruction]() //state.getInstructionFile(InstructionFile.Base)
     val check = Check(c)
     val circuitPath = c.circuitPath
     val (instrs, graph) = check.dependencyGraph(circuitPath)
@@ -35,7 +35,8 @@ object Statistics {
         if (impl.hasLabel) {
           size += 1
           //set += impl.label
-        } else if (!circuit2baseInstrUsed.contains(impl)) { // must be base set
+        } else if (!circuit2baseInstrUsed.contains(impl)) {
+          // must be base set
           baseSet += impl
           size += 1
           set += impl
@@ -104,7 +105,6 @@ object Statistics {
           }
         }
       }
-      val wallHoursRegs = runSoFar.toDouble / (1000d * 60d * 60d)
     }
 
     def instructionsLearnedPreviously(): Unit = {
@@ -117,16 +117,16 @@ object Statistics {
         hours < 17
       })
 
-//      val extstats = getExtendedStats(ms)
-//      def printBox(b: Box) = {
-//        val (o, _) = printBoxesHorizontally(Vector(b), 45)
-//        println(o)
-//      }
-//      printBox(extstats.otherInfoBox)
-//      printBox(extstats.searchOverviewBox)
-//      printBox(extstats.timingBox)
-//      printBox(extstats.validatorInvocationsBox)
-//      println()
+      //      val extstats = getExtendedStats(ms)
+      //      def printBox(b: Box) = {
+      //        val (o, _) = printBoxesHorizontally(Vector(b), 45)
+      //        println(o)
+      //      }
+      //      printBox(extstats.otherInfoBox)
+      //      printBox(extstats.searchOverviewBox)
+      //      printBox(extstats.timingBox)
+      //      printBox(extstats.validatorInvocationsBox)
+      //      println()
 
       val succ = ms.collect({
         case LogEquivalenceClasses(instr, _, _, _) => instr
@@ -153,9 +153,111 @@ object Statistics {
       }
     }
 
-//    computeTimeSpentDoingX()
-    computeProgress()
-//    instructionsLearnedPreviously()
+    def investigateEqClasses() = {
+      val AEstate = State(GlobalOptions("/home/sheule/dev/output-strata-ae2"))
+      var AEmessages = AEstate.getLogMessages
+
+      val AElogs = AEmessages.collect({
+        case l@LogEquivalenceClasses(instr, eq, _, _) => l
+      })
+      val AEeqs = AElogs.map(x => x.eq)
+
+      val state = State(GlobalOptions("/home/sheule/dev/output-strata-correct"))
+      var messages = state.getLogMessages
+
+      val len = AEmessages.last.time.toDate.getTime - AEmessages.head.time.toDate.getTime
+      messages = messages.filter(p => p.time.toDate.getTime - messages.head.time.toDate.getTime < len)
+
+      val logs = messages.collect({
+        case l@LogEquivalenceClasses(instr, eq, _, _) => l
+      })
+      val eqs = logs.map(x => x.eq)
+
+      def test(a: Seq[LogMessage] => Unit) = {
+        println("all equal")
+        a(AEmessages)
+        println("correct")
+        a(messages)
+        println("---------------")
+      }
+
+      println(AEmessages.last.time.toDate.getTime - AEmessages.head.time.toDate.getTime)
+      println(messages.last.time.toDate.getTime - messages.head.time.toDate.getTime)
+
+      println(Distribution(AEeqs.map(x => x.nClasses.toLong)).info("all equal"))
+      println(Distribution(eqs.map(x => x.nClasses.toLong)).info("correct"))
+
+      println(Distribution(AEeqs.map(x => x.nPrograms.toLong)).info("all equal"))
+      println(Distribution(eqs.map(x => x.nPrograms.toLong)).info("correct"))
+
+      test((msgs: Seq[LogMessage]) => {
+        for ((cat, times) <- msgs.collect({
+          case LogTaskEnd(_, Some(res), _, _, _) => res
+        }).map(x => {
+          val cat = x.getClass.getName
+          (cat, x.timing.total)
+        }).groupBy(x => x._1).toSeq.sortBy(x => x._1)) {
+          val t = times.map(x => x._2).sum
+          println(s"$cat: ${IO.formatNanos(t)}")
+        }
+      })
+
+      test((msgs: Seq[LogMessage]) => {
+        for ((cat, times) <- msgs.collect({
+          case LogTaskEnd(_, Some(res), _, _, _) => res
+        }).map(x => {
+          val cat = x.getClass.getName
+          (cat, x.timing.total)
+        }).groupBy(x => x._1).toSeq.sortBy(x => x._1)) {
+          val t = times.map(x => x._2).length
+          println(s"$cat: ${(t)}")
+        }
+      })
+
+      test((msgs: Seq[LogMessage]) => {
+        println("Number of errors: " + msgs.count({
+          case LogError(m, _, _) => true
+          case _ => false
+        }))
+      })
+
+      // compute progress for both
+      val (_, offsets) = computeOffsets(messages)
+      val progressRows = messages.collect {
+        case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
+          val tInMs = time.toDate.getTime - offsets(ctx.hostname)
+          (tInMs.toDouble / (1000d * 60d * 60d), pt, 1)
+      }
+      val baseSetSize = progressRows.map(_._2).min
+      val (aa, bb) = computeOffsets(AEmessages)
+      val AEprogressRows = AEmessages.collect {
+        case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
+          val tInMs = time.toDate.getTime - bb(ctx.hostname)
+          (tInMs.toDouble / (1000d * 60d * 60d), pt, 2)
+      }
+      val allRows = (progressRows ++ AEprogressRows).sortBy(x => x._1)
+      // optimize by dropping intermediate unchanged elements
+      for (writer <- managed(CSVWriter.open(new File("bin/progress.csv")))) {
+        var last = -1
+        var prev = (0, 0)
+        for ((r, i) <- allRows.zipWithIndex) {
+          if (r._2 != last || i == 0 || i == progressRows.size - 1) {
+            if (r._3 == 1) {
+              prev = (r._2 - baseSetSize, prev._2)
+            } else {
+              prev = (prev._1, r._2 - baseSetSize)
+            }
+            writer.writeRow(Vector(r._1, prev._1, prev._2))
+            last = r._2
+          }
+        }
+      }
+    }
+
+    //    computeTimeSpentDoingX()
+    //    computeProgress()
+    //    instructionsLearnedPreviously()
+    investigateEqClasses()
 
   }
 
@@ -165,9 +267,9 @@ object Statistics {
                               stoke: Option[Score], delim: Int) {
     override def toString = {
       if (strata_support && stoke_support) {
-        s"$instr: ${stoke.get} / ${strata.get} (used for ${used_for+1})"
+        s"$instr: ${stoke.get} / ${strata.get} (used for ${used_for + 1})"
       } else {
-        s"$instr (used for ${used_for+1})"
+        s"$instr (used for ${used_for + 1})"
       }
     }
   }
@@ -196,19 +298,19 @@ object Statistics {
       //      if (instr.strata_support && instr.stoke_support && instr.stoke.get.nodes > 0) {
       //        println((instr.stoke.get.nodes - instr.strata.get.nodes).abs.toDouble / instr.stoke.get.nodes)
       //      }
-//      if (!instr.stoke_support && instr.strata_support) {
-//        println(instr)
-//      }
+      //      if (!instr.stoke_support && instr.strata_support) {
+      //        println(instr)
+      //      }
       if (instr.stoke.nonEmpty && instr.strata.nonEmpty) {
         val s0 = instr.stoke.get
         val s1 = instr.strata.get
         if (s0.uif != s1.uif) {
-          println(s"Formula from ${instr.instr} (used for ${instr.used_for+1} instruction variants):")
+          println(s"Formula from ${instr.instr} (used for ${instr.used_for + 1} instruction variants):")
           println(s"  hand-written formula: ${s0.uif} UIFs")
           println(s"  strata formula:       ${s1.uif} UIFs")
         }
         if (s0.mult != s1.mult) {
-          println(s"Formula from ${instr.instr} (used for ${instr.used_for+1} instruction variants):")
+          println(s"Formula from ${instr.instr} (used for ${instr.used_for + 1} instruction variants):")
           println(s"  hand-written formula: ${s0.mult} non-linear arithmetic operations")
           println(s"  strata formula:       ${s1.mult} non-linear arithmetic operations")
         }
@@ -217,16 +319,16 @@ object Statistics {
 
     println("\n")
     //    val check = Check(EvaluateOptions())
-//    for (instr <- data) {
-//      if (check.missingLemma.contains(instr.instr)) {
-//        println(s"${instr.instr} is used ${instr.used_for+1} times")
-////        assert(instr.used_for == 1)
-//      }
-//      if (check.stokeIsWrong.contains(instr.instr)) {
-////        println(s"${instr.instr} is used ${instr.used_for+1} times")
-//        assert(instr.used_for == 1)
-//      }
-//    }
+    //    for (instr <- data) {
+    //      if (check.missingLemma.contains(instr.instr)) {
+    //        println(s"${instr.instr} is used ${instr.used_for+1} times")
+    ////        assert(instr.used_for == 1)
+    //      }
+    //      if (check.stokeIsWrong.contains(instr.instr)) {
+    ////        println(s"${instr.instr} is used ${instr.used_for+1} times")
+    //        assert(instr.used_for == 1)
+    //      }
+    //    }
     // all three absolut sizes
     val rows = (for (instr <- data if instr.stoke.nonEmpty && instr.strata.nonEmpty) yield {
       //      if (instr.strata_support && instr.stoke_support && instr.stoke.get.nodes > 0) {
@@ -245,7 +347,7 @@ object Statistics {
       val s0 = instr.stoke.get
       val s1 = instr.strata.get
       val s2 = instr.strata_long.get
-      (instr, s1.nodes.toDouble/s0.nodes.toDouble, s0.nodes, s1.nodes)
+      (instr, s1.nodes.toDouble / s0.nodes.toDouble, s0.nodes, s1.nodes)
     }).sortBy(_._2).reverse
     //println(sizeComparison.take(40).mkString("\n"))
 
@@ -261,9 +363,9 @@ object Statistics {
       } else {
         n1.toDouble / n0.toDouble
       }
-//      if (res > 5) {
-//        println(instr)
-//      }
+      //      if (res > 5) {
+      //        println(instr)
+      //      }
       List.fill(instr.used_for + 1)(res)
     }).flatten ++ (for ((instr, list) <- data2Both) yield {
       val n = list.length
@@ -312,8 +414,8 @@ object Statistics {
     }
     println()
     println(Stats.describe(simpleInc, "Distribution of (non-simplified strata size / strata size)"))
-//    println(Stats.describe(rows.map(_._1), "hand-written formula size"))
-//    println(Stats.describe(rows.map(_._2), "strata formula size"))
+    //    println(Stats.describe(rows.map(_._1), "hand-written formula size"))
+    //    println(Stats.describe(rows.map(_._2), "strata formula size"))
     println()
     println(s"Maximum size for hand-written formulas: ${rows.map(_._1).max}")
     println(s"Maximum size for strata formulas: ${rows.map(_._2).max}")
@@ -323,24 +425,25 @@ object Statistics {
     println(s"Strata formulas that are larger:   ${strataInc.count(x => x > 1)}")
 
     val immDistribution = data2.filter(p => p.strata_support).groupBy(x => x.instr.substring(0, x.instr.lastIndexOf("_")))
-//    for ((i, j) <- immDistribution) {
-//      println(s"$i: ${j.length}")
-//    }
+    //    for ((i, j) <- immDistribution) {
+    //      println(s"$i: ${j.length}")
+    //    }
 
     println("\nTable from the paper:")
     val imm8 = data2.map(x => if (x.strata_support) x.used_for + 1 else 0).sum.toDouble / 256.0
-    val table = f"""
-                   |Base set                           &  ${data.count(x => x.strata_reason == 0)}\\\\
-                   |Pseudo instruction templates       &  11\\\\
-                   |\\midrule
-                   |Register-only variants learned      &  ${data.count(x => x.strata_reason == 1)}\\\\
-                   |Generalized (same-sized operands)  &  ${data.count(x => x.strata_reason == 2)}\\\\
-                   |Generalized (extending operands)   &  ${data.count(x => x.strata_reason == 3)}\\\\
-                   |Generalized (shrinking operands)   &  ${data.count(x => x.strata_reason == 4)}\\\\
-                   |8-bit constant instructions learned &  $imm8%.2f\\\\
-                   |\\midrule
-                   |\\textbf{Learned formulas in total} &  \\textbf{${data.count(x => x.strata_reason > 0) + imm8}%.2f}\\\\
-                   |""".stripMargin
+    val table =
+      f"""
+         |Base set                           &  ${data.count(x => x.strata_reason == 0)}\\\\
+         |Pseudo instruction templates       &  11\\\\
+         |\\midrule
+         |Register-only variants learned      &  ${data.count(x => x.strata_reason == 1)}\\\\
+         |Generalized (same-sized operands)  &  ${data.count(x => x.strata_reason == 2)}\\\\
+         |Generalized (extending operands)   &  ${data.count(x => x.strata_reason == 3)}\\\\
+         |Generalized (shrinking operands)   &  ${data.count(x => x.strata_reason == 4)}\\\\
+         |8-bit constant instructions learned &  $imm8%.2f\\\\
+         |\\midrule
+         |\\textbf{Learned formulas in total} &  \\textbf{${data.count(x => x.strata_reason > 0) + imm8}%.2f}\\\\
+         |""".stripMargin
     println(table)
     IO.writeFile(new File("bin/result-table.tex"), table)
   }
@@ -370,14 +473,14 @@ object Statistics {
     // determine start times (taking into account breaks between entry points)
     val (runSoFar, offsets) = computeOffsets(messages)
 
-//    val successes = messages.collect({
-////      case LogTaskEnd(_, Some(s: InitialSearchSuccess), _, _, _) =>
-////        s.task.instruction
-//      case LogEquivalenceClasses(instr, _, _, _) =>
-//        instr
-//    })
-//    println(successes)
-//    println(successes.size)
+    //    val successes = messages.collect({
+    ////      case LogTaskEnd(_, Some(s: InitialSearchSuccess), _, _, _) =>
+    ////        s.task.instruction
+    //      case LogEquivalenceClasses(instr, _, _, _) =>
+    //        instr
+    //    })
+    //    println(successes)
+    //    println(successes.size)
 
     // process output form specgen_statistics
     val baseSet = regState.getInstructionFile(InstructionFile.Base)
@@ -395,9 +498,9 @@ object Statistics {
     }
     val lvls = difficultyDist.filter(_ > 0).sorted
     val nlvl = lvls.length
-    println(f"Percentage of instructions learned at stratum 1: ${lvls.count(_<=1).toDouble * 100.0 / nlvl.toDouble}%.2f")
-    println(f"50th percentile is at stratum ${lvls((0.5*nlvl).round.toInt)}")
-    println(f"90th percentile is at stratum ${lvls((0.9*nlvl).round.toInt)}")
+    println(f"Percentage of instructions learned at stratum 1: ${lvls.count(_ <= 1).toDouble * 100.0 / nlvl.toDouble}%.2f")
+    println(f"50th percentile is at stratum ${lvls((0.5 * nlvl).round.toInt)}")
+    println(f"90th percentile is at stratum ${lvls((0.9 * nlvl).round.toInt)}")
 
     // search progress
     println()
@@ -432,7 +535,7 @@ object Statistics {
     val wallHoursImm8 = runTime.toDouble / (1000d * 60d * 60d)
     println(f"Experiment to learn imm8 instructions ran for ${wallHoursImm8}%.2f hours")
 
-    println(f"Total runtime therefore is ${wallHoursRegs+wallHoursImm8}%.2f hours, or ${(wallHoursRegs+wallHoursImm8)*28}%.2f CPU core hours")
+    println(f"Total runtime therefore is ${wallHoursRegs + wallHoursImm8}%.2f hours, or ${(wallHoursRegs + wallHoursImm8) * 28}%.2f CPU core hours")
 
     //println(s"Processed ${messages.length} messages")
 
@@ -466,41 +569,41 @@ object Statistics {
     //    }
 
     // initial search budgets
-//    val budgets = messages.collect {
-//      case LogTaskEnd(InitialSearchTask(_, _, budget, _), _, _, _, _) => budget
-//    }
-//    println(Distribution(budgets.map(x => Math.log(x).toLong)).info("initial search budget"))
+    //    val budgets = messages.collect {
+    //      case LogTaskEnd(InitialSearchTask(_, _, budget, _), _, _, _, _) => budget
+    //    }
+    //    println(Distribution(budgets.map(x => Math.log(x).toLong)).info("initial search budget"))
 
     // length of secondary search
-//    val sndSearch = messages.collect {
-//      case LogTaskEnd(SecondarySearchTask(_, instr, budget, _), Some(r), _, _, _) =>
-//        (instr, r.timing.search)
-//    }
-//    val totalSearchTimes = sndSearch.groupBy(x => x._1).values.map(x => x.map(_._2).sum)
-//    println(Distribution(totalSearchTimes.toSeq.map(x => x / 1000 / 1000 / 1000 / 60)).info("secondary search times"))
-//    val nn = totalSearchTimes.size
-//    if (nn > 0) {
-//      val sorted1 = totalSearchTimes.toSeq.sorted
-//      for (i <- 0 to 9) {
-//        println(s"$i: " + IO.formatNanos(sorted1(nn * 10 * i / 100)))
-//      }
-//    }
+    //    val sndSearch = messages.collect {
+    //      case LogTaskEnd(SecondarySearchTask(_, instr, budget, _), Some(r), _, _, _) =>
+    //        (instr, r.timing.search)
+    //    }
+    //    val totalSearchTimes = sndSearch.groupBy(x => x._1).values.map(x => x.map(_._2).sum)
+    //    println(Distribution(totalSearchTimes.toSeq.map(x => x / 1000 / 1000 / 1000 / 60)).info("secondary search times"))
+    //    val nn = totalSearchTimes.size
+    //    if (nn > 0) {
+    //      val sorted1 = totalSearchTimes.toSeq.sorted
+    //      for (i <- 0 to 9) {
+    //        println(s"$i: " + IO.formatNanos(sorted1(nn * 10 * i / 100)))
+    //      }
+    //    }
 
     // equivalence class statistics
-//    val eqs = messages.collect {
-//      case LogEquivalenceClasses(instr, eq, _, _) =>
-//        (instr, eq)
-//    }
-//    val firstEq = eqs.map(x => x._2.getClasses().head)
-//    val secondEq = eqs.flatMap(x => if (x._2.nClasses <= 1) None else Some(x._2.getClasses().seq(1)))
-//    println(Distribution(firstEq.map(x => x.size.toLong)).info("size of first equivalence class"))
-//    println(Distribution(secondEq.map(x => x.size.toLong)).info("size of second equivalence class"))
-//    println(Distribution(secondEq.map(x => x.size.toLong)).info("size of second equivalence class"))
-//    //println(Distribution(eqs.map(x => x._2.getClasses().map(y => y.size).sum.toLong)).info("all programs"))
-//
-//    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.uif.toLong)).info("best program's # of UIF"))
-//    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.mult.toLong)).info("best program's # of multiplications/divisions"))
-//    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.nodes.toLong)).info("best program's # of nodes"))
+    //    val eqs = messages.collect {
+    //      case LogEquivalenceClasses(instr, eq, _, _) =>
+    //        (instr, eq)
+    //    }
+    //    val firstEq = eqs.map(x => x._2.getClasses().head)
+    //    val secondEq = eqs.flatMap(x => if (x._2.nClasses <= 1) None else Some(x._2.getClasses().seq(1)))
+    //    println(Distribution(firstEq.map(x => x.size.toLong)).info("size of first equivalence class"))
+    //    println(Distribution(secondEq.map(x => x.size.toLong)).info("size of second equivalence class"))
+    //    println(Distribution(secondEq.map(x => x.size.toLong)).info("size of second equivalence class"))
+    //    //println(Distribution(eqs.map(x => x._2.getClasses().map(y => y.size).sum.toLong)).info("all programs"))
+    //
+    //    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.uif.toLong)).info("best program's # of UIF"))
+    //    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.mult.toLong)).info("best program's # of multiplications/divisions"))
+    //    println(Distribution(firstEq.map(x => x.getRepresentativeProgram.score.nodes.toLong)).info("best program's # of nodes"))
 
     //    for ((instr, eq) <- eqs) {
     //      val sorted = eq.getClasses()
