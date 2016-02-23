@@ -132,12 +132,13 @@ class Driver(initOptions: InitOptions) {
       // copy a file to the circuits directory
       val resCircuit = new File(s"${state.getCircuitDir}/$instr.s")
       val score = if (eqClasses.isEmpty) {
-        if (n != -1) {
-          val msg = s"Found $n programs for $instr, but no equivalence class has size at least $minEqClassSize"
-          state.appendLog(LogError(msg))
-        }
-        IO.copyFile(state.getResultFiles(instr).head, resCircuit)
-        meta.equivalence_classes.getClasses().head.sortedPrograms.head.score
+//        if (n != -1) {
+//          val msg = s"Found $n programs for $instr, but no equivalence class has size at least $minEqClassSize"
+//          state.appendLog(LogError(msg))
+//        }
+        val best = meta.equivalence_classes.getClasses().head.sortedPrograms.head
+        IO.copyFile(best.getFile(instr, state), resCircuit)
+        best.score
       } else {
         // determine which program is the best according to our heuristics
         val best = eqClasses.head.getRepresentativeProgram
@@ -183,7 +184,7 @@ class Driver(initOptions: InitOptions) {
             state.writeMetaOfInstr(instr, meta.copy(search_without_uif = true))
           }
           // stop after we found enough
-          if ((n >= 10 && uifsInBest == 0) || (n >= 13)) {
+          if ((n >= 15 && uifsInBest == 0) || (n >= 20)) {
             moveProgramToCircuitDir(meta, n)
             state.removeInstructionToFile(instr, InstructionFile.PartialSuccess)
             if (!initOptions.no_stratification) {
