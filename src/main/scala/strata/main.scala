@@ -36,7 +36,7 @@ object Strata {
       parser.opt[Unit]('v', "verbose") action {
         (x, c) => updateGlobal(None, Some(true), None, c)
       } text (s"Verbose output.  Default: ${GlobalOptions().verbose}")
-      parser.opt[Unit]('v', "keepTmpDirs") action {
+      parser.opt[Unit]('k', "keepTmpDirs") action {
         (x, c) => updateGlobal(None, None, Some(true), c)
       } text (s"Keep the temporary working directories intact.  Default: ${GlobalOptions().verbose}")
     }
