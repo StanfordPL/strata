@@ -32,7 +32,6 @@ class Driver(initOptions: InitOptions) {
 
     // TODO better value
     var nThreads = Runtime.getRuntime.availableProcessors() * 3 / 4
-    nThreads = 1
     IO.info(s"Running with $nThreads threads")
 
     // our pool of threads to do all the computation

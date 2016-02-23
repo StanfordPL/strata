@@ -18,7 +18,7 @@ object Strata {
   def main(args: Array[String]) {
 
     // fix randomness for now
-    Random.setSeed(0)
+    //Random.setSeed(0)
 
 //    Log.test()
 //    return
