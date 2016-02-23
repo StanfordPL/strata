@@ -154,7 +154,7 @@ object Statistics {
     }
 
     def investigateEqClasses() = {
-      val AEstate = State(GlobalOptions("/home/sheule/dev/output-strata-ae2"))
+      val AEstate = State(GlobalOptions("/home/sheule/dev/output-strata-fast-ae"))
       var AEmessages = AEstate.getLogMessages
 
       val AElogs = AEmessages.collect({
@@ -162,11 +162,14 @@ object Statistics {
       })
       val AEeqs = AElogs.map(x => x.eq)
 
-      val state = State(GlobalOptions("/home/sheule/dev/output-strata-correct"))
+      val state = State(GlobalOptions("/home/sheule/dev/output-strata"))
       var messages = state.getLogMessages
 
-      val len = AEmessages.last.time.toDate.getTime - AEmessages.head.time.toDate.getTime
-      messages = messages.filter(p => p.time.toDate.getTime - messages.head.time.toDate.getTime < len)
+      val AElen = AEmessages.last.time.toDate.getTime - AEmessages.head.time.toDate.getTime
+      val len = messages.last.time.toDate.getTime - messages.head.time.toDate.getTime
+      val maxLen = Vector(AElen, len).min
+      messages = messages.filter(p => p.time.toDate.getTime - messages.head.time.toDate.getTime < maxLen)
+      AEmessages = AEmessages.filter(p => p.time.toDate.getTime - AEmessages.head.time.toDate.getTime < maxLen)
 
       val logs = messages.collect({
         case l@LogEquivalenceClasses(instr, eq, _, _) => l
@@ -180,9 +183,6 @@ object Statistics {
         a(messages)
         println("---------------")
       }
-
-      println(AEmessages.last.time.toDate.getTime - AEmessages.head.time.toDate.getTime)
-      println(messages.last.time.toDate.getTime - messages.head.time.toDate.getTime)
 
       println(Distribution(AEeqs.map(x => x.nClasses.toLong)).info("all equal"))
       println(Distribution(eqs.map(x => x.nClasses.toLong)).info("correct"))
@@ -221,6 +221,13 @@ object Statistics {
         }))
       })
 
+      test((msgs: Seq[LogMessage]) => {
+        println("Number of counterexamples: " + msgs.count({
+          case LogVerifyResult(instr, true, StokeVerifyOutput(false, true, _, _), _, _, _, _) => true
+          case _ => false
+        }))
+      })
+
       // compute progress for both
       val (_, offsets) = computeOffsets(messages)
       val progressRows = messages.collect {
@@ -252,6 +259,8 @@ object Statistics {
           }
         }
       }
+
+      println(IO.formatNanos(maxLen*1000*1000))
     }
 
     //    computeTimeSpentDoingX()
