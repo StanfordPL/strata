@@ -124,6 +124,7 @@ case class Check(options: EvaluateOptions) {
           //          "--no_simplify",
           //          "--solver", "cvc4",
           "--opcode", instruction)
+        //println(IO.cmd2String(cmd))
         val (out, status) = IO.runQuiet(cmd)
         val usedNTimes = usedFor(instruction) + 1
         total += usedNTimes
