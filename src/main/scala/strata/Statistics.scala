@@ -260,14 +260,42 @@ object Statistics {
         }
       }
 
-      println(IO.formatNanos(maxLen*1000*1000))
+      println(IO.formatNanos(maxLen * 1000 * 1000))
+    }
+
+    def hardInstructions() = {
+      val state = State(GlobalOptions("/home/sheule/dev/output-strata"))
+      var messages = state.getLogMessages.sortBy(x => x.time.toDate.getTime)
+
+      // what order did we learn things in?
+      val instrOrder = messages.collect({
+        case LogEquivalenceClasses(instr, _, _, _) => instr
+      })
+      val base = state.getInstructionFile(InstructionFile.Base)
+      IO.writeFile(new File("instruction-order.txt"), (base ++ instrOrder).mkString("\n"), overwrite = true)
+
+      val data = instrOrder.map(i => {
+        val meta = state.getMetaOfInstr(i)
+        val firstSearch = meta.initial_searches.filter(x => x.success)
+        val successfulSearchCost = firstSearch.map(x => x.iterations) ++
+          meta.secondary_searches.filter(x => x.n_found > 0).map(x => x.iterations)
+        (i, Stats.median(successfulSearchCost), Stats.mean(successfulSearchCost), firstSearch(0).start_ptime)
+      }).sortBy(x => x._2).reverse
+
+      val dataStr = Seq("instruction\tmedian iterations for successful search\tmean iterations for successful search\tnumber of instructions in base set at time of first search") ++
+        data.map(x => f"${x._1}\t${x._2}\t${x._3}%.1f\t${x._4}")
+      println(dataStr.take(10).mkString("\n"))
+      IO.writeFile(new File("instruction-hardness-data.txt"), dataStr.mkString("\n"), overwrite = true)
+
+      println(data.map(_._4).max)
+      println((base ++ instrOrder).size)
     }
 
     //    computeTimeSpentDoingX()
     //    computeProgress()
     //    instructionsLearnedPreviously()
-    investigateEqClasses()
-
+    //    investigateEqClasses()
+    hardInstructions()
   }
 
   case class InstructionStats(instr: String,

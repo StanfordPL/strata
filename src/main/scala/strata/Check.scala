@@ -78,7 +78,7 @@ case class Check(options: EvaluateOptions) {
     // instruction stats
     val stats = Statistics.readInstructionStats
     def usedFor(x: Instruction) = {
-      stats(x).used_for
+      1 //stats(x).used_for
     }
 
     // how many instructions did we need to learn in sequence.
@@ -107,7 +107,7 @@ case class Check(options: EvaluateOptions) {
     var timeout = 0
     var stoke_wrong = 0
     var missing_lemma = 0
-    var total = -1
+    var total = 0
     var usesWrongCircuit = 0
     val dontCheckWrong = false
     val incorrectInstrs = collection.mutable.Set.empty[Instruction]
@@ -116,8 +116,32 @@ case class Check(options: EvaluateOptions) {
     println("There are no hand-written formulas available for the imm8 instructions.")
     println("")
 
-    for (instruction <- graph.topologicalSort if strataInstrs.contains(instruction)) {
-      if (graph.get(instruction).diPredecessors.size >= 0) {
+    // imm8 instructions
+    val (data, data2) = Statistics.readInstructionStatsBase
+//    val imm8_instructions = data2.filter(x => x.stoke_support && x.strata_support).map(x => Instruction(x.instr))
+
+    val imm8_instructions = for (circuitFile <- circuitPath.listFiles if Check.isImm8CicuitFile(circuitFile)) yield {
+      Instruction(circuitFile.getName.substring(0, circuitFile.getName.length - 2))
+    }
+
+    println()
+    println(f"Number of imm8 instructions: ${imm8_instructions.size.toDouble/256.0}%.2f or ${imm8_instructions.size}")
+
+//    for (b <- baseSet) {
+//      correct += usedFor(b) * 256
+//      total += usedFor(b) * 256
+//    }
+
+    val unsupportedImm8 = data2.map(x => if (!x.stoke_support) x.used_for + 1 else 0).sum
+//    total += unsupportedImm8
+//    stoke_unsupported += unsupportedImm8
+
+    val all = strataInstrs ++ imm8_instructions
+    var all2: Seq[Instruction] = /*graph.topologicalSort ++ */imm8_instructions
+//    all2 = graph.topologicalSort
+    for (instruction <- all2 if all.contains(instruction)) {
+      val isImm8 = imm8_instructions.contains(instruction)
+      if (isImm8 || graph.get(instruction).diPredecessors.size >= 0) {
         val cmd = Vector("timeout", "15s",
           s"${IO.getProjectBase}/stoke/bin/specgen", "compare",
           "--circuit_dir", circuitPath,
@@ -126,7 +150,11 @@ case class Check(options: EvaluateOptions) {
           "--opcode", instruction)
         //println(IO.cmd2String(cmd))
         val (out, status) = IO.runQuiet(cmd)
-        val usedNTimes = usedFor(instruction) + 1
+        val usedNTimes = if (!isImm8) {
+          (usedFor(instruction) + 1) * 256
+        } else {
+          usedFor(instruction) + 1
+        }
         total += usedNTimes
         val program = Check.getProgram(circuitPath, instruction)
 
@@ -192,14 +220,14 @@ case class Check(options: EvaluateOptions) {
     }
 
     println()
-    //println(f"Total:                    $total")
-    println(f"hand-written == strata:   $correct")
-    println(f"hand-written is wrong:    $stoke_wrong")
-    println(f"hand-written != strata:   $incorrect")
-    println(f"missing lemma:            $missing_lemma")
-    println(f"not checked:              $usesWrongCircuit (because it relies on previously reported wrong formulas)")
-    println(f"Timeout:                  $timeout")
-    println(f"Unsupported by STOKE:     $stoke_unsupported")
+    println(f"Total:                    ${total.toDouble/256.0}%.2f")
+    println(f"hand-written == strata:   ${correct.toDouble/256.0}%.2f")
+    println(f"hand-written is wrong:    ${stoke_wrong.toDouble/256.0}%.2f")
+    println(f"hand-written != strata:   ${incorrect.toDouble/256.0}%.2f")
+    println(f"missing lemma:            ${missing_lemma.toDouble/256.0}%.2f")
+    println(f"not checked:              ${usesWrongCircuit.toDouble/256.0}%.2f (because it relies on previously reported wrong formulas)")
+    println(f"Timeout:                  ${timeout.toDouble/256.0}%.2f")
+    println(f"Unsupported by STOKE:     ${stoke_unsupported.toDouble/256.0}%.2f")
 
     println()
     val handwrittenFormulaAvailable = correct + stoke_wrong + incorrect + missing_lemma + usesWrongCircuit + timeout

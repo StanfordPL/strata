@@ -71,7 +71,7 @@ case class Distribution(data: Seq[Long]) {
   }
 
   private def median(arr: Seq[Long]) = {
-    arr.sorted.apply((arr.size - 1) / 2)
+    Stats.median(arr)
   }
 
 }
@@ -86,6 +86,16 @@ object Stats {
       val pFormatted = formatter(p)
       (" " * (Math.max(minLength, formatter(total).length) - pFormatted.length)) + f"$pFormatted ($percentage%6.2f %%)"
     }
+  }
+
+  def median(arr: Seq[Long]): Long = {
+    assert(arr.nonEmpty)
+    arr.sorted.apply((arr.size - 1) / 2)
+  }
+
+  def mean(arr: Seq[Long]): Double = {
+    assert(arr.nonEmpty)
+    arr.sum.toDouble / arr.length.toDouble
   }
 
   /** Describe the distrbution given as a sorted list. */
