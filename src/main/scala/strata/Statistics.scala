@@ -287,8 +287,9 @@ object Statistics {
       println(dataStr.take(10).mkString("\n"))
       IO.writeFile(new File("instruction-hardness-data.txt"), dataStr.mkString("\n"), overwrite = true)
 
-      println(data.map(_._4).max)
-      println((base ++ instrOrder).size)
+      // output live out and def in
+      val liveout = instrOrder.map(x => s"$x: live_out=${state.getMetaOfInstr(x).live_out}, def_in=${state.getMetaOfInstr(x).def_in}")
+      IO.writeFile(new File("live-info.txt"), liveout.sorted.mkString("\n"), overwrite = true)
     }
 
     //    computeTimeSpentDoingX()

@@ -54,12 +54,12 @@ case class Check(options: EvaluateOptions) {
     "addsubps_xmm_xmm",
     "vaddsubps_xmm_xmm_xmm",
     "vaddsubpd_xmm_xmm_xmm",
-    "addsubpd_xmm_xmm",
-    "vaddsubpd_ymm_ymm_ymm" // 5
+    "addsubpd_xmm_xmm" // 4
   )
 
   val missingLemma = Vector(
-    "vfnmsub132ss_xmm_xmm_xmm"
+    "vfnmadd132ss_xmm_xmm_xmm",
+    "vfmadd132sd_xmm_xmm_xmm"
   )
 
   /** Run the check. */
@@ -138,7 +138,7 @@ case class Check(options: EvaluateOptions) {
 
     val all = strataInstrs ++ imm8_instructions
     var all2: Seq[Instruction] = /*graph.topologicalSort ++ */imm8_instructions
-//    all2 = graph.topologicalSort
+    all2 = graph.topologicalSort
     for (instruction <- all2 if all.contains(instruction)) {
       val isImm8 = imm8_instructions.contains(instruction)
       if (isImm8 || graph.get(instruction).diPredecessors.size >= 0) {
@@ -169,7 +169,7 @@ case class Check(options: EvaluateOptions) {
             println()
             println("-------------------------------------")
             println()
-            println(s"Hand-written formula for '$instruction' is wrong (it is used $usedNTimes times):")
+            println(f"Hand-written formula for '$instruction' is wrong (it is used ${usedNTimes.toDouble/256.0}%.1f times):")
             println()
             println(out.trim)
           }
@@ -180,12 +180,15 @@ case class Check(options: EvaluateOptions) {
             println()
             println("-------------------------------------")
             println()
-            println(s"Formulas for '$instruction' are equivalent, but require a lemma (it is used $usedNTimes times):")
+            println(f"Formulas for '$instruction' are equivalent, but require a lemma (it is used ${usedNTimes.toDouble/256.0}%.1f times):")
             println()
             println(out.trim)
           }
         } else if (status == 124) {
-          println(s"$instruction: timeout")
+          println()
+          println("-------------------------------------")
+          println()
+          println(f"Timed out for '$instruction', no equivalence information available.")
           timeout += usedNTimes
         } else if (status == 2) {
           // not supported by STOKE
@@ -194,19 +197,15 @@ case class Check(options: EvaluateOptions) {
           // circuits are not proven equivalent
           incorrect += usedNTimes
 
-//          if (debug) {
-            println()
-            println("-------------------------------------")
-            println()
-            println(s"Formulas for '$instruction' are not equivalent (it is used $usedNTimes times):")
-            println()
-            println("Program:")
-            println("  " + program.toString.replace("\n", "\n  "))
-            println()
-            println(out.trim)
-//          } else {
-//            println(s"$instruction: not equivalent")
-//          }
+          println()
+          println("-------------------------------------")
+          println()
+          println(f"Formulas for '$instruction' are not equivalent (it is used ${usedNTimes.toDouble/256.0}%.1f times):")
+          println()
+          println("Program:")
+          println("  " + program.toString.replace("\n", "\n  "))
+          println()
+          println(out.trim)
           incorrectInstrs += instruction
         } else if (status == 0) {
           // correct :)
