@@ -19,11 +19,11 @@ with open(config.data_path + '/strata-increase.csv', 'rb') as csvfile:
   for row in spamreader:
     data.append(float(row[0]))
 
-lim = 20.0
-# print lim
-# print max(data)
-# print 1/lim
-# print min(data)
+lim = 15.0
+print lim
+print max(data)
+print 1/lim
+print min(data)
 assert(lim > max(data))
 assert(1/lim < min(data))
 

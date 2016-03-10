@@ -31,6 +31,7 @@ bin:
 evaluate_precompute: bin bin/statistics-regs.json bin bin/statistics-imm8.json
 
 graphs: evaluate_precompute bin/levels.csv
+	scripts/graphs/progress.py
 	scripts/graphs/levels.py
 	scripts/graphs/size.py
 	scripts/graphs/size2.py

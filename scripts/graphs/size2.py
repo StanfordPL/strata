@@ -20,8 +20,12 @@ with open(config.data_path + '/strata-simplication-increase.csv', 'rb') as csvfi
     data.append(float(row[0]))
 
 low = 2.
-high = 1200.
+high = 2500.
 
+print high
+print max(data)
+print low
+print min(data)
 assert(min(data) > 1/2)
 assert(max(data) < high)
 
@@ -30,7 +34,7 @@ fig, ax = plt.subplots()
 ax.set_xscale('log')
 rects = ax.hist(data, bins=10 ** np.linspace(math.log10(1./low), math.log10(high), 40))
 plt.gca().set_xlim([1./low,high])
-plt.xticks([ 1, 10, 100 ,1000], ["equal", "10x smaller", "100x smaller", "1000x"], rotation=0)
+plt.xticks([ 1, 10, 100 ,1000], ["equal", "10x smaller", "100x smaller", "1000x smaller"], rotation=0)
 for tick in ax.xaxis.get_major_ticks():
   tick.label.set_fontsize(12) 
 

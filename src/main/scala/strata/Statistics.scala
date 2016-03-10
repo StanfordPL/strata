@@ -3,6 +3,7 @@ package strata
 import java.io.{FileInputStream, File}
 
 import com.github.tototoshi.csv.CSVWriter
+import org.joda.time.DateTime
 import org.json4s.DefaultFormats
 import org.json4s.native.JsonMethods._
 import strata.data._
@@ -56,83 +57,101 @@ object Statistics {
     }
   }
 
-  // determine start times (taking into account breaks between entry points)
-  def computeOffsets(messages: Seq[LogMessage]): (Long, Map[String, Long]) = {
-    val offsets = collection.mutable.Map[String, Long]()
-    val timeData = messages.groupBy(x => x.context.hostname).map(x => {
-      val a = x._2.map(x => x.time.toDate.getTime)
-      (x._1, a.min, a.max)
-    }).toList.sortBy(x => x._2)
-    var lastEndTime = 0L
-    var runSoFar = 0L
-    for (i <- timeData) {
-      if (lastEndTime == 0L) {
-        offsets(i._1) = i._2 // offset is just the start time
-      } else {
-        assert(i._2 >= lastEndTime)
-        offsets(i._1) = i._2 - runSoFar
-      }
-      lastEndTime = i._3
-      runSoFar += i._3 - i._2
+  def toTime(x: DateTime): Long = {
+    x.toDate.getTime
+  }
+
+  // take a time, and convert it into milliseconds since the start of the experiement, had it run the whole time
+  def timeSinceStart(x: DateTime, offsets: Seq[(Long, Long)]): Long = {
+    val time = toTime(x)
+    var idx = 0
+    while (idx < offsets.size && offsets(idx)._1 > time) {
+      idx += 1
     }
-    (runSoFar, offsets.toMap)
+    offsets(idx)._2 + (time - offsets(idx)._1)
+  }
+
+  // determine start times (taking into account breaks between entry points)
+  def computeOffsets(messages: Seq[LogMessage]): (Long, Seq[(Long, Long)]) = {
+    val sorted = messages.sortBy(x => toTime(x.time))
+    // pairs of absolute time and time the experiement was running before
+    val offsets = collection.mutable.ListBuffer[(Long, Long)]()
+
+    var runSoFar = 0L
+    var last = -1L
+    for (m <- sorted) {
+      m match {
+        case LogEntryPoint(_, _, t, context) =>
+          val host = context.hostname
+          if (last != -1) {
+            // add time for last interval
+            runSoFar += (last - offsets.last._1)
+          }
+          // found a new start time, add it to the offsets
+          offsets.append((toTime(t), runSoFar))
+        case _ =>
+      }
+      last = toTime(m.time)
+    }
+    runSoFar += (toTime(sorted.last.time) - offsets.last._1)
+    (runSoFar, offsets.toSeq)
   }
 
   val CLEAR_CONSOLE: String = "\u001b[H\u001b[2J"
 
   /** Some adhoc statistics. */
   def tmp(globalOptions: GlobalOptions): Unit = {
-    def computeProgress(): Unit = {
-      val state = State(globalOptions)
-      val messages = state.getLogMessages
+//    def computeProgress(): Unit = {
+//      val state = State(globalOptions)
+//      val messages = state.getLogMessages
+//
+//      val (runSoFar, offsets) = computeOffsets(messages)
+//
+//      val progressRows = messages.collect {
+//        case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
+//          assert(offsets.contains(ctx.hostname))
+//          val tInMs = time.toDate.getTime - offsets(ctx.hostname)
+//          (tInMs.toDouble / (1000d * 60d * 60d), pt)
+//      }.sortBy(x => x._1)
+//      val baseSetSize = progressRows.map(_._2).min
+//      // optimize by dropping intermediate unchanged elements
+//      for (writer <- managed(CSVWriter.open(new File("bin/progress.csv")))) {
+//        var last = -1
+//        for ((r, i) <- progressRows.zipWithIndex) {
+//          if (r._2 != last || i == 0 || i == progressRows.size - 1) {
+//            writer.writeRow(Vector(r._1, r._2 - baseSetSize))
+//            last = r._2
+//          }
+//        }
+//      }
+//    }
 
-      val (runSoFar, offsets) = computeOffsets(messages)
-
-      val progressRows = messages.collect {
-        case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
-          assert(offsets.contains(ctx.hostname))
-          val tInMs = time.toDate.getTime - offsets(ctx.hostname)
-          (tInMs.toDouble / (1000d * 60d * 60d), pt)
-      }.sortBy(x => x._1)
-      val baseSetSize = progressRows.map(_._2).min
-      // optimize by dropping intermediate unchanged elements
-      for (writer <- managed(CSVWriter.open(new File("bin/progress.csv")))) {
-        var last = -1
-        for ((r, i) <- progressRows.zipWithIndex) {
-          if (r._2 != last || i == 0 || i == progressRows.size - 1) {
-            writer.writeRow(Vector(r._1, r._2 - baseSetSize))
-            last = r._2
-          }
-        }
-      }
-    }
-
-    def instructionsLearnedPreviously(): Unit = {
-      val state = State(GlobalOptions(workdirPath = "/home/sheule/dev/strata-data/data-regs"))
-      val messages = state.getLogMessages
-      val (runSoFar, offsets) = computeOffsets(messages)
-
-      val ms = messages.filter(p => {
-        val hours = (p.time.toDate.getTime - offsets(p.context.hostname)).toDouble / (1000d * 60d * 60d)
-        hours < 17
-      })
-
-      //      val extstats = getExtendedStats(ms)
-      //      def printBox(b: Box) = {
-      //        val (o, _) = printBoxesHorizontally(Vector(b), 45)
-      //        println(o)
-      //      }
-      //      printBox(extstats.otherInfoBox)
-      //      printBox(extstats.searchOverviewBox)
-      //      printBox(extstats.timingBox)
-      //      printBox(extstats.validatorInvocationsBox)
-      //      println()
-
-      val succ = ms.collect({
-        case LogEquivalenceClasses(instr, _, _, _) => instr
-      })
-      println(succ.map(i => i.realOpcode).sorted.mkString("\n"))
-    }
+//    def instructionsLearnedPreviously(): Unit = {
+//      val state = State(GlobalOptions(workdirPath = "/home/sheule/dev/strata-data/data-regs"))
+//      val messages = state.getLogMessages
+//      val (runSoFar, offsets) = computeOffsets(messages)
+//
+//      val ms = messages.filter(p => {
+//        val hours = (p.time.toDate.getTime - offsets(p.context.hostname)).toDouble / (1000d * 60d * 60d)
+//        hours < 17
+//      })
+//
+//      //      val extstats = getExtendedStats(ms)
+//      //      def printBox(b: Box) = {
+//      //        val (o, _) = printBoxesHorizontally(Vector(b), 45)
+//      //        println(o)
+//      //      }
+//      //      printBox(extstats.otherInfoBox)
+//      //      printBox(extstats.searchOverviewBox)
+//      //      printBox(extstats.timingBox)
+//      //      printBox(extstats.validatorInvocationsBox)
+//      //      println()
+//
+//      val succ = ms.collect({
+//        case LogEquivalenceClasses(instr, _, _, _) => instr
+//      })
+//      println(succ.map(i => i.realOpcode).sorted.mkString("\n"))
+//    }
 
     def computeTimeSpentDoingX() = {
       val state = State(globalOptions)
@@ -229,36 +248,36 @@ object Statistics {
       })
 
       // compute progress for both
-      val (_, offsets) = computeOffsets(messages)
-      val progressRows = messages.collect {
-        case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
-          val tInMs = time.toDate.getTime - offsets(ctx.hostname)
-          (tInMs.toDouble / (1000d * 60d * 60d), pt, 1)
-      }
-      val baseSetSize = progressRows.map(_._2).min
-      val (aa, bb) = computeOffsets(AEmessages)
-      val AEprogressRows = AEmessages.collect {
-        case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
-          val tInMs = time.toDate.getTime - bb(ctx.hostname)
-          (tInMs.toDouble / (1000d * 60d * 60d), pt, 2)
-      }
-      val allRows = (progressRows ++ AEprogressRows).sortBy(x => x._1)
-      // optimize by dropping intermediate unchanged elements
-      for (writer <- managed(CSVWriter.open(new File("bin/progress.csv")))) {
-        var last = -1
-        var prev = (0, 0)
-        for ((r, i) <- allRows.zipWithIndex) {
-          if (r._2 != last || i == 0 || i == progressRows.size - 1) {
-            if (r._3 == 1) {
-              prev = (r._2 - baseSetSize, prev._2)
-            } else {
-              prev = (prev._1, r._2 - baseSetSize)
-            }
-            writer.writeRow(Vector(r._1, prev._1, prev._2))
-            last = r._2
-          }
-        }
-      }
+//      val (_, offsets) = computeOffsets(messages)
+//      val progressRows = messages.collect {
+//        case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
+//          val tInMs = time.toDate.getTime - offsets(ctx.hostname)
+//          (tInMs.toDouble / (1000d * 60d * 60d), pt, 1)
+//      }
+//      val baseSetSize = progressRows.map(_._2).min
+//      val (aa, bb) = computeOffsets(AEmessages)
+//      val AEprogressRows = AEmessages.collect {
+//        case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
+//          val tInMs = time.toDate.getTime - bb(ctx.hostname)
+//          (tInMs.toDouble / (1000d * 60d * 60d), pt, 2)
+//      }
+//      val allRows = (progressRows ++ AEprogressRows).sortBy(x => x._1)
+//      // optimize by dropping intermediate unchanged elements
+//      for (writer <- managed(CSVWriter.open(new File("bin/progress.csv")))) {
+//        var last = -1
+//        var prev = (0, 0)
+//        for ((r, i) <- allRows.zipWithIndex) {
+//          if (r._2 != last || i == 0 || i == progressRows.size - 1) {
+//            if (r._3 == 1) {
+//              prev = (r._2 - baseSetSize, prev._2)
+//            } else {
+//              prev = (prev._1, r._2 - baseSetSize)
+//            }
+//            writer.writeRow(Vector(r._1, prev._1, prev._2))
+//            last = r._2
+//          }
+//        }
+//      }
 
       println(IO.formatNanos(maxLen * 1000 * 1000))
     }
@@ -502,12 +521,6 @@ object Statistics {
     printBox(extstats.validatorInvocationsBox)
     println()
 
-    // ensure that there is only a single entry point per host
-    val startTimes = collection.mutable.Map[String, Long]()
-    for (i <- messages.collect({ case x: LogEntryPoint if x.arguments(0) != "cleanup" => x })) {
-      assert(!startTimes.contains(i.context.hostname))
-      startTimes(i.context.hostname) = i.time.toDate.getTime
-    }
     // determine start times (taking into account breaks between entry points)
     val (runSoFar, offsets) = computeOffsets(messages)
 
@@ -545,8 +558,7 @@ object Statistics {
     println("Computing information about the search progress...")
     val progressRows = messages.collect {
       case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
-        assert(offsets.contains(ctx.hostname))
-        val tInMs = time.toDate.getTime - offsets(ctx.hostname)
+        val tInMs = timeSinceStart(time, offsets)
         (tInMs.toDouble / (1000d * 60d * 60d), pt)
     }.sortBy(x => x._1)
     val baseSetSize = progressRows.map(_._2).min
@@ -566,10 +578,12 @@ object Statistics {
     // calculate imm8 running time
     var runTime = 0L
     for (i <- 0 to 7) {
+      print(".")
       val imm8State = State(GlobalOptions(workdirPath = s"${evalOptions.dataPath}/data-imm8/block-$i"))
       val immMessages = imm8State.getLogMessages.map(x => x.time.toDate.getTime)
       runTime += immMessages.max - immMessages.min
     }
+    println()
     val wallHoursImm8 = runTime.toDouble / (1000d * 60d * 60d)
     println(f"Experiment to learn imm8 instructions ran for ${wallHoursImm8}%.2f hours")
 

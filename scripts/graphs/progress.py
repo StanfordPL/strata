@@ -23,6 +23,7 @@ fig, ax = plt.subplots()
 rects = ax.plot(x, y, '-', linewidth=1)
 
 plt.gca().set_xlim([min(x),max(x)])
+plt.gca().set_ylim([0, 750])
 
 plt.xlabel('Wall-clock time elapsed [hours]')
 plt.ylabel('Number of formulas learned')
