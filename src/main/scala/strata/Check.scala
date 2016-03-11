@@ -135,7 +135,27 @@ case class Check(options: EvaluateOptions) {
     val all = strataInstrs ++ imm8_instructions
     var all2: Seq[Instruction] = graph.topologicalSort ++ imm8_instructions
 
-    println(data.count(x => x.strata_reason > 0))
+    val map = IO.readFile(new File("map")).split("\n")
+      .map(x => x.split(" -> ")).map(x => (x(0), x(1)))
+      .map(x => (Instruction(x._1), Instruction(x._2))).toMap
+
+    for (i <- data if i.strata_reason == 1) {
+      val instr = Instruction(i.instr)
+      val used = map.count(x => x._2 == instr)
+      if (i.used_for != used) {
+        println(i)
+        println(i.used_for)
+        println(used)
+      }
+    }
+
+//    println(data.filter(x => x.strata_reason > 0).map(i => i.instr).mkString("\n"))
+//    println("-----------")
+
+    for (instruction <- baseSet) {
+      val used = map.filter(x => x._2 == instruction).map(x => x._1) ++ Seq(instruction)
+      println(used.mkString("\n"))
+    }
 
     for (instruction <- all2 if all.contains(instruction)) {
       val isImm8 = imm8_instructions.contains(instruction)
@@ -156,6 +176,15 @@ case class Check(options: EvaluateOptions) {
         }
         total += usedNTimes
         val program = Check.getProgram(circuitPath, instruction)
+
+        val used = map.filter(x => x._2 == instruction).map(x => x._1) ++ Seq(instruction)
+        if (!(usedNTimes == used.size * 256)) {
+          println(used.size)
+          println(usedNTimes / 256)
+          println(instruction)
+        }
+        assert(usedNTimes == used.size * 256)
+        println(used.mkString("\n"))
 
         // check if this uses an instruction that we already know to be wrong
         if (program.instructions.toSet.intersect(incorrectInstrs).nonEmpty && dontCheckWrong) {

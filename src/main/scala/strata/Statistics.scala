@@ -340,7 +340,7 @@ object Statistics {
       implicit val formats = DefaultFormats
       parse(line).extract[InstructionStats]
     }
-    (data, data2)
+    (data, Nil)
   }
 
   def readInstructionStats: Map[Instruction, InstructionStats] = {
