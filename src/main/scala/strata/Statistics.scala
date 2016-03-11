@@ -537,7 +537,7 @@ object Statistics {
     val baseSet = regState.getInstructionFile(InstructionFile.Base)
     processSpecgenStats(baseSet)
 
-    // levels (NOTE: data comes from a different place: checkOptions.circuitPath)
+    // levels
     val check = Check(evalOptions)
     val (strataInstrs, graph) = check.dependencyGraph(evalOptions.circuitPath)
     val difficultyMap: Map[Instruction, Int] = check.computeDifficultyMap(baseSet)

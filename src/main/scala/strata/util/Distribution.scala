@@ -62,7 +62,7 @@ case class Distribution(data: Seq[Long]) {
       s"Distribution of $title is empty"
     } else {
       s"Distribution of $title\n" +
-        histogram(15) + "\n" +
+        histogram(20) + "\n" +
         s"Total elements: ${data.length}\n" +
         s"Minimum:        ${data.min}\n" +
         s"Median:         ${median(data)}\n" +

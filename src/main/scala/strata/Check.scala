@@ -78,7 +78,7 @@ case class Check(options: EvaluateOptions) {
     // instruction stats
     val stats = Statistics.readInstructionStats
     def usedFor(x: Instruction) = {
-      1 //stats(x).used_for
+      stats(x).used_for + 1
     }
 
     // how many instructions did we need to learn in sequence.
@@ -113,32 +113,31 @@ case class Check(options: EvaluateOptions) {
     val incorrectInstrs = collection.mutable.Set.empty[Instruction]
 
     println("Analyzing correctness formulas (comparing with hand-written formulas where available).")
-    println("There are no hand-written formulas available for the imm8 instructions.")
     println("")
 
     // imm8 instructions
     val (data, data2) = Statistics.readInstructionStatsBase
-//    val imm8_instructions = data2.filter(x => x.stoke_support && x.strata_support).map(x => Instruction(x.instr))
+    val imm8_instructions = data2.filter(x => x.stoke_support && x.strata_support).map(x => Instruction(x.instr))
 
-    val imm8_instructions = for (circuitFile <- circuitPath.listFiles if Check.isImm8CicuitFile(circuitFile)) yield {
-      Instruction(circuitFile.getName.substring(0, circuitFile.getName.length - 2))
-    }
+//    val imm8_instructions = for (circuitFile <- circuitPath.listFiles if Check.isImm8CicuitFile(circuitFile)) yield {
+//      Instruction(circuitFile.getName.substring(0, circuitFile.getName.length - 2))
+//    }
 
     println()
     println(f"Number of imm8 instructions: ${imm8_instructions.size.toDouble/256.0}%.2f or ${imm8_instructions.size}")
 
-//    for (b <- baseSet) {
-//      correct += usedFor(b) * 256
-//      total += usedFor(b) * 256
-//    }
+    for (b <- baseSet) {
+      correct += (usedFor(b)-1) * 256
+      total += (usedFor(b)-1) * 256
+    }
 
-    val unsupportedImm8 = data2.map(x => if (!x.stoke_support) x.used_for + 1 else 0).sum
-//    total += unsupportedImm8
-//    stoke_unsupported += unsupportedImm8
+    val unsupportedImm8 = data2.map(x => if (!x.stoke_support && x.strata_support) usedFor(Instruction(x.instr)) else 0).sum
+    total += unsupportedImm8
+    stoke_unsupported += unsupportedImm8
 
     val all = strataInstrs ++ imm8_instructions
-    var all2: Seq[Instruction] = /*graph.topologicalSort ++ */imm8_instructions
-    all2 = graph.topologicalSort
+    var all2: Seq[Instruction] = graph.topologicalSort ++ imm8_instructions
+
     for (instruction <- all2 if all.contains(instruction)) {
       val isImm8 = imm8_instructions.contains(instruction)
       if (isImm8 || graph.get(instruction).diPredecessors.size >= 0) {
@@ -151,9 +150,9 @@ case class Check(options: EvaluateOptions) {
         //println(IO.cmd2String(cmd))
         val (out, status) = IO.runQuiet(cmd)
         val usedNTimes = if (!isImm8) {
-          (usedFor(instruction) + 1) * 256
+          usedFor(instruction) * 256
         } else {
-          usedFor(instruction) + 1
+          usedFor(instruction)
         }
         total += usedNTimes
         val program = Check.getProgram(circuitPath, instruction)
@@ -230,7 +229,7 @@ case class Check(options: EvaluateOptions) {
 
     println()
     val handwrittenFormulaAvailable = correct + stoke_wrong + incorrect + missing_lemma + usesWrongCircuit + timeout
-    println(f"We can formally compare to handwritten formulas for ${handwrittenFormulaAvailable} instruction variants")
+    println(f"We can formally compare to handwritten formulas for ${handwrittenFormulaAvailable/256.0}%.2f instruction variants")
     println()
   }
 
