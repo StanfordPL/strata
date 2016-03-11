@@ -123,9 +123,6 @@ case class Check(options: EvaluateOptions) {
 //      Instruction(circuitFile.getName.substring(0, circuitFile.getName.length - 2))
 //    }
 
-    println()
-    println(f"Number of imm8 instructions: ${imm8_instructions.size.toDouble/256.0}%.2f or ${imm8_instructions.size}")
-
     for (b <- baseSet) {
       correct += (usedFor(b)-1) * 256
       total += (usedFor(b)-1) * 256
@@ -138,6 +135,8 @@ case class Check(options: EvaluateOptions) {
     val all = strataInstrs ++ imm8_instructions
     var all2: Seq[Instruction] = graph.topologicalSort ++ imm8_instructions
 
+    println(data.count(x => x.strata_reason > 0))
+
     for (instruction <- all2 if all.contains(instruction)) {
       val isImm8 = imm8_instructions.contains(instruction)
       if (isImm8 || graph.get(instruction).diPredecessors.size >= 0) {
@@ -148,7 +147,8 @@ case class Check(options: EvaluateOptions) {
           //          "--solver", "cvc4",
           "--opcode", instruction)
         //println(IO.cmd2String(cmd))
-        val (out, status) = IO.runQuiet(cmd)
+//        val (out, status) = IO.runQuiet(cmd)
+        val (out, status) = ("", 0)
         val usedNTimes = if (!isImm8) {
           usedFor(instruction) * 256
         } else {
