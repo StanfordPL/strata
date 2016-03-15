@@ -1,10 +1,10 @@
 ![strata](resources/logo/strata.png)
 
-strata is a project to automatically infer a formal specification of most instructions in the x86_64 instruction set.
+strata is a project to automatically infer a formal specification of many instructions in the x86_64 instruction set.  More details are available at [stefanheule.com/strata/](https://stefanheule.com/strata/).
 
 ## License
 
-Copyright 2015 Stefan Heule
+Copyright 2015-16 Stefan Heule
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
