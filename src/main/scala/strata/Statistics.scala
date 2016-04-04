@@ -556,24 +556,53 @@ object Statistics {
     // search progress
     println()
     println("Computing information about the search progress...")
+
+    val regStateNS = State(GlobalOptions(workdirPath = s"${evalOptions.dataPath}/data-no-stratification"))
+    val messagesNS = regStateNS.getLogMessages
+    val (runSoFarNS, offsetsNS) = computeOffsets(messagesNS)
+
     val progressRows = messages.collect {
       case LogTaskEnd(_, _, pt, time, ctx) if pt > 0 =>
         val tInMs = timeSinceStart(time, offsets)
-        (tInMs.toDouble / (1000d * 60d * 60d), pt)
+        (tInMs.toDouble / (1000d * 60d * 60d), pt, 1)
     }.sortBy(x => x._1)
+    val progressRowsNStmp = messagesNS.collect {
+      case LogEquivalenceClasses(_, _, time, ctx) =>
+        val tInMs = timeSinceStart(time, offsetsNS)
+        tInMs.toDouble / (1000d * 60d * 60d)
+    }
     val baseSetSize = progressRows.map(_._2).min
+    var c = -1
+    var progressRowsNS = Vector[(Double, Int, Int)]()
+    for (t <- progressRowsNStmp.sorted) {
+      c += 1
+      progressRowsNS = progressRowsNS ++ Vector((t, c + baseSetSize, 2))
+    }
+
+    val allRows = (progressRows ++ progressRowsNS).sortBy(x => x._1)
     // optimize by dropping intermediate unchanged elements
     for (writer <- managed(CSVWriter.open(new File("bin/progress.csv")))) {
       var last = -1
-      for ((r, i) <- progressRows.zipWithIndex) {
+      var prev = (0, 0)
+      for ((r, i) <- allRows.zipWithIndex) {
         if (r._2 != last || i == 0 || i == progressRows.size - 1) {
-          writer.writeRow(Vector(r._1, r._2 - baseSetSize))
+          if (r._3 == 1) {
+            prev = (r._2 - baseSetSize, prev._2)
+          } else {
+            prev = (prev._1, r._2 - baseSetSize)
+          }
+          writer.writeRow(Vector(r._1, prev._1, prev._2))
           last = r._2
         }
       }
     }
+    val learned = progressRows.map(_._2).max - baseSetSize
+    val learnedNS = progressRowsNS.map(_._2).max - baseSetSize
+    println(f"Normally, we learned $learned formulas, and only $learnedNS without stratification.  " +
+      f"That's ${(learned-learnedNS).toDouble/learnedNS.toDouble * 100.0}%.2f more with stratification.")
     val wallHoursRegs = runSoFar.toDouble / (1000d * 60d * 60d)
     println(f"Experiment to learn register-only variants ran for ${wallHoursRegs}%.2f hours")
+
 
     // calculate imm8 running time
     var runTime = 0L
