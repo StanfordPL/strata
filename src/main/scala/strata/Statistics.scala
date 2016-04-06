@@ -51,10 +51,10 @@ object Statistics {
     }
     println(Stats.describe(circuit2fullInlinedSize.values.toList, "number of instructions"))
     val base2UsedBy = baseSet.toSeq.map(x => (x, instrs.filter(y => circuit2baseInstrUsed(y).contains(x)))).sortBy(x => x._2.length)
-    for ((i, is) <- base2UsedBy) {
-      println(s"${is.length}: $i")
-      println("  " + is.mkString(", "))
-    }
+//    for ((i, is) <- base2UsedBy) {
+//      println(s"${is.length}: $i")
+//      println("  " + is.mkString(", "))
+//    }
   }
 
   def toTime(x: DateTime): Long = {
