@@ -573,10 +573,13 @@ object Statistics {
     }
     val baseSetSize = progressRows.map(_._2).min
     var c = -1
+    val maxRowTime = progressRows.map(_._1).max
     var progressRowsNS = Vector[(Double, Int, Int)]()
     for (t <- progressRowsNStmp.sorted) {
       c += 1
-      progressRowsNS = progressRowsNS ++ Vector((t, c + baseSetSize, 2))
+      if (t <= maxRowTime) {
+        progressRowsNS = progressRowsNS ++ Vector((t, c + baseSetSize, 2))
+      }
     }
 
     val allRows = (progressRows ++ progressRowsNS).sortBy(x => x._1)
